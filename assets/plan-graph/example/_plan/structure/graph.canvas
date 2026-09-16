@@ -1,0 +1,141 @@
+{
+  "nodes": [
+    {
+      "id": "note-plan-graph",
+      "type": "text",
+      "x": -600,
+      "y": -380,
+      "width": 1200,
+      "height": 260,
+      "color": "6",
+      "text": "# Layered Plan Graph\n\nRows are the authoritative LT → MT → ST → WP decomposition levels. Solid arrows decompose; labeled dashed arrows are typed cross-cutting relationships. Open a linked node for decisions and evidence; use `structure/graph.json` for programmatic traversal."
+    },
+    {
+      "id": "plan-LT-001",
+      "type": "text",
+      "x": -210,
+      "y": 0,
+      "width": 420,
+      "height": 240,
+      "color": "6",
+      "text": "## [[_plan/long-term/LT-001.md|LT-001 · Make automated routing accountable]]\n\n**Level:** `long-term` · **Status:** `ready`\n**Updated:** 2026-09-15\n\nOperators can inspect and explain automated routing behavior."
+    },
+    {
+      "id": "plan-MT-001",
+      "type": "text",
+      "x": -210,
+      "y": 420,
+      "width": 420,
+      "height": 240,
+      "color": "6",
+      "text": "## [[_plan/mid-term/MT-001.md|MT-001 · Provide reproducible routing traces]]\n\n**Level:** `mid-term` · **Status:** `ready`\n**Updated:** 2026-09-15\n\nRepresent each routing choice as a reproducible trace."
+    },
+    {
+      "id": "plan-ST-001",
+      "type": "text",
+      "x": -210,
+      "y": 840,
+      "width": 420,
+      "height": 240,
+      "color": "6",
+      "text": "## [[_plan/short-term/ST-001.md|ST-001 · Introduce and verify a trace schema]]\n\n**Level:** `short-term` · **Status:** `ready`\n**Updated:** 2026-09-15\n\nDeliver a trace schema and a reader that verifies replayability."
+    },
+    {
+      "id": "plan-WP-001",
+      "type": "text",
+      "x": -470,
+      "y": 1260,
+      "width": 420,
+      "height": 240,
+      "color": "6",
+      "text": "## [[_plan/work-package/WP-001.md|WP-001 · Define the routing trace schema]]\n\n**Level:** `work-package` · **Status:** `ready`\n**Updated:** 2026-09-15\n\nDefine the minimum trace needed to reproduce a routing decision.\n\n**Qualities:** quietly legible under operational pressure"
+    },
+    {
+      "id": "plan-WP-002",
+      "type": "text",
+      "x": 50,
+      "y": 1260,
+      "width": 420,
+      "height": 240,
+      "color": "5",
+      "text": "## [[_plan/work-package/WP-002.md|WP-002 · Verify trace replay]]\n\n**Level:** `work-package` · **Status:** `proposed`\n**Updated:** 2026-09-15\n\nVerify that a trace reader reproduces the recorded routing choice."
+    }
+  ],
+  "edges": [
+    {
+      "id": "decomposes_to-LT-001--MT-001--MT-001",
+      "fromNode": "plan-LT-001",
+      "fromSide": "bottom",
+      "fromFloating": false,
+      "toNode": "plan-MT-001",
+      "toSide": "top",
+      "toFloating": false,
+      "label": "decomposes_to",
+      "color": "6",
+      "styleAttributes": {
+        "pathfindingMethod": "square",
+        "strokeStyle": "solid"
+      }
+    },
+    {
+      "id": "decomposes_to-MT-001--ST-001--ST-001",
+      "fromNode": "plan-MT-001",
+      "fromSide": "bottom",
+      "fromFloating": false,
+      "toNode": "plan-ST-001",
+      "toSide": "top",
+      "toFloating": false,
+      "label": "decomposes_to",
+      "color": "6",
+      "styleAttributes": {
+        "pathfindingMethod": "square",
+        "strokeStyle": "solid"
+      }
+    },
+    {
+      "id": "decomposes_to-ST-001--WP-001--WP-001",
+      "fromNode": "plan-ST-001",
+      "fromSide": "bottom",
+      "fromFloating": false,
+      "toNode": "plan-WP-001",
+      "toSide": "top",
+      "toFloating": false,
+      "label": "decomposes_to",
+      "color": "6",
+      "styleAttributes": {
+        "pathfindingMethod": "square",
+        "strokeStyle": "solid"
+      }
+    },
+    {
+      "id": "decomposes_to-ST-001--WP-002--WP-002",
+      "fromNode": "plan-ST-001",
+      "fromSide": "bottom",
+      "fromFloating": false,
+      "toNode": "plan-WP-002",
+      "toSide": "top",
+      "toFloating": false,
+      "label": "decomposes_to",
+      "color": "6",
+      "styleAttributes": {
+        "pathfindingMethod": "square",
+        "strokeStyle": "solid"
+      }
+    },
+    {
+      "id": "prerequisite_for-WP-001--WP-002--WP-002",
+      "fromNode": "plan-WP-001",
+      "fromSide": "right",
+      "fromFloating": false,
+      "toNode": "plan-WP-002",
+      "toSide": "left",
+      "toFloating": false,
+      "label": "prerequisite_for",
+      "color": "5",
+      "styleAttributes": {
+        "pathfindingMethod": "square",
+        "strokeStyle": "dashed"
+      }
+    }
+  ]
+}

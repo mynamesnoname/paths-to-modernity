@@ -1,0 +1,227 @@
+{
+  "main": {
+    "id": "9f1efed88c477b72",
+    "type": "split",
+    "children": [
+      {
+        "id": "5dceca52b28f0479",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "141314e75896600a",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "references/alternatives.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "alternatives"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "b236c0bd27e5356b",
+    "type": "split",
+    "children": [
+      {
+        "id": "3101de9da332548e",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "1d992162b88b9517",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "1bf91bd3471e8c75",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜索"
+            }
+          },
+          {
+            "id": "c2dfd6fccc2b3fa0",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "7719ac66dd692efb",
+    "type": "split",
+    "children": [
+      {
+        "id": "87624e37a222d785",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "56a5e952add9b431",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "SKILL.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "SKILL 的反向链接列表"
+            }
+          },
+          {
+            "id": "0f6ad17d810d3f31",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "SKILL.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "SKILL 的出链列表"
+            }
+          },
+          {
+            "id": "2e3a25a67ed4a411",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          },
+          {
+            "id": "fde5abff138e2e64",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "添加笔记属性"
+            }
+          },
+          {
+            "id": "7b7d8038dcfc78b7",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "SKILL.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "SKILL 的大纲"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "daily-notes:打开/创建今天的日记": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false,
+      "bases:新建数据库": false
+    }
+  },
+  "active": "141314e75896600a",
+  "lastOpenFiles": [
+    "skill-evaluation.md",
+    "references/migration.md",
+    "REVIEW-first-load-agent-perspective.md",
+    "assets/plan-graph/example/_plan/structure/review.md",
+    "assets/plan-graph/example/_plan/structure/graph.canvas",
+    "assets/plan-graph/example/_plan/structure/graph.md",
+    "assets/plan-graph/example/_plan/structure/graph.json",
+    "assets/plan-graph/example/_plan/structure",
+    "scripts/test_plan_graph_bundle.py",
+    "references/alternatives.md",
+    "assets/plan-graph/example/_plan/work-package/WP-002.md",
+    "assets/plan-graph/example/_plan/work-package/WP-001.md",
+    "assets/plan-graph/example/_plan/work-package",
+    "assets/plan-graph/example/_plan/short-term/ST-001.md",
+    "assets/plan-graph/example/_plan/short-term",
+    "assets/plan-graph/example/_plan/mid-term/MT-001.md",
+    "assets/plan-graph/example/_plan/mid-term",
+    "assets/plan-graph/example/_plan/long-term/LT-001.md",
+    "assets/plan-graph/example/_plan/long-term",
+    "assets/plan-graph/example/_plan/requirements/REQ-001.md",
+    "assets/plan-graph/example/_plan/requirements",
+    "assets/plan-graph/example/_plan",
+    "assets/plan-graph/example/README.md",
+    "assets/plan-graph/example",
+    "assets/plan-graph/_plan/README.md",
+    "assets/plan-graph/AGENTS.plan-management.md",
+    "README.md",
+    "AGENTS.md",
+    "SKILL.md",
+    "first-load-review.md",
+    "assets/mounted-plan-graph/example/_plan/work-package/WP-002.md",
+    "assets/mounted-plan-graph/example/_plan/work-package/WP-001.md",
+    "references/plan-graph.md",
+    "review-first-load.md",
+    "assets/mounted-plan-graph/example/_plan/mid-term/MT-001.md",
+    "assets/mounted-plan-graph/example/_plan/structure/graph.md",
+    "assets/mounted-plan-graph/example/_plan/structure/graph.canvas",
+    "assets/mounted-plan-graph/example/_plan/structure/atelier.md"
+  ]
+}

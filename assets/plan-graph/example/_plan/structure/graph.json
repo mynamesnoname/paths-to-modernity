@@ -1,0 +1,240 @@
+{
+  "edge_count": 5,
+  "edges": [
+    {
+      "declared_on": "MT-001",
+      "from": "LT-001",
+      "relationship": "decomposes_to",
+      "source_field": "parent",
+      "to": "MT-001"
+    },
+    {
+      "declared_on": "ST-001",
+      "from": "MT-001",
+      "relationship": "decomposes_to",
+      "source_field": "parent",
+      "to": "ST-001"
+    },
+    {
+      "declared_on": "WP-001",
+      "from": "ST-001",
+      "relationship": "decomposes_to",
+      "source_field": "parent",
+      "to": "WP-001"
+    },
+    {
+      "declared_on": "WP-002",
+      "from": "ST-001",
+      "relationship": "decomposes_to",
+      "source_field": "parent",
+      "to": "WP-002"
+    },
+    {
+      "declared_on": "WP-002",
+      "from": "WP-001",
+      "relationship": "prerequisite_for",
+      "source_field": "depends_on",
+      "to": "WP-002"
+    }
+  ],
+  "levels": [
+    "long-term",
+    "mid-term",
+    "short-term",
+    "work-package"
+  ],
+  "node_count": 5,
+  "nodes": [
+    {
+      "acceptance": [
+        "Routing decisions can be reproduced from stored evidence"
+      ],
+      "conflicts_with": [],
+      "deliverables": [
+        "A traceable routing-decision capability"
+      ],
+      "depends_on": [],
+      "enables": [],
+      "evidence": [],
+      "id": "LT-001",
+      "level": "long-term",
+      "links": {
+        "docs": [
+          "_plan/requirements/REQ-001.md"
+        ],
+        "plan": [
+          "_plan/long-term/LT-001.md"
+        ]
+      },
+      "objective": "Operators can inspect and explain automated routing behavior.",
+      "parent": null,
+      "source": "_plan/long-term/LT-001.md",
+      "status": "ready",
+      "supersedes": [],
+      "title": "Make automated routing accountable",
+      "updated": "2026-09-15",
+      "validates": []
+    },
+    {
+      "acceptance": [
+        "A trace contains the inputs and rule outcome needed for replay"
+      ],
+      "conflicts_with": [],
+      "deliverables": [
+        "A stable trace representation"
+      ],
+      "depends_on": [],
+      "enables": [],
+      "evidence": [],
+      "id": "MT-001",
+      "level": "mid-term",
+      "links": {
+        "docs": [
+          "_plan/requirements/REQ-001.md"
+        ],
+        "plan": [
+          "_plan/mid-term/MT-001.md"
+        ]
+      },
+      "objective": "Represent each routing choice as a reproducible trace.",
+      "parent": "LT-001",
+      "source": "_plan/mid-term/MT-001.md",
+      "status": "ready",
+      "supersedes": [],
+      "title": "Provide reproducible routing traces",
+      "updated": "2026-09-15",
+      "validates": []
+    },
+    {
+      "acceptance": [
+        "A recorded trace can be replayed by the reader"
+      ],
+      "conflicts_with": [],
+      "deliverables": [
+        "Trace schema",
+        "Trace reader validation"
+      ],
+      "depends_on": [],
+      "enables": [],
+      "evidence": [],
+      "id": "ST-001",
+      "level": "short-term",
+      "links": {
+        "docs": [
+          "_plan/requirements/REQ-001.md"
+        ],
+        "plan": [
+          "_plan/short-term/ST-001.md"
+        ]
+      },
+      "objective": "Deliver a trace schema and a reader that verifies replayability.",
+      "parent": "MT-001",
+      "source": "_plan/short-term/ST-001.md",
+      "status": "ready",
+      "supersedes": [],
+      "title": "Introduce and verify a trace schema",
+      "updated": "2026-09-15",
+      "validates": []
+    },
+    {
+      "acceptance": [
+        "The schema records decision inputs, selected rule, and outcome"
+      ],
+      "approach": "versioned append-only trace schema",
+      "conflicts_with": [],
+      "context": {
+        "constraints": [
+          "No additional model request on the fast path"
+        ],
+        "invariants": [
+          "Compatibility mode preserves existing routing decisions"
+        ],
+        "non_goals": [
+          "Automating route recovery"
+        ],
+        "problem": "Operators cannot explain why automated routing chose a slow path",
+        "success_signals": [
+          "A stored trace reproduces the selected route"
+        ]
+      },
+      "deliverables": [
+        "Versioned routing trace schema"
+      ],
+      "depends_on": [],
+      "enables": [],
+      "evidence": [],
+      "id": "WP-001",
+      "level": "work-package",
+      "links": {
+        "code": [
+          "src/routing_trace.py"
+        ],
+        "docs": [
+          "_plan/requirements/REQ-001.md"
+        ],
+        "plan": [
+          "_plan/work-package/WP-001.md"
+        ]
+      },
+      "objective": "Define the minimum trace needed to reproduce a routing decision.",
+      "parent": "ST-001",
+      "perspectives": [
+        "operator",
+        "runtime",
+        "evidence"
+      ],
+      "qualities": [
+        "quietly legible under operational pressure"
+      ],
+      "source": "_plan/work-package/WP-001.md",
+      "source_requirement": "_plan/requirements/REQ-001.md",
+      "status": "ready",
+      "supersedes": [],
+      "title": "Define the routing trace schema",
+      "tradeoffs": [
+        "compact traces versus forensic detail"
+      ],
+      "updated": "2026-09-15",
+      "validates": []
+    },
+    {
+      "acceptance": [
+        "The reader reproduces the expected route from a fixture trace"
+      ],
+      "conflicts_with": [],
+      "deliverables": [
+        "Replay validation"
+      ],
+      "depends_on": [
+        "WP-001"
+      ],
+      "enables": [],
+      "evidence": [],
+      "id": "WP-002",
+      "level": "work-package",
+      "links": {
+        "plan": [
+          "_plan/work-package/WP-002.md"
+        ],
+        "tests": [
+          "tests/test_routing_trace.py"
+        ]
+      },
+      "objective": "Verify that a trace reader reproduces the recorded routing choice.",
+      "parent": "ST-001",
+      "source": "_plan/work-package/WP-002.md",
+      "status": "proposed",
+      "supersedes": [],
+      "title": "Verify trace replay",
+      "updated": "2026-09-15",
+      "validates": []
+    }
+  ],
+  "schema_version": "paths-to-modernity-plan-graph-v3",
+  "source_of_truth": [
+    "_plan/long-term/*.md",
+    "_plan/mid-term/*.md",
+    "_plan/short-term/*.md",
+    "_plan/work-package/*.md"
+  ]
+}

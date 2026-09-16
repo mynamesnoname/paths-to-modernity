@@ -1,0 +1,4 @@
+interface:
+  display_name: "Paths to Modernity"
+  short_description: "Clarify scope, structure plans, and compare alternatives"
+  default_prompt: "Use $paths-to-modernity to clarify scope and outcomes with me, then build a traceable plan with meaningful qualities, evidence links, and alternatives where useful."
