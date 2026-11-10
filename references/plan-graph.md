@@ -44,6 +44,20 @@ colors, array position, and layout carry no planning semantics.
 
 For a first reading, use the [worked example](../assets/plan-graph/example/README.md).
 
+## When not to use this implementation
+
+The four-level graph earns its cost on work that outlives one conversation. Use
+a brief and work packages directly, without `_plan/`, when none of these holds:
+
+- the plan must survive a handoff between sessions;
+- more than one person owns decisions in it;
+- its acceptance evidence must stay auditable over time.
+
+Two of the three justify adoption; one rarely does. A uniform four-level shape
+makes every plan legible to the same tools and validator, and the price is
+intermediate nodes that carry no information. That price is visible and
+countable, while maintaining a second schema is neither.
+
 ## Repository structure
 
 Adopting this implementation means using four decomposition levels:

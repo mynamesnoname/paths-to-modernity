@@ -71,6 +71,12 @@ Use the depth needed for the next decision; omit steps that add no value.
 8. Hand off a plan with traceable decisions, implementation or activity
    targets, acceptance criteria, and completion-evidence expectations.
 
+The steps describe what a complete plan accounts for, not a pass to execute
+once. Decomposition, comparison, and review can show that the scope or the
+outcome was misread; revise it rather than defend the first reading.
+Interpretations that imply different goals are not alternatives to compare:
+agree on the outcome before comparing ways to reach it.
+
 ## Repository-local Plan Graph
 
 Inspect applicable `AGENTS.md` files and existing planning tools. Follow a
@@ -89,11 +95,12 @@ ownership-based removal.
 ## Working principles
 
 - Keep one editable source for each decision; generate indexes and views.
-- Ask questions only when the answer can change the plan, through whatever
-  channel the environment offers. When interactive prompts are disabled, ask
-  in plain conversational text and pause for the answer. Readiness is relative
-  to the next commitment, so a bounded discovery task can proceed before the
-  larger design is settled.
+- Ask questions only when the answer can change the plan, and ask the most
+  consequential one first, naming what you are deferring; batch only choices
+  that cannot be judged apart. Use whatever channel the environment offers.
+  When interactive prompts are disabled, ask in plain conversational text and
+  pause for the answer. Readiness is relative to the next commitment, so a
+  bounded discovery task can proceed before the larger design is settled.
 - Preserve constraints, provenance, and people's choices when shortening prose.
 - Add context, qualities, perspectives, or alternatives independently when
   useful; do not fill fields merely to complete a template.

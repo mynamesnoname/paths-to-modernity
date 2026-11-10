@@ -5,6 +5,11 @@ consequential design uncertainty cannot be resolved through ordinary analysis.
 An alternative is a different approach to a shared outcome, with a comparison
 that can change the decision.
 
+This reference begins after the outcome is settled. If the disagreement is about
+which outcome is meant — what "faster" or "simpler" actually refers to — those
+are interpretive variants, not alternatives, and they have no shared baseline to
+compare against. Resolve them with [inquiry](inquiry.md) first, then return here.
+
 ## Admission test
 
 Create alternatives only when all of the following hold:

@@ -71,6 +71,29 @@ When unsure where an observation belongs: a quality describes the desired
 character of the result, a tradeoff holds competing aims that stay open, and a
 perspective (next section) is a viewpoint used to examine the plan.
 
+## Keeping qualities through revision
+
+A quality recorded once does not stay true by itself. Revision, rescoping, and
+handoff are where experiential goals disappear quietly while every acceptance
+criterion still passes.
+
+Re-examine the qualities at risk when one of these happens:
+
+- a responsibility boundary moves — scope enters or leaves, ownership shifts,
+  affected interfaces change;
+- a trade is made that buys function with quality;
+- the plan is handed to implementation, or to another person.
+
+Re-splitting work, renaming, re-estimating, or adding a node that changes no
+responsibility does not trigger this.
+
+The check is three questions, answerable from the record rather than from new
+fields: which stated qualities bear on this decision; what does each option
+preserve or damage; and if a quality is sacrificed, has the decision owner who
+can accept that cost accepted it. Record the conclusion under Decisions. Do not
+add a quality field to every work package, and do not invent a metric for a
+quality that only observation can judge.
+
 ## Perspectives
 
 A perspective is a stakeholder or analytical viewpoint that can reveal a

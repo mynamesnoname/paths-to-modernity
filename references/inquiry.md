@@ -58,6 +58,13 @@ describe interactions with people or systems outside that ownership.
 This loop is the detailed form of steps 2–4 of the planning workflow in
 [SKILL.md](../SKILL.md).
 
+The four steps describe what has to happen, not an order that runs once. Treat
+them as a control loop: observe, interpret, resolve or preserve, assess
+readiness, and then either advance or reopen what the answer just undermined.
+Decomposition, comparison, and review routinely show that the first reading of
+the scope or the outcome was wrong. Returning to an earlier step is the loop
+working, not the loop failing.
+
 ### 1. Observe before asking
 
 Read the raw request, applicable instructions, existing plans, relevant code,
@@ -96,8 +103,11 @@ full recovery loop?
 
 Avoid `Please clarify the requirements`, long questionnaires, and questions
 whose answers would not alter scope, invariants, acceptance, sequencing, or
-authorization. Ask one high-leverage question at a time when later questions
-depend on its answer; batch only independent choices that are easy to compare.
+authorization. Ask the single highest-leverage question, and say what you are
+deferring and why this one comes first: a person who can see the queue is not
+ambushed by it later. Put at most two questions in one round, and only when
+neither can be judged without seeing the other. A numbered list of
+recommendations invites agreement, not deliberation.
 
 Deliver the question through whatever channel the environment provides. When
 interactive question tools are disabled or unavailable — for example in
@@ -106,6 +116,33 @@ conversational text, end the turn, and wait for the person's answer. A missing
 structured channel never converts a human-owned choice into an agent
 assumption; only genuinely reversible assumptions may proceed without an
 answer.
+
+#### Keep a material decision frontier
+
+Hold, in working memory rather than in a file, the unresolved choices that could
+still change the next responsible commitment. For each, know its consequence,
+what must be settled before it can be asked, and whose decision it is.
+
+Recompute after every answer. Some choices unblock, some are reframed, some
+vanish because the answer changed what the plan is about. Ask only what is
+answerable now, and resolve the factual prerequisites yourself rather than
+handing them to the person.
+
+Do not persist this set. Frontier structure and question dependencies are
+scaffolding for one conversation; written down, they become a second planning
+graph that no validator checks. Persist the decisions and the residue of open
+questions instead, as the next step describes.
+
+#### Interpretive variants are not alternatives
+
+A contrast can be about meaning. The same words may name different outcomes:
+"faster" can mean lower latency, higher throughput, or less human review, and
+those are three goals rather than three routes to one goal. Present them to
+discover what is meant; do not score them against a shared baseline, because
+they do not have one yet.
+
+Once the outcome is agreed, choosing between ways to reach it is a different act
+under different rules; see [alternatives](alternatives.md).
 
 ### 4. Record the chosen boundary and the residue
 
