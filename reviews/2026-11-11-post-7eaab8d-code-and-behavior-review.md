@@ -398,3 +398,275 @@ legacy.is_dir() and not (repo / PLAN_RELATIVE).exists()
 ### Handoff
 
 本文是一次**审查提交**。它不代表自动批准修复上述全部事项。未来 Coding Agent 应先阅读 [AGENTS.md](../AGENTS.md)、[DEC-002](../decisions/DEC-002-authorization-and-knowledge-location.md) 及当前实现，并按维护者批准的 Phase 小范围实施、运行相关测试，再提交可复核的结果。
+
+---
+
+# 附录 A — PtM 的长期能力体系、上下文规模与 Compact 恢复
+
+> 补充日期：2026-11-11。本文是针对未来架构的设计评估，不代表现有 7eaab8d 提交出现了这些未来问题，亦不构成新 Skill、目录迁移或执行变更的授权。此前第 1–11 节仍是本次提交的代码评审。
+
+## A.1 新问题：PtM 的边界正在超越 Planning
+
+维护者预计增加 scripts-to-modernity（以 Canvas 表达核心代码实现和结构依赖）及 spec-to-modernity（持久化重要 Spec 与不变量），并在目标项目的 _aiHumanInteract/ 下存放 Design、Docs 等文档。连同已有 Plan Graph、Knowledge Debt，这套系统不再只是编写计划的 Skill，而是面向长期人机协作的项目理解基础设施。
+
+本轮关注的风险不是仓库的文件数量本身，而是：**为了完成一次局部工作，Agent 是否被迫加载全部 Skill 规则、全部 Plan、全部代码结构和设计历史？** 这会造成 Token 成本、检索错误、文档重复，以及 compact 后恢复困难。
+
+核心判断：**总知识规模 ≠ 单次任务所需的最小上下文规模。** 模块拆分可以改善能力边界，不能自动保证 compact 后的工作连续性。
+
+## A.2 实际规模：尚未到必须大拆分的程度
+
+2026-11-11 主要运行时文档大约为：
+
+| 文件 | 大小 | 职责 |
+| --- | ---: | --- |
+| SKILL.md | 6.8 KB | 入口、路由、共享原则 |
+| references/inquiry.md | 12.3 KB | 解释需求、Human Judgment Frontier |
+| references/model.md | 6.2 KB | Planning Model、Qualities |
+| references/alternatives.md | 3.7 KB | 受控方案比较 |
+| references/knowledge-debt.md | 6.1 KB | 理解缺口与授权语义 |
+| references/plan-graph.md | 16.2 KB | Plan Graph v4 契约与管理 |
+| 合计 | **约 51 KB** | 全量，不等于一次任务的加载量 |
+
+当前 SKILL.md 已具备按需加载 Reference 的机制。不能把全量文件大小直接换算为每轮 Prompt 成本；具体 Token 取决于 Harness、模型、实际调用路径和上下文中已经缓存的内容。
+
+建议分别度量：
+1. **Context footprint**：每项任务实际读了多少不相关内容？
+2. **Skill activation reliability**：请求某能力后，能否发现、加载并执行它？
+3. **State continuity**：压缩上下文或新会话之后，能否恢复已决定的事情、当前进度、未决问题和下一步？
+
+将 Reference 拆成独立 Skill 主要影响前两者，并不自动解决第三者。
+
+## A.3 PtM 应是薄 Protocol + Capabilities + Artifacts
+
+建议将 Paths to Modernity 定义为整个体系的名称，而不要求一个巨型运行时 Skill 装载所有能力。
+
+### Layer 1：Shared Protocol（短小、权威、稳定）
+
+共享约束包括：
+- 人类负责意图、体验、价值、责任及可接受后果；Agent 承担适当的技术判断。
+- 执行授权、理解程度和证据验证彼此独立；沉默不授予权限。
+- Materiality Threshold 和 Readiness Gate 相对于下一项负责任的承诺判断。
+- 单一权威来源、生成视图与真实资料区分、决策可追溯。
+- compact/new session 的恢复规则与旧授权边界核验。
+
+注意不要在五个独立 Skill 中复制并独立维护五份授权规范，否则将发生版本漂移。共享规范要有明确的权威位置，并由目标 Agent Harness 实测能否可靠发现；写下另一个 Skill 名字不等于它一定已被加载。
+
+### Layer 2：Capabilities（只在需要时激活）
+
+| 模块 | 主要问题 | 拆分建议 |
+| --- | --- | --- |
+| PtM 核心 Inquiry / Planning | 希望改变什么，如何澄清、分解与比较？ | 保留一套核心 Skill；Inquiry、Model、Alternatives 仍作为 References |
+| Plan Graph | 怎样维护工作依赖、状态、验收证据？ | **最优先的独立 Skill 候选**，因为已有 Builder、Validator、Installer、Schema、测试和治理 |
+| scripts-to-modernity | 代码组件、接口、实现依赖究竟是什么？ | 未来独立 Skill，以代码和声明作为事实来源 |
+| spec-to-modernity | 哪些 Spec、契约、不变量必须长期成立？ | 未来独立 Skill，支持受控版本和引用 |
+| Knowledge Debt | 哪些技术概念/推理尚待理解？如何回溯？ | 可作为第二个独立 Skill 候选：Capture / Trace / Revisit |
+
+不建议仅因为 inquiry.md 或 model.md 比较长，就把它们各拆成一个 Skill：它们在认知流程中紧密耦合，未经验证的跨 Skill 委托可能更脆弱。把 Plan Graph 封装成独立 Skill 也不应引发另一次目标项目目录迁移：保持现有 v4 存储契约，且先解决本评审第 2–4 节发现的 v4 正确性问题。
+
+### Layer 3：Project-local Artifacts（长期项目状态）
+
+未来的职责分区可以是：
+
+~~~text
+_aiHumanInteract/
+  README.md
+  state/
+    active.md
+  plan/
+    ...                     # 既有 Plan Graph v4
+  scripts/
+    structure/
+      graph.json
+      graph.canvas
+  specs/
+    ...
+  design/
+    ...
+  docs/
+    ...
+  knowledge/
+    ...
+~~~
+
+这是**候选职责结构**，不是要求立即创建这些目录。目标项目已有的 Spec、ADR、Docs 和治理约定优先。应定义每个区域的维护者、权威事实源、哪些文件是衍生视图、怎样进行跨区域引用。
+
+## A.4 Plan Graph、Scripts Graph 与 Specs 不是同一种 Graph
+
+必须严格区别不同关系语义：
+
+| 结构 | 事实对象 | 关系含义 |
+| --- | --- | --- |
+| Plan Graph | 未来工作承诺、验收 | 工作属于什么目标、什么必须先完成 |
+| Scripts / Architecture Graph | 当前实现 | 哪个组件调用/导入/依赖哪个实现或接口 |
+| Specs | 规范与行为契约 | 哪个接口受哪份规范治理、哪个不变量必须成立 |
+
+使用 Canvas 展示不能让它们自动成为同一套 Schema。建议 **Federated Knowledge Structure**：每个领域保持自己的权威信息，用必要的跨域关系连接，例如：
+
+~~~text
+WP-017
+  └── implements → SPEC-008
+                      └── governs → FeatureSelectionService
+                                           └── implemented_in → src/feature_selection.py
+~~~
+
+这些边要标明来源；不能将一个模型推断出的关联直接视为已证实的代码关系。
+
+**权威来源原则：**
+- Plan 的可编辑源节点与 Decision 是权威；Graph JSON / Canvas 是生成视图。
+- Scripts 的事实来源为真实代码、配置和接口声明；Canvas 应尽可能自动生成，人工意图标注单独保留。
+- Spec 的正式源文件与版本是规范权威；代码是否满足仍需测试。
+- Design 记录理由和历史取舍，不自动覆盖有效 Spec。
+- Docs 讲解用法和事实，重要信息需能回链代码或证据。
+- Knowledge Debt 是待理解内容，不能代替证据或授权。
+- Session Checkpoint 仅记录当前状态和指针，不复制以上完整内容。
+
+不要让一个决定被 Plan、Spec、Design、Docs、Knowledge 和 Session 六处分别维护。
+
+## A.5 用 Context Neighborhood 替代全量扫描
+
+建议采取 **Scoped Retrieval / Scoped Loading**，根据当前任务所触及的对象与邻接关系扩张上下文，而不是递归读取整个 _aiHumanInteract/。
+
+示例：用户要求修改 Feature Selection 状态管理。
+
+1. 通过 Project Index 找到 Feature Selection 关联的 Spec 和实现。
+2. 读取直接相关源代码、接口、测试及规范。
+3. 若修改接口，扩展到直接调用者和下游依赖。
+4. 若改变目标或授权边界，再上溯相关 Plan、Decision、Design。
+5. 仅在出现冲突、未知历史原因或明确要求时加载旧 Spec、旧 Design 和大范围历史。
+
+加载层次：
+
+| 层 | 内容 | 进入条件 |
+| --- | --- | --- |
+| L0 | Project Index、适用治理、工作恢复指针 | 初次进入/恢复 |
+| L1 | 共享协议与需要的 Skill 入口 | 选择能力 |
+| L2 | 相关 Reference | 实际使用该能力 |
+| L3 | 当前对象的代码、Spec、Plan、Design | 局部任务 |
+| L4 | 历史决策、被替代 Spec、广泛上下游 | 冲突、重大改动或要求 |
+
+目标是 L0 和 L1 尽可能短；详细规范可以长期存在，但不必每次加载。初期以 Markdown Link、可读 Manifest、生成索引和静态依赖分析为主，不把向量数据库、统一 Ontology 或全域 Knowledge Graph 设为前提。
+
+防止 **Documentation Explosion**：
+- 每项事实尽可能只有一份权威源；其余引用。
+- 生成 Canvas、索引、图视图不得与源同时成为人工编辑的事实源。
+- 创建文档需有内容门槛：现有 Decision 一段话足以说明时，不强制新建 Design Doc。
+- 区分 Current 与 Historical / Superseded；默认先找有效版本。
+- 只在决策确认、重要阶段交接、WP 状态变化等关键事件更新相关文档。
+- 不要求每次代码修改都同步写 Plan + Spec + Design + Docs + Knowledge。
+
+## A.6 Compact 后恢复需要的是状态协议，不是更多 Skill
+
+区分三类信息：
+
+| 类别 | 主要存储 | 恢复方式 |
+| --- | --- | --- |
+| Skill Knowledge：应该怎样工作 | Skill / References | 按需重新定位与加载 |
+| Project Knowledge：已经决定和实现什么 | Plans / Specs / Decisions / Code / Knowledge | 经权威链接和索引定位 |
+| Active Session State：现在做到哪里 | 可选 Checkpoint | 读取、校验并继续 |
+
+**仅拆分 Skill 不能恢复会话进行中的状态**。一个极轻量的候选文件：
+
+~~~text
+_aiHumanInteract/state/active.md
+~~~
+
+建议最小内容：
+
+~~~markdown
+# Active Work Checkpoint
+
+## Current objective
+Build a prototype for keyboard-addressable spectral features.
+
+## Governing records
+- Decision: decisions/DEC-012.md
+- Plan: _aiHumanInteract/plan/work-package/WP-004.md
+- Knowledge gap: _aiHumanInteract/knowledge/event-sourcing.md
+
+## Verified progress
+- Existing feature-selection state located.
+- Requirements for addressable objects are documented.
+
+## Open uncertainty
+- Cross-session persistence requirements not settled.
+
+## Authorized boundary
+- Local, reversible prototype exploration was authorized in the governing context.
+- This checkpoint grants no new permission.
+
+## Next action
+Check the current implementation and make a minimal testable prototype change.
+
+## Resume
+Read linked authoritative records and applicable AGENTS.md.
+Recheck current request and authorization; do not infer new approval.
+~~~
+
+这里的文件名、Decision ID 和 Work Package 均为**虚构的说明性例子**，不是仓库已存在内容。
+
+原则：
+- 存指针、核实进度、少量阻塞、下一步；不复制决策全文。
+- 明确区分已验证事实与 Agent 推断。
+- Checkpoint 不产生或扩大授权，不能自动延续已失效的执行许可。
+- 多任务或多 Agent 并行时，单个 active.md 容易冲突，应先定义所有权，必要时为每个任务独立记录。
+- 以关键事件更新，而非每轮消息都写。
+- 如果 Harness 不能预知 compact 时机，定期按关键事件持久化比 compact 前临时补写更稳健。
+
+### 建议的 Recovery Protocol
+
+1. 在 compact / 新 Session 后察觉上下文不足，不假装记得已经丢失的细节。
+2. 定位项目、适用 AGENTS.md 和轻量 Project Index。
+3. 找到当前任务对应的 Checkpoint，读取 Plan/Decision/Spec 的权威链接。
+4. 只为下一项动作加载相关 Skill 和 Reference。
+5. 确认文件路径、版本、证据与当前权限仍有效。
+6. 从 Next action 继续；若关键前提已失效，再局部重新进入 Inquiry。
+
+**发现路径必须放在恢复后可见的入口**（例如目标项目适用的 AGENTS.md、项目索引或 Harness 提供的持久指令），不能只深藏于某个 Reference。各 Agent Harness 对 compact、Skill 重激活和跨 Skill 调用的行为不同，必须实测，不可把“文件存在”当成“自动恢复成功”。
+
+## A.7 实施顺序：Recovery-first，而不是立即大拆 Skill
+
+建议用三个配置测试，避免把所有变量一起改动：
+
+| 实验 | 组织方式 | 恢复方式 | 核心比较 |
+| --- | --- | --- | --- |
+| A：当前基线 | 单 Skill + 按需 References | 当前机制 | Token / 问答 / 恢复错误 |
+| B：Recovery-first | 单 Skill + 按需 References | Project Index + 小 Checkpoint | 只改变恢复机制的收益 |
+| C：Modular capabilities | 独立 Plan Graph、可选 Knowledge Debt | 与 B 相同 | 拆 Skill 是否有**额外**收益 |
+
+建议测试任务：需求澄清；单独修改 WP；代码实现变更并回链 Spec；记录并重访 Knowledge Debt；强制 compact/新 Session 恢复；多任务并行恢复。
+
+推荐指标：单次任务实际读取 tokens、重复读取、Skill 激活失败、恢复成功率、决策遗漏、未授权操作、用户重复回答数、到达 Prototype Feedback 所需交互、文档无效增长量。
+
+**执行顺序：**
+1. 本轮 Review 第 2–4 节的 Plan Graph v4 工程问题先修复，保障既有 Artifact 的可靠性。
+2. 不拆 Skill，先在单个真实项目中试用 Project Index + Minimal Checkpoint + Recovery Protocol。
+3. 用真实恢复任务评估成功率，再将 Plan Graph 包装为独立 Skill；保持 v4 存储契约不变。
+4. 若 Knowledge Debt 在 PtM 之外经常独立使用，再拆第二个 Capability。
+5. scripts-to-modernity、spec-to-modernity 各自确立事实源、依赖语义与检查工具；先实现局部 Context Neighborhood，暂不合并超级 Graph。
+6. 复跑 A/B/C，对比相同任务质量下的上下文成本和人类判断负担。
+
+### 后续 Agent 的验收原则
+
+- [ ] 本附录不自动授权新增目录、拆 Skill、代码迁移或执行更新。
+- [ ] 不把整个 _aiHumanInteract/ 当成 Prompt 全量读取。
+- [ ] 明确跨 Skill 共享协议的权威来源，防止授权语义版本漂移。
+- [ ] 独立 Capability 的加载和跨 Skill 委托必须在目标 Harness 中验证。
+- [ ] Plan / Scripts / Specs 的依赖边保持不同语义，Canvas 是视图而非事实源。
+- [ ] 一个工作目标可以从轻量索引定位到小范围 Context Neighborhood。
+- [ ] Checkpoint 不复制权威文件、不虚构证据、不扩大授权。
+- [ ] 恢复协议能够从 compact 或新 Session 的实际入口发现。
+- [ ] 不强制生成学习笔记、空目录、冗余 Design Doc 或全域 Graph。
+- [ ] 以相同质量下的任务总成本评判模块化，而不是以文件数量或主 SKILL.md 长度评判。
+
+## A.8 最终定位
+
+**Paths to Modernity 可以成为 Human–Agent Project Understanding Infrastructure，而不必变成运行时的 Planning Monolith。**
+
+薄的共享 Protocol 定义协作与授权方式；独立 Capabilities 负责 Plan、Scripts、Specs 和 Knowledge 的具体操作；Project Artifacts 长期保存权威内容和关系；Minimal Checkpoint 使正在进行的工作可恢复。
+
+最需要控制的不是 PtM 的总字数，而是：
+
+> **How little context is required to complete one meaningful unit of work correctly, recoverably, and under the right authorization?**
+
+这也是未来评测与架构收敛应共同使用的指标。
+
