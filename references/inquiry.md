@@ -87,6 +87,43 @@ presented as a decision already made.
 
 ### 3. Render the smallest meaningful contrast
 
+#### Before asking: whose information is this?
+
+Materiality says a question is worth asking. It does not say the person is the
+one who can answer it. Sort the question first:
+
+| Kind of question | What to do |
+|---|---|
+| A fact the code, data, or tools can settle | Find it; do not outsource it |
+| A reversible technical choice inside an already granted scope | Decide it, record why, and report it |
+| A question of intent, value, experience, or acceptable responsibility | Ask the decision owner |
+| A technical claim that lacks evidence | Design a test or prototype, not a vote |
+
+Then translate. A question earns a human answer only if the answer supplies
+something the agent cannot obtain: what the person wants, what they will accept,
+or who bears the consequence. If the answer would only ratify the agent's own
+reasoning, no question has been found — only a decision the agent should be
+taking itself.
+
+Compare: "Should we use event sourcing for auditable recovery?" asks for a
+verdict on a mechanism. "Do you need to replay past state and trace who changed
+what, and is a migration cost acceptable?" asks for an outcome. Someone who has
+never heard of event sourcing can answer the second, and it still carries the
+whole decision.
+
+When the target project already governs this kind of choice, and an existing
+pattern with its tests answers the question, do not make the person pick between
+equivalent libraries.
+
+When a human answer is genuinely needed but the person cannot yet evaluate it,
+[knowledge debt](knowledge-debt.md) describes how to record the gap and keep
+reversible work moving without pretending the gap is closed.
+
+A grant to proceed and an understanding of what will be done are two questions
+with opposite defaults: permission must be given, while an unclaimed
+understanding may be recorded as absent. Silence can supply the second, never
+the first.
+
 When a human choice is necessary, show two or three materially different
 boundaries, not a catalogue of possibilities. For each one state the consequence
 that matters: responsibility, affected or excluded people, operational burden,

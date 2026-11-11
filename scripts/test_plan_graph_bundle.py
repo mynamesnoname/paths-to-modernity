@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression-check the v3 schema, worked fixture, installer, and removal."""
+"""Regression-check the v4 schema, worked fixture, installer, and removal."""
 
 from __future__ import annotations
 
@@ -16,15 +16,15 @@ SKILL_ROOT = Path(__file__).resolve().parent.parent
 BUNDLE_ROOT = SKILL_ROOT / "assets" / "plan-graph"
 EXAMPLE_ROOT = BUNDLE_ROOT / "example"
 TOOL_NAMES = ("validate.py", "build_graph.py", "test_plan_graph.py")
-SCHEMA_VERSION = "paths-to-modernity-plan-graph-v3"
+SCHEMA_VERSION = "paths-to-modernity-plan-graph-v4"
 
 
 def require_consistent_schema_version() -> None:
     versioned_files = (
         SKILL_ROOT / "references" / "plan-graph.md",
         BUNDLE_ROOT / "AGENTS.plan-management.md",
-        BUNDLE_ROOT / "_plan" / "README.md",
-        BUNDLE_ROOT / "_plan" / "build_graph.py",
+        BUNDLE_ROOT / "_aiHumanInteract/plan" / "README.md",
+        BUNDLE_ROOT / "_aiHumanInteract/plan" / "build_graph.py",
         SKILL_ROOT / "scripts" / "install_plan_graph.py",
     )
     missing = [
@@ -62,11 +62,11 @@ def exercise_installer(root: Path) -> None:
     command = (sys.executable, str(installer), str(repository), "--update-agents")
 
     run((*command, "--dry-run"), SKILL_ROOT)
-    if (repository / "_plan").exists() or (repository / "AGENTS.md").exists():
+    if (repository / "_aiHumanInteract/plan").exists() or (repository / "AGENTS.md").exists():
         raise RuntimeError("installer dry run changed the target repository")
 
     run(command, SKILL_ROOT)
-    manifest = repository / "_plan" / "install-manifest.json"
+    manifest = repository / "_aiHumanInteract/plan" / "install-manifest.json"
     if not manifest.is_file():
         raise RuntimeError("installer did not create its ownership manifest")
     original_manifest = manifest.read_bytes()
@@ -109,18 +109,18 @@ def exercise_installer(root: Path) -> None:
     changed.mkdir()
     changed_command = (sys.executable, str(installer), str(changed))
     run(changed_command, SKILL_ROOT)
-    readme = changed / "_plan" / "README.md"
+    readme = changed / "_aiHumanInteract/plan" / "README.md"
     readme.write_text(readme.read_text(encoding="utf-8") + "Local edit.\n")
     run_expect_failure(
         (sys.executable, str(installer), str(changed), "--uninstall"),
         SKILL_ROOT,
     )
-    if not readme.exists() or not (changed / "_plan/install-manifest.json").exists():
+    if not readme.exists() or not (changed / "_aiHumanInteract/plan/install-manifest.json").exists():
         raise RuntimeError("rollback removed content after detecting a local change")
 
     legacy = root / "legacy-installation"
-    (legacy / "_plan").mkdir(parents=True)
-    old_manifest = legacy / "_plan/install-manifest.json"
+    (legacy / "_aiHumanInteract/plan").mkdir(parents=True)
+    old_manifest = legacy / "_aiHumanInteract/plan/install-manifest.json"
     old_manifest.write_text(json.dumps({
         "manifest_version": 1,
         "profile_version": "paths-to-modernity-mounted-plan-graph-v2",
@@ -131,8 +131,18 @@ def exercise_installer(root: Path) -> None:
             (sys.executable, str(installer), str(legacy), *flags),
             SKILL_ROOT,
         )
-    if old_manifest.read_bytes() != before or set((legacy / "_plan").iterdir()) != {old_manifest}:
-        raise RuntimeError("v3 installer mutated an unsupported legacy installation")
+    if old_manifest.read_bytes() != before or set((legacy / "_aiHumanInteract/plan").iterdir()) != {old_manifest}:
+        raise RuntimeError("v4 installer mutated an unsupported legacy installation")
+
+    unmigrated = root / "unmigrated-v3"
+    (unmigrated / "_plan").mkdir(parents=True)
+    for flags in (("--dry-run",), (), ("--uninstall", "--dry-run")):
+        run_expect_failure(
+            (sys.executable, str(installer), str(unmigrated), *flags),
+            SKILL_ROOT,
+        )
+    if (unmigrated / "_aiHumanInteract").exists():
+        raise RuntimeError("v4 installer built beside an unmigrated v3 tree")
 
 
 def main() -> int:
@@ -143,11 +153,12 @@ def main() -> int:
         repository = root / "example"
         shutil.copytree(EXAMPLE_ROOT, repository)
         for name in TOOL_NAMES:
-            shutil.copy2(BUNDLE_ROOT / "_plan" / name, repository / "_plan" / name)
+            shutil.copy2(BUNDLE_ROOT / "_aiHumanInteract/plan" / name, repository / "_aiHumanInteract/plan" / name)
 
         python = sys.executable
-        run((python, "-B", "_plan/validate.py"), repository)
-        run((python, "-B", "_plan/build_graph.py", "--check"), repository)
+        plan_dir = repository / "_aiHumanInteract/plan"
+        run((python, "-B", "_aiHumanInteract/plan/validate.py"), repository)
+        run((python, "-B", "_aiHumanInteract/plan/build_graph.py", "--check"), repository)
         run(
             (
                 python,
@@ -155,15 +166,13 @@ def main() -> int:
                 "-m",
                 "unittest",
                 "discover",
-                "-s",
-                "_plan",
                 "-p",
                 "test_*.py",
                 "-v",
             ),
-            repository,
+            plan_dir,
         )
-    print("Plan Graph v3 bundle checks passed")
+    print("Plan Graph v4 bundle checks passed")
     return 0
 
 

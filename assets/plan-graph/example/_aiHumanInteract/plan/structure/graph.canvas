@@ -18,7 +18,7 @@
       "width": 420,
       "height": 240,
       "color": "6",
-      "text": "## [[_plan/long-term/LT-001.md|LT-001 · Make automated routing accountable]]\n\n**Level:** `long-term` · **Status:** `ready`\n**Updated:** 2026-09-15\n\nOperators can inspect and explain automated routing behavior."
+      "text": "## [[_aiHumanInteract/plan/long-term/LT-001.md|LT-001 · Make automated routing accountable]]\n\n**Level:** `long-term` · **Status:** `ready`\n**Updated:** 2026-09-15\n\nOperators can inspect and explain automated routing behavior."
     },
     {
       "id": "plan-MT-001",
@@ -28,7 +28,7 @@
       "width": 420,
       "height": 240,
       "color": "6",
-      "text": "## [[_plan/mid-term/MT-001.md|MT-001 · Provide reproducible routing traces]]\n\n**Level:** `mid-term` · **Status:** `ready`\n**Updated:** 2026-09-15\n\nRepresent each routing choice as a reproducible trace."
+      "text": "## [[_aiHumanInteract/plan/mid-term/MT-001.md|MT-001 · Provide reproducible routing traces]]\n\n**Level:** `mid-term` · **Status:** `ready`\n**Updated:** 2026-09-15\n\nRepresent each routing choice as a reproducible trace."
     },
     {
       "id": "plan-ST-001",
@@ -38,7 +38,7 @@
       "width": 420,
       "height": 240,
       "color": "6",
-      "text": "## [[_plan/short-term/ST-001.md|ST-001 · Introduce and verify a trace schema]]\n\n**Level:** `short-term` · **Status:** `ready`\n**Updated:** 2026-09-15\n\nDeliver a trace schema and a reader that verifies replayability."
+      "text": "## [[_aiHumanInteract/plan/short-term/ST-001.md|ST-001 · Introduce and verify a trace schema]]\n\n**Level:** `short-term` · **Status:** `ready`\n**Updated:** 2026-09-15\n\nDeliver a trace schema and a reader that verifies replayability."
     },
     {
       "id": "plan-WP-001",
@@ -48,7 +48,7 @@
       "width": 420,
       "height": 240,
       "color": "6",
-      "text": "## [[_plan/work-package/WP-001.md|WP-001 · Define the routing trace schema]]\n\n**Level:** `work-package` · **Status:** `ready`\n**Updated:** 2026-09-15\n\nDefine the minimum trace needed to reproduce a routing decision.\n\n**Qualities:** quietly legible under operational pressure"
+      "text": "## [[_aiHumanInteract/plan/work-package/WP-001.md|WP-001 · Define the routing trace schema]]\n\n**Level:** `work-package` · **Status:** `ready`\n**Updated:** 2026-09-15\n\nDefine the minimum trace needed to reproduce a routing decision.\n\n**Qualities:** quietly legible under operational pressure"
     },
     {
       "id": "plan-WP-002",
@@ -58,7 +58,7 @@
       "width": 420,
       "height": 240,
       "color": "5",
-      "text": "## [[_plan/work-package/WP-002.md|WP-002 · Verify trace replay]]\n\n**Level:** `work-package` · **Status:** `proposed`\n**Updated:** 2026-09-15\n\nVerify that a trace reader reproduces the recorded routing choice."
+      "text": "## [[_aiHumanInteract/plan/work-package/WP-002.md|WP-002 · Verify trace replay]]\n\n**Level:** `work-package` · **Status:** `proposed`\n**Updated:** 2026-09-15\n\nVerify that a trace reader reproduces the recorded routing choice."
     }
   ],
   "edges": [

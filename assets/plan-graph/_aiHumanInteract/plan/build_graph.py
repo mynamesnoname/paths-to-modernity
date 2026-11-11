@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -13,7 +14,7 @@ from typing import Mapping, Sequence
 from validate import LEVELS, PLAN_ROOT, PlanGraphError, PlanNode, require_valid_graph
 
 
-SCHEMA_VERSION = "paths-to-modernity-plan-graph-v3"
+SCHEMA_VERSION = "paths-to-modernity-plan-graph-v4"
 STATUS_COLORS = {
     "proposed": "5",
     "ready": "6",
@@ -126,7 +127,13 @@ def _mermaid_label(node: PlanNode) -> str:
     )
 
 
-def graph_markdown(nodes: Mapping[str, PlanNode]) -> str:
+def _structure_link(plan_root: Path, reference: str) -> str:
+    """Path from the generated views to a repository-relative reference."""
+    repo_root = plan_root.parents[1]
+    return os.path.relpath(repo_root / reference, plan_root / "structure").replace(os.sep, "/")
+
+
+def graph_markdown(plan_root: Path, nodes: Mapping[str, PlanNode]) -> str:
     ordered = ordered_nodes(nodes)
     edges = graph_edges(nodes)
     lines = [
@@ -166,7 +173,7 @@ def graph_markdown(nodes: Mapping[str, PlanNode]) -> str:
         for node in ordered:
             if node.level != level:
                 continue
-            source = "../" + node.source.removeprefix(PLAN_ROOT.name + "/")
+            source = _structure_link(plan_root, node.source)
             dependencies = ", ".join(node.depends_on) or "—"
             parent = node.parent or "—"
             alternative = node.alternative_of or "—"
@@ -194,7 +201,7 @@ def graph_markdown(nodes: Mapping[str, PlanNode]) -> str:
     return "\n".join(lines)
 
 
-def review_markdown(nodes: Mapping[str, PlanNode]) -> str:
+def review_markdown(plan_root: Path, nodes: Mapping[str, PlanNode]) -> str:
     """Collect optional planning details and comparisons from source nodes."""
 
     ordered = ordered_nodes(nodes)
@@ -216,7 +223,7 @@ def review_markdown(nodes: Mapping[str, PlanNode]) -> str:
         return "\n".join(lines)
 
     for node in selected:
-        source = "../" + node.source.removeprefix(PLAN_ROOT.name + "/")
+        source = _structure_link(plan_root, node.source)
         lines.extend([
             f"## {node.node_id} — [{node.title}]({source})",
             "",
@@ -231,7 +238,7 @@ def review_markdown(nodes: Mapping[str, PlanNode]) -> str:
             else:
                 lines.append(
                     f"- Raw requirement: [`{node.source_requirement}`]"
-                    f"(../../{node.source_requirement})"
+                    f"({_structure_link(plan_root, node.source_requirement)})"
                 )
         if node.alternative_of:
             lines.append(f"- Alternative to: `{node.alternative_of}`")
@@ -266,7 +273,7 @@ def review_markdown(nodes: Mapping[str, PlanNode]) -> str:
                 "|---|---|---|",
             ])
             for alternative in alternatives:
-                alternative_source = "../" + alternative.source.removeprefix(PLAN_ROOT.name + "/")
+                alternative_source = _structure_link(plan_root, alternative.source)
                 lines.append(
                     f"| [{alternative.node_id}]({alternative_source}) | "
                     f"`{alternative.status}` | {alternative.approach} |"
@@ -391,9 +398,9 @@ def render_outputs(
     ) + "\n"
     return {
         structure / "graph.json": payload,
-        structure / "graph.md": graph_markdown(nodes),
+        structure / "graph.md": graph_markdown(plan_root, nodes),
         structure / "graph.canvas": graph_canvas(nodes),
-        structure / "review.md": review_markdown(nodes),
+        structure / "review.md": review_markdown(plan_root, nodes),
     }
 
 
@@ -404,7 +411,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         plan_root = args.root.resolve()
-        nodes = require_valid_graph(plan_root, plan_root.parent)
+        nodes = require_valid_graph(plan_root, plan_root.parents[1])
         outputs = render_outputs(plan_root, nodes)
         if args.check:
             stale = [

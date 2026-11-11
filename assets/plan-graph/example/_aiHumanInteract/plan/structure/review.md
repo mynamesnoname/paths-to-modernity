@@ -8,7 +8,7 @@ Edit source plans and rebuild this view.
 - Status: `ready`
 - Outcome: Define the minimum trace needed to reproduce a routing decision.
 - Approach: versioned append-only trace schema
-- Raw requirement: [`_plan/requirements/REQ-001.md`](../../_plan/requirements/REQ-001.md)
+- Raw requirement: [`_aiHumanInteract/plan/requirements/REQ-001.md`](../requirements/REQ-001.md)
 
 ### Context
 

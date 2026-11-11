@@ -60,15 +60,15 @@
       "level": "long-term",
       "links": {
         "docs": [
-          "_plan/requirements/REQ-001.md"
+          "_aiHumanInteract/plan/requirements/REQ-001.md"
         ],
         "plan": [
-          "_plan/long-term/LT-001.md"
+          "_aiHumanInteract/plan/long-term/LT-001.md"
         ]
       },
       "objective": "Operators can inspect and explain automated routing behavior.",
       "parent": null,
-      "source": "_plan/long-term/LT-001.md",
+      "source": "_aiHumanInteract/plan/long-term/LT-001.md",
       "status": "ready",
       "supersedes": [],
       "title": "Make automated routing accountable",
@@ -90,15 +90,15 @@
       "level": "mid-term",
       "links": {
         "docs": [
-          "_plan/requirements/REQ-001.md"
+          "_aiHumanInteract/plan/requirements/REQ-001.md"
         ],
         "plan": [
-          "_plan/mid-term/MT-001.md"
+          "_aiHumanInteract/plan/mid-term/MT-001.md"
         ]
       },
       "objective": "Represent each routing choice as a reproducible trace.",
       "parent": "LT-001",
-      "source": "_plan/mid-term/MT-001.md",
+      "source": "_aiHumanInteract/plan/mid-term/MT-001.md",
       "status": "ready",
       "supersedes": [],
       "title": "Provide reproducible routing traces",
@@ -121,15 +121,15 @@
       "level": "short-term",
       "links": {
         "docs": [
-          "_plan/requirements/REQ-001.md"
+          "_aiHumanInteract/plan/requirements/REQ-001.md"
         ],
         "plan": [
-          "_plan/short-term/ST-001.md"
+          "_aiHumanInteract/plan/short-term/ST-001.md"
         ]
       },
       "objective": "Deliver a trace schema and a reader that verifies replayability.",
       "parent": "MT-001",
-      "source": "_plan/short-term/ST-001.md",
+      "source": "_aiHumanInteract/plan/short-term/ST-001.md",
       "status": "ready",
       "supersedes": [],
       "title": "Introduce and verify a trace schema",
@@ -170,10 +170,10 @@
           "src/routing_trace.py"
         ],
         "docs": [
-          "_plan/requirements/REQ-001.md"
+          "_aiHumanInteract/plan/requirements/REQ-001.md"
         ],
         "plan": [
-          "_plan/work-package/WP-001.md"
+          "_aiHumanInteract/plan/work-package/WP-001.md"
         ]
       },
       "objective": "Define the minimum trace needed to reproduce a routing decision.",
@@ -186,8 +186,8 @@
       "qualities": [
         "quietly legible under operational pressure"
       ],
-      "source": "_plan/work-package/WP-001.md",
-      "source_requirement": "_plan/requirements/REQ-001.md",
+      "source": "_aiHumanInteract/plan/work-package/WP-001.md",
+      "source_requirement": "_aiHumanInteract/plan/requirements/REQ-001.md",
       "status": "ready",
       "supersedes": [],
       "title": "Define the routing trace schema",
@@ -214,7 +214,7 @@
       "level": "work-package",
       "links": {
         "plan": [
-          "_plan/work-package/WP-002.md"
+          "_aiHumanInteract/plan/work-package/WP-002.md"
         ],
         "tests": [
           "tests/test_routing_trace.py"
@@ -222,7 +222,7 @@
       },
       "objective": "Verify that a trace reader reproduces the recorded routing choice.",
       "parent": "ST-001",
-      "source": "_plan/work-package/WP-002.md",
+      "source": "_aiHumanInteract/plan/work-package/WP-002.md",
       "status": "proposed",
       "supersedes": [],
       "title": "Verify trace replay",
@@ -230,11 +230,11 @@
       "validates": []
     }
   ],
-  "schema_version": "paths-to-modernity-plan-graph-v3",
+  "schema_version": "paths-to-modernity-plan-graph-v4",
   "source_of_truth": [
-    "_plan/long-term/*.md",
-    "_plan/mid-term/*.md",
-    "_plan/short-term/*.md",
-    "_plan/work-package/*.md"
+    "plan/long-term/*.md",
+    "plan/mid-term/*.md",
+    "plan/short-term/*.md",
+    "plan/work-package/*.md"
   ]
 }

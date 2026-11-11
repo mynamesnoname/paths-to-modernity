@@ -38,7 +38,7 @@
 - [`references/alternatives.md`](../references/alternatives.md)：同目标、同约束、同基准的方案比较，预算与停止规则。
 - [`references/plan-graph.md`](../references/plan-graph.md)：可选的四层计划与图契约、状态机、验证。
 - [`assets/plan-graph/AGENTS.plan-management.md`](../assets/plan-graph/AGENTS.plan-management.md)：安装到目标项目的治理片段。
-- [`skill-evaluation.md`](../skill-evaluation.md)：2026-09-15 的单次 redrock 规划任务评估；注意其结果不是普遍的模型可靠性统计。
+- [`skill-evaluation.md`](2026-09-15-skill-evaluation.md)：2026-09-15 的单次 redrock 规划任务评估；注意其结果不是普遍的模型可靠性统计。
 
 ### Matt Pocock 对照文件
 
@@ -287,7 +287,7 @@ Frontier 可以默认只存在于对话；经过确认的重大决策才进入�
 
 ### Phase 0 — Baseline 与确认范围
 
-阅读当前 `AGENTS.md`、全部适用文件、已有 `skill-evaluation.md`，在固定场景下记录当前的模型行为，并让 Decision Owner 选择 P0/P1 的具体范围。**不要将本报告视为全量授权。**
+阅读当前 `AGENTS.md`、全部适用文件、已有 `reviews/2026-09-15-skill-evaluation.md`，在固定场景下记录当前的模型行为，并让 Decision Owner 选择 P0/P1 的具体范围。**不要将本报告视为全量授权。**
 
 ### Phase 1 — 最小 P0 Patch
 

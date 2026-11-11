@@ -37,7 +37,8 @@ review artifact requested by the user.
 | [Inquiry](references/inquiry.md) | Two reasonable interpretations could change the outcome, responsibility, acceptance, meaningful risk, or an irreversible commitment |
 | [Planning model](references/model.md) | Defining a plan's objective, context, decomposition, qualities, or review perspectives |
 | [Alternatives](references/alternatives.md) | Consequential alternatives need comparison under a shared outcome and evaluation baseline |
-| [Plan Graph](references/plan-graph.md) | The project uses a plan graph — look for `_plan/structure/graph.json` with a `schema_version` field — or the user asks to establish repository-local planning infrastructure |
+| [Plan Graph](references/plan-graph.md) | The project uses a plan graph — look for `_aiHumanInteract/plan/structure/graph.json` with a `schema_version` field — or the user asks to establish repository-local planning infrastructure |
+| [Knowledge debt](references/knowledge-debt.md) | A person cannot evaluate a technical recommendation that affects their work, or asks for the gap to be recorded |
 | [Worked example](assets/plan-graph/example/README.md) | First learning how the Plan Graph's source plans and generated views fit together |
 
 ## Planning workflow
@@ -95,6 +96,9 @@ ownership-based removal.
 ## Working principles
 
 - Keep one editable source for each decision; generate indexes and views.
+- Ask for judgments the person can make, not for endorsement of technical
+  reasoning they cannot assess. Decide reversible technical choices yourself,
+  record why, and report what they rest on.
 - Ask questions only when the answer can change the plan, and ask the most
   consequential one first, naming what you are deferring; batch only choices
   that cannot be judged apart. Use whatever channel the environment offers.

@@ -18,7 +18,7 @@ for target projects, not additional instructions for the skill's runtime reader.
 The exact generated JSON field is:
 
 ```json
-{"schema_version": "paths-to-modernity-plan-graph-v3"}
+{"schema_version": "paths-to-modernity-plan-graph-v4"}
 ```
 
 Consumers must reject unsupported versions before interpreting nodes or edges.
@@ -26,11 +26,31 @@ A disagreement between this specification and the bundled tools is a defect.
 After adoption, the target project's applicable `AGENTS.md` governs local work;
 deliberate local adaptations must keep their tools and contract consistent.
 
+### Migrating from v3
+
+v4 moves the plan tree from `<repository>/_plan/` to
+`<repository>/_aiHumanInteract/plan/`, so that plan records and
+[knowledge records](knowledge-debt.md) share one visible root. Nothing else in
+the contract changes; operations, relationships, statuses, and node fields stay
+as they were.
+
+The move is deliberately breaking. A v3 installation is not migrated
+automatically and v4 consumers reject it:
+
+1. move the existing `_plan/` directory to `_aiHumanInteract/plan/`;
+2. remove the old v3 `install-manifest.json`, which records paths under `_plan/`
+   and can no longer be honoured;
+3. reinstall the bundle, which reinstalls the tools at their new paths;
+4. rebuild the views, since generated paths embed the new location.
+
+Regenerate rather than edit the moved views. A v3 installation left in place is
+detected and refused, not overwritten.
+
 ## Source plans and generated views
 
 Markdown nodes are the editable source of truth. The builder generates:
 
-| File under `_plan/structure/` | Purpose |
+| File under `_aiHumanInteract/plan/structure/` | Purpose |
 |---|---|
 | `graph.json` | Machine discovery: version, normalized nodes, and typed edges |
 | `graph.md` | Markdown index and Mermaid relationship diagram |
@@ -46,17 +66,25 @@ For a first reading, use the [worked example](../assets/plan-graph/example/READM
 
 ## When not to use this implementation
 
-The four-level graph earns its cost on work that outlives one conversation. Use
-a brief and work packages directly, without `_plan/`, when none of these holds:
+The four-level graph earns its cost on work that outlives one conversation.
+Use a brief and work packages directly, without `_aiHumanInteract/plan/`, when
+the work is short-lived, single-owner, and its evidence need not stay
+auditable.
 
-- the plan must survive a handoff between sessions;
+Treat these as clues to weigh, not as a threshold to count:
+
+- the plan must survive handoffs between sessions;
 - more than one person owns decisions in it;
 - its acceptance evidence must stay auditable over time.
 
-Two of the three justify adoption; one rarely does. A uniform four-level shape
-makes every plan legible to the same tools and validator, and the price is
-intermediate nodes that carry no information. That price is visible and
-countable, while maintaining a second schema is neither.
+One clue can be decisive when the dependencies are tangled or the evidence will
+be re-examined later; three thin ones do not add up to a case for the graph. A
+uniform four-level shape makes every plan legible to the same tools and
+validator, and the price is intermediate nodes that carry no information.
+
+This guidance governs whether to adopt the graph at all. It does not override a
+target project that already governs its work this way, and it does not refuse a
+decision owner who asks for the graph directly.
 
 ## Repository structure
 
@@ -65,20 +93,26 @@ Adopting this implementation means using four decomposition levels:
 ```text
 long-term (LT-###) → mid-term (MT-###) → short-term (ST-###) → work-package (WP-###)
 
-_plan/
-  requirements/   Durable requirements and boundary decisions
-  evaluations/    Comparison results and completion evidence
-  long-term/      LT source nodes
-  mid-term/       MT source nodes
-  short-term/     ST source nodes
-  work-package/   WP executable leaves
-  structure/      Generated views
-  README.md
-  install-manifest.json
-  validate.py
-  build_graph.py
-  test_plan_graph.py
+_aiHumanInteract/
+  plan/                 Plan Graph v4 tree
+    requirements/       Durable requirements and boundary decisions
+    evaluations/        Comparison results and completion evidence
+    long-term/          LT source nodes
+    mid-term/           MT source nodes
+    short-term/         ST source nodes
+    work-package/       WP executable leaves
+    structure/          Generated views
+    README.md
+    install-manifest.json
+    validate.py
+    build_graph.py
+    test_plan_graph.py
+  knowledge/            Knowledge-debt records, when the project keeps them
 ```
+
+The `_aiHumanInteract/` root belongs to the skill family, not to any one tool.
+Another skill may add sibling directories there; do not assume `plan/` is the
+only occupant.
 
 A work package owns one coherent, independently acceptable outcome and can
 span several steps or files. Every active higher-level node decomposes through
@@ -124,7 +158,7 @@ design remains unsettled.
 
 ## Source node contract
 
-Each `_plan/<level>/<ID>.md` begins with YAML-style front matter in which each
+Each `_aiHumanInteract/plan/<level>/<ID>.md` begins with YAML-style front matter in which each
 line maps a key to a single-line JSON value. The bundled parser uses only
 Python's standard library.
 
@@ -141,7 +175,7 @@ enables: []
 objective: "Make each routing decision reproducible."
 deliverables: ["A versioned trace schema"]
 acceptance: ["A stored trace contains all inputs needed to reproduce the route"]
-links: {"plan": ["_plan/work-package/WP-001.md"], "code": ["src/routing_trace.py"]}
+links: {"plan": ["_aiHumanInteract/plan/work-package/WP-001.md"], "code": ["src/routing_trace.py"]}
 evidence: []
 ---
 ```
@@ -283,7 +317,7 @@ commands when it is missing. Absence means missing semantics, not a missing
 heading. Reconcile conflicting local rules before installation.
 
 The installer refuses differing files and older installations. It records its
-additions in `_plan/install-manifest.json`, independently of project plans.
+additions in `_aiHumanInteract/plan/install-manifest.json`, independently of project plans.
 Preview removal from the same skill installation:
 
 ```bash
@@ -302,10 +336,10 @@ reconcile or remove the existing installation manually first.
 Run from the target repository root after changing source nodes:
 
 ```bash
-python3 -B _plan/validate.py
-python3 -B _plan/build_graph.py
-python3 -B _plan/build_graph.py --check
-python3 -B -m unittest discover -s _plan -p 'test_*.py' -v
+python3 -B _aiHumanInteract/plan/validate.py
+python3 -B _aiHumanInteract/plan/build_graph.py
+python3 -B _aiHumanInteract/plan/build_graph.py --check
+python3 -B -m unittest discover -s _aiHumanInteract/plan -p 'test_*.py' -v
 ```
 
 The builder validates before generating all four views. `--check` validates

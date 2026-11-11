@@ -14,9 +14,10 @@ from typing import Any, Sequence
 
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 BUNDLE_ROOT = SKILL_ROOT / "assets" / "plan-graph"
-SCHEMA_VERSION = "paths-to-modernity-plan-graph-v3"
+SCHEMA_VERSION = "paths-to-modernity-plan-graph-v4"
 MANIFEST_VERSION = 1
-MANIFEST_RELATIVE = Path("_plan/install-manifest.json")
+PLAN_RELATIVE = Path("_aiHumanInteract/plan")
+MANIFEST_RELATIVE = PLAN_RELATIVE / "install-manifest.json"
 PLAN_FILES = (
     "README.md",
     "validate.py",
@@ -65,9 +66,21 @@ def _fragment() -> str:
     ).strip()
 
 
+def _refuse_unmigrated_v3_tree(repo: Path) -> None:
+    """A v4 install must not build itself beside an untouched v3 tree."""
+    legacy = repo / "_plan"
+    if legacy.is_dir() and not (repo / PLAN_RELATIVE).exists():
+        raise InstallError(
+            "found a v3 plan tree at _plan/; v4 reads _aiHumanInteract/plan/ and "
+            "will not migrate it. Move _plan/ to _aiHumanInteract/plan/, delete "
+            "_plan/install-manifest.json, then reinstall and rebuild the views."
+        )
+
+
 def _read_manifest(repo: Path) -> dict[str, Any] | None:
     path = repo / MANIFEST_RELATIVE
     if not path.exists():
+        _refuse_unmigrated_v3_tree(repo)
         return None
     if not path.is_file():
         raise InstallError(f"install manifest is not a regular file: {path}")
@@ -107,8 +120,8 @@ def _installation_plan(
 ) -> tuple[list[tuple[Path, Path]], list[Path], str]:
     copies: list[tuple[Path, Path]] = []
     for name in PLAN_FILES:
-        source = BUNDLE_ROOT / "_plan" / name
-        target = repo / "_plan" / name
+        source = BUNDLE_ROOT / "_aiHumanInteract/plan" / name
+        target = repo / "_aiHumanInteract/plan" / name
         if target.exists():
             if not target.is_file() or _sha256_file(source) != _sha256_file(target):
                 raise InstallError(
@@ -117,7 +130,7 @@ def _installation_plan(
         else:
             copies.append((source, target))
 
-    directories = [repo / "_plan", *(repo / "_plan" / name for name in PLAN_DIRS)]
+    directories = [repo / "_aiHumanInteract/plan", *(repo / "_aiHumanInteract/plan" / name for name in PLAN_DIRS)]
     created_dirs = [path for path in directories if not path.exists()]
     for path in directories:
         if path.exists() and not path.is_dir():
@@ -203,7 +216,7 @@ def install(repo: Path, update_agents: bool, *, dry_run: bool = False) -> None:
     created_dir_names = set(previous.get("created_dirs", [])) if previous else set()
     created_dir_names.update(_relative(path, repo) for path in created_dirs)
     managed_files = {
-        f"_plan/{name}": _sha256_file(BUNDLE_ROOT / "_plan" / name)
+        f"_aiHumanInteract/plan/{name}": _sha256_file(BUNDLE_ROOT / "_aiHumanInteract/plan" / name)
         for name in PLAN_FILES
     }
     manifest = {

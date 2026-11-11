@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 PLAN_ROOT = Path(__file__).resolve().parent
-REPO_ROOT = PLAN_ROOT.parent
+REPO_ROOT = PLAN_ROOT.parents[1]
 sys.path.insert(0, str(PLAN_ROOT))
 
 import build_graph  # noqa: E402
@@ -72,8 +72,8 @@ class OptionalDetailsTests(unittest.TestCase):
         self.workspace = tempfile.TemporaryDirectory(prefix="plan-graph-contract-")
         self.addCleanup(self.workspace.cleanup)
         self.repo = Path(self.workspace.name)
-        self.root = self.repo / "_plan"
-        self.requirement = "_plan/requirements/REQ-001.md"
+        self.root = self.repo / "_aiHumanInteract/plan"
+        self.requirement = "_aiHumanInteract/plan/requirements/REQ-001.md"
         requirement = self.repo / self.requirement
         requirement.parent.mkdir(parents=True)
         requirement.write_text("Explain each routing decision.\n", encoding="utf-8")
@@ -92,7 +92,7 @@ class OptionalDetailsTests(unittest.TestCase):
                 "deliverables": ["A routing trace"],
                 "acceptance": ["Replay produces the recorded route"],
                 "links": {
-                    "plan": [f"_plan/{level}/{node_id}.md"],
+                    "plan": [f"_aiHumanInteract/plan/{level}/{node_id}.md"],
                     "docs": [self.requirement],
                 },
                 "evidence": [],
@@ -126,7 +126,7 @@ class OptionalDetailsTests(unittest.TestCase):
                 for absent in options.keys() - {field}:
                     self.assertNotIn(absent, payload)
                 if field != "source_requirement":
-                    review = build_graph.review_markdown(nodes)
+                    review = build_graph.review_markdown(self.root, nodes)
                     self.assertIn("WP-001", review)
                     detail = (
                         value["constraints"][0] if isinstance(value, dict)
@@ -141,7 +141,7 @@ class OptionalDetailsTests(unittest.TestCase):
 
     def test_old_source_fields_are_rejected(self) -> None:
         for old, value in (
-            ("mounts", {"plan": ["_plan/work-package/WP-001.md"]}),
+            ("mounts", {"plan": ["_aiHumanInteract/plan/work-package/WP-001.md"]}),
             ("essence", {"problem": "Old field"}),
             ("tensions", ["Old field"]),
             ("technique", "Old field"),
@@ -170,8 +170,8 @@ class OptionalDetailsTests(unittest.TestCase):
             baseline, node_id="WP-002", alternative_of="WP-001",
             approach="Structured event record",
             context={"invariants": ("No extra model calls", "Preserve behavior")},
-            source="_plan/work-package/WP-002.md",
-            links={"plan": ("_plan/work-package/WP-002.md",), "docs": (self.requirement,)},
+            source="_aiHumanInteract/plan/work-package/WP-002.md",
+            links={"plan": ("_aiHumanInteract/plan/work-package/WP-002.md",), "docs": (self.requirement,)},
         )
         compared = {**nodes, "WP-002": alternative}
         self.assertEqual(validate.validate_relationships(compared, self.repo), [])
@@ -179,7 +179,7 @@ class OptionalDetailsTests(unittest.TestCase):
             ("WP-002", "WP-001", "alternative_of"),
             {(edge["from"], edge["to"], edge["relationship"]) for edge in build_graph.graph_edges(compared)},
         )
-        self.assertIn("Structured event record", build_graph.review_markdown(compared))
+        self.assertIn("Structured event record", build_graph.review_markdown(self.root, compared))
         cases = (
             ({"objective": "Automate recovery."}, "share objective"),
             ({"context": {"invariants": ("Change behavior",)}}, "share invariants"),

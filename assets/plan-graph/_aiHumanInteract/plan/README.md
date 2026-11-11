@@ -1,9 +1,9 @@
 # Plan Graph
 
-Schema version: `paths-to-modernity-plan-graph-v3`.
+Schema version: `paths-to-modernity-plan-graph-v4`.
 
-This is a quick guide supplied by the installation bundle. Once copied to a
-target project's `_plan/`, it describes that project's tools.
+This is a quick guide supplied by the installation bundle. Once copied into a
+target project's `_aiHumanInteract/plan/`, it describes that project's tools.
 
 Markdown nodes under the four level directories are the editable sources.
 Files under `structure/` are deterministic projections; never edit them by
@@ -34,10 +34,10 @@ below need only the installed tools.
 Run from the repository root after every source-node change:
 
 ```bash
-python3 -B _plan/validate.py
-python3 -B _plan/build_graph.py
-python3 -B _plan/build_graph.py --check
-python3 -B -m unittest discover -s _plan -p 'test_*.py' -v
+python3 -B _aiHumanInteract/plan/validate.py
+python3 -B _aiHumanInteract/plan/build_graph.py
+python3 -B _aiHumanInteract/plan/build_graph.py --check
+python3 -B -m unittest discover -s _aiHumanInteract/plan -p 'test_*.py' -v
 ```
 
 The installed tools deliberately contain no invented project plans. Create the

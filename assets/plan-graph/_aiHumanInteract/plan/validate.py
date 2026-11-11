@@ -15,7 +15,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 
 PLAN_ROOT = Path(__file__).resolve().parent
-REPO_ROOT = PLAN_ROOT.parent
+REPO_ROOT = PLAN_ROOT.parents[1]
 LEVELS = ("long-term", "mid-term", "short-term", "work-package")
 PREFIXES = {
     "long-term": "LT",
@@ -718,7 +718,7 @@ def load_and_validate(
     """Load all source nodes and return normalized nodes plus aggregated errors."""
 
     plan_root = plan_root.resolve()
-    repo_root = (repo_root or plan_root.parent).resolve()
+    repo_root = (repo_root or plan_root.parents[1]).resolve()
     nodes: dict[str, PlanNode] = {}
     errors: list[str] = []
     counts: Counter[str] = Counter()
@@ -726,7 +726,7 @@ def load_and_validate(
     if legacy_meta.is_dir() and any(legacy_meta.glob("*.md")):
         errors.append(
             f"{legacy_meta}: v1 meta nodes are unsupported; migrate them to "
-            "work-package/WP-### before validating with v3"
+            "work-package/WP-### before validating with v4"
         )
     for level in LEVELS:
         level_dir = plan_root / level

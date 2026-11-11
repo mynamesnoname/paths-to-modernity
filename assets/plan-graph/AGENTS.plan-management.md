@@ -1,15 +1,16 @@
 <!-- paths-to-modernity:plan-graph:start -->
-<!-- schema-version: paths-to-modernity-plan-graph-v3 -->
+<!-- schema-version: paths-to-modernity-plan-graph-v4 -->
 <!-- Installation template: this block governs the target project after adoption. -->
 ## Plan Management
 
 Architecture and multi-stage work is governed by the visible, version-controlled
-`_plan/` directory. Markdown nodes under `_plan/<level>/` are the only editable
-sources. Files under `_plan/structure/` are deterministic generated views and
-must not be edited by hand. Use `_plan/structure/graph.json` for programmatic
-discovery, require `schema_version: paths-to-modernity-plan-graph-v3`, then
-follow a node's `source` field relative to the repository root. Reject
-unsupported schema versions.
+`_aiHumanInteract/plan/` directory. Markdown nodes under its level directories
+are the only editable sources. Files under `_aiHumanInteract/plan/structure/`
+are deterministic generated views and must not be edited by hand. Use
+`_aiHumanInteract/plan/structure/graph.json` for programmatic discovery, require
+`schema_version: paths-to-modernity-plan-graph-v4`, then follow a node's
+`source` field relative to the repository root. Reject unsupported schema
+versions.
 
 Plans decompose through exactly four levels:
 
@@ -22,7 +23,8 @@ steps or files, but owns one coherent outcome and is independently acceptable.
 IDs are globally unique, immutable, zero-padded, and never reused. Every active
 non-work-package node must decompose through all remaining levels to a work
 package. A node has at most one decomposition parent; every active non-root
-node has exactly one; long-term roots set `parent: null`. Cross-cutting relationships use typed edges.
+node has exactly one; long-term roots set `parent: null`. Cross-cutting
+relationships use typed edges.
 
 Every node starts with YAML-style front matter in which each line maps a key
 to a single-line JSON value, containing `id`, `title`, `level`, `status`,
@@ -51,9 +53,9 @@ invariant sets, and source requirements, with distinct non-empty approaches.
 Record the common evaluation baseline and comparison decision in a linked
 evaluation or Decisions section.
 
-Local links are repository-relative without `..`. Every node links its own plan and at least
-one intended or existing code, test, documentation, artifact, or evaluation
-target. Planned links may be absent; links and evidence for `done` or
+Local links are repository-relative without `..`. Every node links its own plan
+and at least one intended or existing code, test, documentation, artifact, or
+evaluation target. Planned links may be absent; links and evidence for `done` or
 `superseded` nodes must exist or identify an external archive. Evidence must
 also be recorded in links, in every status. External references have the form
 `external:<non-empty archive identifier or URI>`. The validator checks their
@@ -94,10 +96,10 @@ parents if absent. At completion, link evidence, resolve the work package,
 update eligible ancestors, rebuild, and run:
 
 ```bash
-python3 -B _plan/validate.py
-python3 -B _plan/build_graph.py
-python3 -B _plan/build_graph.py --check
-python3 -B -m unittest discover -s _plan -p 'test_*.py' -v
+python3 -B _aiHumanInteract/plan/validate.py
+python3 -B _aiHumanInteract/plan/build_graph.py
+python3 -B _aiHumanInteract/plan/build_graph.py --check
+python3 -B -m unittest discover -s _aiHumanInteract/plan -p 'test_*.py' -v
 ```
 
 Commit source nodes and generated `graph.json`, `graph.md`, `graph.canvas`, and

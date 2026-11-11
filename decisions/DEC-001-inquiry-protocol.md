@@ -2,8 +2,8 @@
 
 - **状态：** accepted（2026-11-10）
 - **决策人（decision owner）：** 仓库维护者
-- **范围：** 仅回答 `paths-to-modernity-review-2026-11-10.md` §14 中的 Q1–Q5。Q6 由维护者另行处置，见末尾。
-- **依据：** [评审文档 §14](../paths-to-modernity-review-2026-11-10.md) 提出的六个待决问题；对照仓库 `mattpocockSkills` 的 `grilling` 源码与文档。
+- **范围：** 仅回答 `reviews/2026-11-10-skill-design-vs-grilling.md` §14 中的 Q1–Q5。Q6 由维护者另行处置，见末尾。
+- **依据：** [评审文档 §14](../reviews/2026-11-10-skill-design-vs-grilling.md) 提出的六个待决问题；对照仓库 `mattpocockSkills` 的 `grilling` 源码与文档。
 - **本记录的性质：** 决策记录，不是实施方案，也不构成实施授权。
 
 ## 背景
@@ -100,7 +100,7 @@
 1. **推荐答案是否需要附带可证伪条件。** 本轮交互本身出现了评审 §13 第 2 条与 `grill-me` 文档"passivity"所述的失败模式：决策人多次以"同意"回应已完成的论证。讨论提出，仅减少单轮问题数不足以缓解，因为失效点是"推荐已被论证完毕、驳回成本高于同意"。候选机制：每条推荐附一条驳回判据（"若 X 成立则我错，X 可这样核对"）。该机制未经评审，未纳入上述五项决策。
 2. **是否补充针对"无异议同意"的行为测试。** 评审 §12 的 T01–T15 未覆盖"决策人全盘同意但未实际判断"的情形。候选 T16 与评分维度待设计。
 3. **评审 W5（决策影响追踪）与 W6（行为回归测试）仍未决。** 本记录采用 `DEC-001` 编号，是 W5 所述"先在叙述层试点稳定决策 ID"的第一个实例，但试点本身是否继续，未定。
-4. **P0 最小 patch 是否实施、何时实施。** 上述决策确定了默认值，不等于批准修改 `inquiry.md` / `SKILL.md`。
+4. ~~**P0 最小 patch 是否实施、何时实施。**~~ **已解决（2026-11-10）**：经维护者同日授权并实施，见下方「实施记录」。此行保留以记录当时的判断——确定默认值不等于批准实施。
 
 ## 实施记录
 
@@ -129,7 +129,7 @@
 
 ## 链接
 
-- 评审文档：[`paths-to-modernity-review-2026-11-10.md`](../paths-to-modernity-review-2026-11-10.md)
+- 评审文档：[`reviews/2026-11-10-skill-design-vs-grilling.md`](../reviews/2026-11-10-skill-design-vs-grilling.md)
 - 行为规范：[`references/inquiry.md`](../references/inquiry.md)、[`references/model.md`](../references/model.md)、[`references/alternatives.md`](../references/alternatives.md)
 - 图契约：[`references/plan-graph.md`](../references/plan-graph.md)
 - 维护协议：[`AGENTS.md`](../AGENTS.md)

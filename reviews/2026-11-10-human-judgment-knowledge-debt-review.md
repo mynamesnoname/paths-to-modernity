@@ -3,7 +3,7 @@
 > 日期：2026-11-10  
 > 类型：设计评审、下一轮方案及 Agent handoff；**并非实施授权**。  
 > 仓库基线：[`2db3b50`](https://github.com/mynamesnoname/paths-to-modernity/commit/2db3b501b4328bd4cf7da05ebbb29ed0776d4333)  
-> 前次评审：[`paths-to-modernity-review-2026-11-10.md`](../paths-to-modernity-review-2026-11-10.md)  
+> 前次评审：[`2026-11-10-skill-design-vs-grilling.md`](2026-11-10-skill-design-vs-grilling.md)  
 > 决策记录：[`DEC-001`](../decisions/DEC-001-inquiry-protocol.md)  
 > 对照来源：[`grilling`](https://github.com/mynamesnoname/mattpocockSkills/blob/main/skills/productivity/grilling/SKILL.md)、[`grill-me`](https://github.com/mynamesnoname/mattpocockSkills/blob/main/skills/productivity/grill-me/SKILL.md)
 
@@ -66,7 +66,7 @@
 
 ### F3（P0）：旧评审文档的 7 个相对链接路径错误
 
-旧文档实际保存在仓库根目录 `paths-to-modernity-review-2026-11-10.md`，但其中指向同仓库文件的 7 个 Markdown 链接仍使用 `../SKILL.md`、`../references/inquiry.md` 等路径。此前评审原计划放在 `reviews/`，故多了一个 `../`。应修正为 `SKILL.md`、`references/inquiry.md` 等；或者移动旧评审至子目录并同步修正所有入链。`decisions/DEC-001...` 内的本地链接则没有这一问题。
+旧文档当时保存在仓库根目录 `2026-11-10-skill-design-vs-grilling.md`（现已移入 `reviews/`），但其中指向同仓库文件的 7 个 Markdown 链接使用 `../SKILL.md`、`../references/inquiry.md` 等路径。此前评审原计划放在 `reviews/`，故多了一个 `../`。应修正为 `SKILL.md`、`references/inquiry.md` 等；或者移动旧评审至子目录并同步修正所有入链。`decisions/DEC-001...` 内的本地链接则没有这一问题。
 
 ### F4（P0）：DEC-001 有已经解决却仍列为未决的事项
 
