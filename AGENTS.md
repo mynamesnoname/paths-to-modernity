@@ -43,6 +43,7 @@ Adopting the protocol into a project (AGENTS.md block, CLAUDE.md pointer,
 ```bash
 python3 -B scripts/adopt_project.py /path/to/repository --dry-run
 python3 -B scripts/adopt_project.py /path/to/repository
+python3 -B scripts/adopt_project.py /path/to/repository --upgrade-block
 ```
 
 Migrating a target project installed by an earlier bundle:

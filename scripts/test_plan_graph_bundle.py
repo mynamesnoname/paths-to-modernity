@@ -20,6 +20,7 @@ TOOL_NAMES = ("validate.py", "build_graph.py", "test_plan_graph.py")
 INSTALLER = SKILL_ROOT / "scripts" / "install_plan_graph.py"
 MIGRATOR = SKILL_ROOT / "scripts" / "migrate_plan_graph_v3.py"
 ADOPTER = SKILL_ROOT / "scripts" / "adopt_project.py"
+PROTOCOL_BLOCK = SKILL_ROOT / "assets" / "protocol" / "AGENTS.protocol.md"
 V3_SCHEMA = "paths-to-modernity-plan-graph-v3"
 SCHEMA_VERSION = "paths-to-modernity-plan-graph-v4"
 
@@ -292,6 +293,59 @@ def exercise_adoption(root: Path) -> None:
         raise RuntimeError("adoption overwrote an existing CLAUDE.md")
 
 
+def exercise_block_upgrade(root: Path) -> None:
+    """An unmodified block upgrades after review; an edited one never does."""
+    repo = root / "adoption-upgrade"
+    repo.mkdir()
+    run((sys.executable, str(ADOPTER), str(repo)), SKILL_ROOT)
+    original = PROTOCOL_BLOCK.read_text(encoding="utf-8")
+    try:
+        PROTOCOL_BLOCK.write_text(
+            original.replace("paths-to-modernity-protocol-v1", "paths-to-modernity-protocol-v2")
+            .replace(
+                "are outputs. Never edit them as the authority.",
+                "are outputs. Never edit them as the authority. Regenerate them.",
+            ),
+            encoding="utf-8",
+        )
+        run_expect_failure((sys.executable, str(ADOPTER), str(repo)), SKILL_ROOT)
+
+        before = (repo / "AGENTS.md").read_text(encoding="utf-8")
+        run((sys.executable, str(ADOPTER), str(repo), "--upgrade-block", "--dry-run"), SKILL_ROOT)
+        if (repo / "AGENTS.md").read_text(encoding="utf-8") != before:
+            raise RuntimeError("upgrade dry run wrote AGENTS.md")
+
+        run((sys.executable, str(ADOPTER), str(repo), "--upgrade-block"), SKILL_ROOT)
+        upgraded = (repo / "AGENTS.md").read_text(encoding="utf-8")
+        if "Regenerate them." not in upgraded:
+            raise RuntimeError("upgrade did not apply the new block")
+        manifest = json.loads(
+            (repo / "_aiHumanInteract" / "adopt-manifest.json").read_text(encoding="utf-8")
+        )
+        if manifest["protocol_version"] != "paths-to-modernity-protocol-v2":
+            raise RuntimeError("upgrade did not record the new protocol version")
+
+        edited = root / "adoption-upgrade-edited"
+        edited.mkdir()
+        run((sys.executable, str(ADOPTER), str(edited)), SKILL_ROOT)
+        agents = edited / "AGENTS.md"
+        agents.write_text(
+            agents.read_text(encoding="utf-8").replace(
+                "Readiness is relative to the next commitment.",
+                "Readiness is whatever feels right.",
+            ),
+            encoding="utf-8",
+        )
+        before_edit = agents.read_text(encoding="utf-8")
+        run_expect_failure(
+            (sys.executable, str(ADOPTER), str(edited), "--upgrade-block"), SKILL_ROOT
+        )
+        if agents.read_text(encoding="utf-8") != before_edit:
+            raise RuntimeError("upgrade overwrote a hand-edited block")
+    finally:
+        PROTOCOL_BLOCK.write_text(original, encoding="utf-8")
+
+
 def main() -> int:
     require_consistent_schema_version()
     with tempfile.TemporaryDirectory(prefix="paths-modernity-example-") as raw:
@@ -321,6 +375,7 @@ def main() -> int:
         )
         exercise_migration(root)
         exercise_adoption(root)
+        exercise_block_upgrade(root)
     print("Plan Graph v4 bundle checks passed")
     return 0
 

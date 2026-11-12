@@ -48,6 +48,36 @@ materiality 分类、四步 inquiry、字段契约等一律留在 `references/`�
 
 **理由：** 没有它，注入块里的「压缩后先读 state」是空指针；恢复机制不闭环。
 
+## 块升级：存收据，不猜
+
+采纳时 manifest 同时记录块的**原文**（`protocol_block`）与版本号，而不只是哈希。上游改动后，升级变成一次三方可判定的比较：
+
+| 当前块 vs manifest 记录的原文 | 含义 | 动作 |
+|---|---|---|
+| 相同 | 未被改动 | 可以替换为新版 |
+| 不同 | 用户改过 | 拒绝，打印上游 diff 供人工合并 |
+| 块不存在 | 被删了 | 追加当前版本 |
+| 当前 == 新版 | 已是最新 | 不写入 |
+
+记录原文而不是维护一份全局历史哈希表，是因为每个项目采纳的是哪个版本、有没有被改过，只有它自己的 manifest 知道；历史表放在 skill 仓库里既会增长，也覆盖不到用旧版 skill 采纳的项目。
+
+命令：
+
+```bash
+python3 -B scripts/adopt_project.py /path/to/repo --upgrade-block --dry-run
+python3 -B scripts/adopt_project.py /path/to/repo --upgrade-block
+```
+
+普通 `adopt` 遇到"旧版但未改动"的块时不再报笼统冲突，而是给出可执行的下一步：
+
+```
+the protocol block is outdated (paths-to-modernity-protocol-v1 ->
+paths-to-modernity-protocol-v2); run --upgrade-block to review the diff
+and replace it.
+```
+
+升级只动两处：`AGENTS.md` 的标记块与 `CLAUDE.md` 指针。`state/active.md` 永不参与升级——那是用户的状态，不是模板。
+
 ## 安全性质
 
 脚本遵守与安装器相同的性质：
@@ -62,7 +92,7 @@ materiality 分类、四步 inquiry、字段契约等一律留在 `references/`�
 1. **不能替代恢复机制。** 注入块保住的是「规则」，不是「进度」；进度仍要靠 `state/active.md` 被如实更新。
 2. **块长度是硬约束。** 一旦内容膨胀，就退化为评审 A.5 反对的「每轮全量加载」。当前块约 30 行。
 3. **仍然存在一处重复：** 四条不变量在块中有一句话版本，在 `inquiry.md`/`knowledge-debt.md` 中有展开版本。二者描述同一组规则，措辞不同。这是有意的（块给约束，引用给理由），但改规则时必须同时改两处，`AGENTS.md` 的变更协议应涵盖这一点。
-4. **块内容升级需要手工介入。** 采纳记录的是块的哈希；一旦上游改动块文本，已采纳的项目再次运行 `adopt_project.py` 会以「不同协议块」拒绝。这是「不覆盖」的代价。若日后块内容确实需要演进，应增加显式的 `--upgrade-block`（打印 diff 后替换），而不是让拒绝理由变成阻碍。
+4. **旧 manifest 无法升级。** 在记录原文之前采纳的项目没有收据，`--upgrade-block` 会拒绝并要求手工移除块。本次改动前没有真实采纳记录，故代价为零；但这个分支会长期存在。
 5. **不判断项目是否已有等价治理。** 若目标仓库已有自己的 `AGENTS.md` 规则，脚本只追加标记块，不评估语义冲突。
 
 ## 未决

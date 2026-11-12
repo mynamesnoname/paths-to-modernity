@@ -11,13 +11,15 @@ context compaction. This tool writes three things:
 
 Everything is idempotent and removable. Nothing overwrites content the project
 already has: a differing block, `CLAUDE.md`, or state file is reported, not
-replaced. Use `--uninstall` to remove only what this tool added and left
-unchanged.
+replaced. Use `--upgrade-block` to move an unmodified block to the current
+version after reviewing the diff, and `--uninstall` to remove only what this
+tool added and left unchanged.
 """
 
 from __future__ import annotations
 
 import argparse
+import difflib
 import hashlib
 import json
 import sys
@@ -28,7 +30,8 @@ SKILL_ROOT = Path(__file__).resolve().parent.parent
 ASSET_ROOT = SKILL_ROOT / "assets" / "protocol"
 START_MARKER = "<!-- paths-to-modernity:protocol:start -->"
 END_MARKER = "<!-- paths-to-modernity:protocol:end -->"
-MANIFEST_VERSION = 1
+MANIFEST_VERSION = 2
+SUPPORTED_MANIFEST_VERSIONS = (1, 2)
 MANIFEST_RELATIVE = Path("_aiHumanInteract/adopt-manifest.json")
 STATE_RELATIVE = Path("_aiHumanInteract/state/active.md")
 CLAUDE_POINTER = (
@@ -54,6 +57,31 @@ def _block_bytes() -> bytes:
     return _block().rstrip("\n").encode("utf-8")
 
 
+def _block_text() -> str:
+    return _block().rstrip("\n")
+
+
+def _protocol_version(text: str) -> str:
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("<!-- schema-version:") and stripped.endswith("-->"):
+            return stripped[len("<!-- schema-version:"):-3].strip()
+    return "unknown"
+
+
+def _diff(old: str, new: str, label: str) -> str:
+    lines = list(
+        difflib.unified_diff(
+            old.splitlines(),
+            new.splitlines(),
+            fromfile=f"{label} (adopted)",
+            tofile=f"{label} (current)",
+            lineterm="",
+        )
+    )
+    return "\n".join(lines)
+
+
 def _state_template() -> str:
     text = (ASSET_ROOT / "state-active.md").read_text(encoding="utf-8")
     return text if text.endswith("\n") else text + "\n"
@@ -71,9 +99,15 @@ def _read_manifest(repo: Path) -> dict | None:
         raise AdoptError(f"cannot read {path}: {exc}") from exc
     if not isinstance(manifest, dict):
         raise AdoptError("adoption manifest must contain a JSON object")
-    if manifest.get("manifest_version") != MANIFEST_VERSION:
+    if manifest.get("manifest_version") not in SUPPORTED_MANIFEST_VERSIONS:
         raise AdoptError("unsupported adoption manifest version")
     return manifest
+
+
+def _write_manifest(repo: Path, manifest: dict) -> None:
+    path = repo / MANIFEST_RELATIVE
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def _existing_block(text: str) -> str | None:
@@ -90,8 +124,8 @@ def _existing_block(text: str) -> str | None:
     return text[start:end]
 
 
-def _adoption_plan(repo: Path) -> tuple[str | None, str, bool, bool]:
-    """Return (new AGENTS.md text or None, CLAUDE.md action, state action, ...)."""
+def _adoption_plan(repo: Path, previous: dict) -> tuple[str | None, str, bool, bool, bool]:
+    """Return (new AGENTS.md text or None, CLAUDE.md action, state create, ...)."""
     agents = repo / "AGENTS.md"
     if agents.exists() and not agents.is_file():
         raise AdoptError(f"AGENTS.md is not a regular file: {agents}")
@@ -104,9 +138,17 @@ def _adoption_plan(repo: Path) -> tuple[str | None, str, bool, bool]:
         separator = "\n\n" if current.strip() else ""
         agents_text = current.rstrip() + separator + block + "\n"
     elif existing != block.strip("\n"):
+        recorded = previous.get("protocol_block")
+        if recorded is not None and existing == recorded:
+            raise AdoptError(
+                "the protocol block is outdated "
+                f"({_protocol_version(existing)} -> {_protocol_version(block)}); "
+                "run --upgrade-block to review the diff and replace it."
+            )
         raise AdoptError(
-            "AGENTS.md already carries a different protocol block. Reconcile it "
-            "by hand (or remove it) before adopting again."
+            "AGENTS.md already carries a different protocol block, and it is not "
+            "the one this manifest adopted. Reconcile it by hand before adopting "
+            "again."
         )
 
     claude = repo / "CLAUDE.md"
@@ -137,7 +179,9 @@ def adopt(repo: Path, *, dry_run: bool = False) -> None:
         raise AdoptError(f"repository directory does not exist: {repo}")
 
     previous = _read_manifest(repo) or {}
-    agents_text, claude_action, create_state, add_block, created_agents = _adoption_plan(repo)
+    agents_text, claude_action, create_state, add_block, created_agents = _adoption_plan(
+        repo, previous
+    )
     # A second adoption must not forget that an earlier one created these files.
     created_agents = created_agents or previous.get("created_agents", False)
     created_claude = (claude_action == "write") or previous.get("created_claude", False)
@@ -163,18 +207,108 @@ def adopt(repo: Path, *, dry_run: bool = False) -> None:
     manifest = {
         "manifest_version": MANIFEST_VERSION,
         "protocol_block_sha256": _sha256(_block_bytes()),
+        "protocol_block": _block_text(),
+        "protocol_version": _protocol_version(_block_text()),
+        "claude_text": CLAUDE_POINTER,
         "claude_sha256": _sha256(CLAUDE_POINTER.encode("utf-8")),
         "state_sha256": _sha256(_state_template().encode("utf-8")),
         "created_state": created_state,
         "created_claude": created_claude,
         "created_agents": created_agents,
     }
-    manifest_path = repo / MANIFEST_RELATIVE
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    _write_manifest(repo, manifest)
     print("Adopted.")
+
+
+def upgrade_block(repo: Path, *, dry_run: bool = False) -> None:
+    """Move an unmodified block to the current asset version, after showing the diff."""
+    repo = repo.resolve()
+    if not repo.is_dir():
+        raise AdoptError(f"repository directory does not exist: {repo}")
+    manifest = _read_manifest(repo)
+    if manifest is None:
+        raise AdoptError(
+            f"no adoption manifest at {repo / MANIFEST_RELATIVE}; "
+            "nothing to upgrade"
+        )
+
+    agents = repo / "AGENTS.md"
+    if not agents.is_file():
+        raise AdoptError(f"AGENTS.md is missing: {agents}")
+    current_text = agents.read_text(encoding="utf-8")
+    current = _existing_block(current_text)
+    block_text = _block_text()
+
+    if current is None:
+        print("  protocol block is absent; adopting the current version")
+        adopt(repo, dry_run=dry_run)
+        return
+
+    version_from = _protocol_version(current)
+    version_to = _protocol_version(block_text)
+
+    claude = repo / "CLAUDE.md"
+    claude_action = "unchanged"
+    if not claude.exists():
+        claude_action = "create"
+    elif claude.read_text(encoding="utf-8") != CLAUDE_POINTER:
+        if claude.read_text(encoding="utf-8") != manifest.get("claude_text"):
+            raise AdoptError(
+                "CLAUDE.md was edited since adoption; reconcile it by hand."
+            )
+        claude_action = "update"
+
+    if current == block_text:
+        print(f"  AGENTS.md block: already current ({version_to})")
+        changed = False
+    else:
+        recorded = manifest.get("protocol_block")
+        if recorded is None:
+            print(_diff(current, block_text, "protocol block"))
+            raise AdoptError(
+                "this manifest predates block receipts, so the block cannot be "
+                "verified as unmodified. Remove the block by hand and adopt again."
+            )
+        if current != recorded:
+            print(_diff(recorded, block_text, "protocol block"))
+            raise AdoptError(
+                "the protocol block was edited after adoption; the migration "
+                "cannot merge your changes. Reconcile it by hand."
+            )
+        print(
+            f"  AGENTS.md block: {version_from} -> {version_to}"
+        )
+        print(_diff(recorded, block_text, "protocol block"))
+        changed = True
+
+    print(f"  CLAUDE.md: {claude_action}")
+    if dry_run:
+        print("Dry run only; no files were changed.")
+        return
+
+    if changed:
+        start = current_text.index(START_MARKER)
+        end = current_text.index(END_MARKER, start) + len(END_MARKER)
+        agents.write_text(
+            current_text[:start] + block_text + current_text[end:], encoding="utf-8"
+        )
+    if claude_action in {"create", "update"}:
+        claude.write_text(CLAUDE_POINTER, encoding="utf-8")
+        manifest["created_claude"] = manifest.get("created_claude", False) or (
+            claude_action == "create"
+        )
+
+    if changed or claude_action != "unchanged":
+        manifest.update(
+            {
+                "protocol_block_sha256": _sha256(block_text.encode("utf-8")),
+                "protocol_block": block_text,
+                "protocol_version": version_to,
+                "claude_text": CLAUDE_POINTER,
+            }
+        )
+        _write_manifest(repo, manifest)
+    print("Protocol block upgraded.")
 
 
 def uninstall(repo: Path, *, dry_run: bool = False) -> None:
@@ -259,11 +393,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("repository", type=Path)
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--uninstall", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--uninstall", action="store_true")
+    mode.add_argument("--upgrade-block", action="store_true")
     args = parser.parse_args(argv)
     try:
         if args.uninstall:
             uninstall(args.repository, dry_run=args.dry_run)
+        elif args.upgrade_block:
+            upgrade_block(args.repository, dry_run=args.dry_run)
         else:
             adopt(args.repository, dry_run=args.dry_run)
     except AdoptError as exc:
