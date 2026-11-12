@@ -361,6 +361,7 @@ def svg_markup(placed: list[tuple[PlanNode, float, float, float]]) -> str:
             f'height="{NODE_H}" fill="{level_color}"/>'
             f'<path class="card-outline" d="{card_outline(x, y, NODE_W, NODE_H)}" '
             f'fill="none" stroke="{stroke}" stroke-width="1.5"{dashed}/>'
+            f'<path class="card-select" d="{card_path(x, y, NODE_W, NODE_H)}" fill="none"/>'
             f'<text x="{x + 14:.1f}" y="{y + 20:.1f}" class="id" fill="{SECONDARY_TEXT}">{html.escape(node.node_id)}</text>'
             f'<text x="{x + NODE_W - 10:.1f}" y="{y + 20:.1f}" class="tag" text-anchor="end" '
             f'fill="{level_color}">{LEVEL_TAG.get(node.level, "")}</text>'
@@ -448,7 +449,10 @@ HTML = """<!DOCTYPE html>
   .halo {{ fill: transparent; pointer-events: none; }}
   .halo.on {{ fill: #DCEBFA; filter: blur(4px); }}
   .node {{ cursor: pointer; }}
-  .node.selected .card-outline {{ stroke: #5078B8; stroke-width: 2.5;
+  .card-outline, .card-select {{ pointer-events: none; }}
+  .card-select {{ display: none; }}
+  .node.selected .card-outline {{ display: none; }}
+  .node.selected .card-select {{ display: inline; stroke: #5078B8; stroke-width: 2.5;
     filter: drop-shadow(0 0 4px rgba(80,120,184,.35)); }}
   #reset {{ margin-top: 6px; border: 1px solid #ced4da; background: #fff; border-radius: 6px;
     padding: 3px 8px; font-size: 11px; cursor: pointer; }}
