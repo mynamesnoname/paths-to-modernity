@@ -69,8 +69,8 @@
   .edge { fill: none; stroke: #B8C0C9; stroke-width: 1.2; stroke-linejoin: round;
     stroke-linecap: round; transition: stroke .12s ease, stroke-width .12s ease; }
   .edge.hot { stroke: #5078B8; stroke-width: 2.2; }
-  .halo { fill: transparent; }
-  .halo.on { fill: #E8F0FB; }
+  .halo { fill: transparent; pointer-events: none; }
+  .halo.on { fill: #DCEBFA; filter: blur(4px); }
   .node { cursor: pointer; }
   .node.selected .card { stroke: #5078B8; stroke-width: 2.5;
     filter: drop-shadow(0 0 4px rgba(80,120,184,.35)); }
@@ -301,10 +301,8 @@
       );
     }
     if (filtering) {
-      const sides = [...document.querySelectorAll('#ground-layer .side')].filter(el => nodeVisible(el.dataset.id));
       const halos = [...document.querySelectorAll('.halo')].filter(el => nodeVisible(el.dataset.id));
       const nodes = [...document.querySelectorAll('.node')].filter(el => nodeVisible(el.dataset.id));
-      sides.forEach(el => topLayer.appendChild(el));
       halos.forEach(el => topLayer.appendChild(el));
       nodes.forEach(el => topLayer.appendChild(el));
     }
