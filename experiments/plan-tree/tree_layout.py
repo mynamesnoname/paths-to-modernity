@@ -369,7 +369,9 @@ HTML = """<!DOCTYPE html>
   :root {{ color-scheme: light; }}
   html, body {{ margin: 0; height: 100%; background: #F6F6F4;
     font-family: "WenQuanYi Micro Hei", "Noto Sans CJK SC", "Segoe UI", sans-serif; }}
-  #canvas {{ width: 100%; height: 100%; display: block; cursor: grab; }}
+  #canvas {{ width: 100%; height: 100%; display: block; cursor: grab;
+    user-select: none; -webkit-user-select: none; touch-action: none; }}
+  #canvas text {{ user-select: none; -webkit-user-select: none; }}
   #canvas.dragging {{ cursor: grabbing; }}
   .id {{ font-size: 11px; font-weight: 500; letter-spacing: .02em; }}
   .title {{ font-size: 13px; font-weight: 600; }}
@@ -661,6 +663,9 @@ HTML = """<!DOCTYPE html>
     apply();
   }}, {{ passive: false }});
   svg.addEventListener('pointerdown', (event) => {{
+    event.preventDefault();
+    const selection = window.getSelection();
+    if (selection) selection.removeAllRanges();
     dragging = true; moved = false; lastX = event.clientX; lastY = event.clientY;
     svg.classList.add('dragging');
   }});
