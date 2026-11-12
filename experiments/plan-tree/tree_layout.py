@@ -526,6 +526,30 @@ HTML = """<!DOCTYPE html>
     if (text !== undefined) node.textContent = text;
     return node;
   }
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function revealPanel() {
+    if (reduceMotion) return;
+    const items = [
+      ...panelHead.querySelectorAll('h3, .meta'),
+      ...panelBody.children,
+    ];
+    items.forEach((item, index) => {
+      item.animate(
+        [
+          { opacity: 0, transform: 'translateY(-6px)' },
+          { opacity: 1, transform: 'translateY(0)' },
+        ],
+        {
+          duration: 220,
+          delay: Math.min(index * 24, 220),
+          easing: 'cubic-bezier(.2, .7, .3, 1)',
+          fill: 'both',
+        }
+      );
+    });
+  }
+
   function show(id) {
     const d = DETAILS[id];
     if (!d) return;
@@ -592,6 +616,7 @@ HTML = """<!DOCTYPE html>
       panelBody.append(ul);
     }
     panel.hidden = false;
+    revealPanel();
     history.replaceState(null, '', '#' + encodeURIComponent(id));
   }
   function hidePanel() {
