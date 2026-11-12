@@ -413,8 +413,8 @@ HTML = """<!DOCTYPE html>
   #panel-resizer:hover {{ background: rgba(80,120,184,.08); }}
   #panel-resizer:hover::after, #panel-resizer.dragging::after {{ background: #5078B8; }}
   body.resizing {{ user-select: none; cursor: col-resize; }}
-  #shade {{ display: none; }}
-  #shade.on {{ display: block; }}
+  #shade {{ opacity: 0; pointer-events: none; transition: opacity .3s ease; }}
+  #shade.on {{ opacity: .45; pointer-events: auto; }}
   #panel-body {{ flex: 1; min-height: 0; overflow-y: auto; padding: 12px 18px 20px; }}
   #panel h3 {{ margin: 0 26px 4px 0; font-size: 14px; line-height: 1.4; }}
   #panel .meta {{ color: #868e96; margin-bottom: 6px; }}
@@ -442,7 +442,7 @@ HTML = """<!DOCTYPE html>
 <body>
 <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
   <g id="scene">{body}</g>
-  <rect id="shade" width="100%" height="100%" fill="#1B1B1B" opacity="0.45"/>
+  <rect id="shade" width="100%" height="100%" fill="#1B1B1B"/>
   <g id="top-layer"></g>
 </svg>
 <div id="hud">
@@ -647,18 +647,25 @@ HTML = """<!DOCTYPE html>
   function clearTop() {
     topLayer.querySelectorAll('.node').forEach(el => nodeLayer.appendChild(el));
     topLayer.querySelectorAll('.halo').forEach(el => haloLayer.appendChild(el));
-    topLayer.querySelectorAll('.shadow, .side').forEach(el => groundLayer.appendChild(el));
+    topLayer.querySelectorAll('.side').forEach(el => groundLayer.appendChild(el));
   }
 
   function applyFilter() {
+    const wasFiltering = shade.classList.contains('on');
     clearTop();
     const filtering = activeStatuses.size > 0;
     shade.classList.toggle('on', filtering);
+    if (filtering && wasFiltering) {
+      shade.animate(
+        [{ opacity: 0.32 }, { opacity: 0.45 }],
+        { duration: 300, easing: 'ease-out' }
+      );
+    }
     if (filtering) {
-      const ground = [...document.querySelectorAll('#ground-layer [data-id]')].filter(el => nodeVisible(el.dataset.id));
+      const sides = [...document.querySelectorAll('#ground-layer .side')].filter(el => nodeVisible(el.dataset.id));
       const halos = [...document.querySelectorAll('.halo')].filter(el => nodeVisible(el.dataset.id));
       const nodes = [...document.querySelectorAll('.node')].filter(el => nodeVisible(el.dataset.id));
-      ground.forEach(el => topLayer.appendChild(el));
+      sides.forEach(el => topLayer.appendChild(el));
       halos.forEach(el => topLayer.appendChild(el));
       nodes.forEach(el => topLayer.appendChild(el));
     }
