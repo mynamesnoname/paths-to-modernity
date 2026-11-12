@@ -40,6 +40,14 @@
 
 **重开条件：** 若架构梳理类 skill 的实际需求证明二者无需同根，可放弃迁移，仅保留 `_aiHumanInteract/knowledge/` 或退回仓库根的 `_knowledge/`。
 
+### 修订 — 目录名改为 `knowledge-debt/`（2026-11-12）
+
+维护者指出 `knowledge` 与 `knowledge debt` 是两个东西：该目录保存的是"尚未理解什么"的缺口，不是知识本身。原名会让 agent 把它读成知识库，也与架构评审中独立的 "Project Knowledge" 层撞名；协议块每提到它都要补一句 "knowledge-debt records" 的解释，正说明名字没有承担自己的职责。
+
+**决定：** 目录改为 `_aiHumanInteract/knowledge-debt/`；协议块升至 `paths-to-modernity-protocol-v2`。决策二正文保留为历史，目录名以本条为准。
+
+**代价：** 已采纳项目需要升级协议块（`adopt_project.py --upgrade-block`）；若已经创建了 `knowledge/`，还需改名并更新双向链接。实施时没有任何项目建过该目录，因此迁移成本为零。
+
 ## 本轮实施范围
 
 | 项 | 落地位置 |
@@ -83,6 +91,19 @@
 回归新增两条正向用例：真实 v3 fixture 的完整升级（含用户编辑保留、链接改写、manifest 升版），以及校验失败时的回滚。
 
 **未迁移的旧安装不会自动升级**，这是有意的：v4 安装器拒绝在未搬迁的 `_plan/` 旁另建一棵树，避免出现两套并存的计划。
+
+### Phase 0 — 所有权收据（2026-11-12）
+
+[第四轮评审](../reviews/2026-11-12-ptm-human-agent-interaction-state-and-execution-architecture.md)要求先复核两处「内容相同被当成所有权证明」的风险。两处在当前 HEAD 都复现成立，已修复：
+
+| 问题 | 修复 |
+|---|---|
+| 卸载按哈希删除块与 `CLAUDE.md`，但项目可能预先就有完全相同的块/指针 | manifest 新增 `created_block`；卸载同时校验所有权与哈希；`created_claude` 同样参与判断；旧 manifest 无该字段时保守保留并报告 `kept (no ownership record)` |
+| 迁移无条件用 v4 片段替换治理块，用户加在 v3 块内的规则被静默丢弃 | 用 v3 manifest 已有的 `agents.block_sha256` 校验；不匹配则打印差异并拒绝；新增 `--replace-governance-block` 供显式确认后覆盖；无哈希同样拒绝 |
+
+回归新增：预置相同块与指针的卸载保留、无所有权记录的卸载保留、治理块被编辑时迁移拒绝且仓库不动、显式标志下替换、无哈希时拒绝。
+
+判据统一为：**哈希只能证明内容未变，不能证明由本工具创建。** 这个区分与 `DEC-003` 的「存收据，不猜」是同一条原则。
 
 ### 补充 — 报告细化为「分拣 + 一次明示授权」（2026-11-11）
 

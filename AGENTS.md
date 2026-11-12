@@ -19,6 +19,9 @@ separate from the governance fragment installed into target projects.
 - `assets/plan-graph/example/_aiHumanInteract/plan/structure/` contains generated views;
   never edit them by hand.
 - `agents/openai.yaml` is UI metadata, not runtime instructions.
+- `experiments/plan-tree/` is an exploratory 2.5D renderer plus a frozen
+  FORMA input snapshot. It is not part of the installed bundle; do not wire
+  it into `build_graph.py` without an explicit decision.
 
 ## Change protocol
 
@@ -51,7 +54,16 @@ Migrating a target project installed by an earlier bundle:
 ```bash
 python3 -B scripts/migrate_plan_graph_v3.py /path/to/repository --dry-run
 python3 -B scripts/migrate_plan_graph_v3.py /path/to/repository
+python3 -B scripts/migrate_plan_graph_v3.py /path/to/repository --replace-governance-block
 ```
+
+The last form is only for a governance block the migration refused because its
+hash does not match the v3 manifest: move local rules outside the markers first.
+
+Ownership is recorded, never inferred from matching content. `adopt_project.py`
+writes `created_block` / `created_claude`; anything older or unrecorded is kept
+on uninstall, and `migrate_plan_graph_v3.py` trusts only the `block_sha256` the
+v3 installer recorded.
 
 The regression checks installation preview and removal, schema alignment,
 source validity, and generated-view freshness. Success ends with

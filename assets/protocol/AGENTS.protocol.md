@@ -1,5 +1,5 @@
 <!-- paths-to-modernity:protocol:start -->
-<!-- schema-version: paths-to-modernity-protocol-v1 -->
+<!-- schema-version: paths-to-modernity-protocol-v2 -->
 ## Paths to Modernity
 
 This project is planned with the Paths to Modernity method. Load the
@@ -24,7 +24,7 @@ Invariants that hold whether or not the skill loads:
 Project records live under `_aiHumanInteract/`:
 
 - `plan/` — Plan Graph sources and generated views, when adopted
-- `knowledge/` — knowledge-debt records, when adopted
+- `knowledge-debt/` — knowledge-debt records, when adopted
 - `state/active.md` — current work state, for recovery after compaction
 
 After compaction, or in a new session, read `_aiHumanInteract/state/active.md`

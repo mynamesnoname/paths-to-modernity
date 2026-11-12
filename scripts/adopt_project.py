@@ -11,9 +11,12 @@ context compaction. This tool writes three things:
 
 Everything is idempotent and removable. Nothing overwrites content the project
 already has: a differing block, `CLAUDE.md`, or state file is reported, not
-replaced. Use `--upgrade-block` to move an unmodified block to the current
-version after reviewing the diff, and `--uninstall` to remove only what this
-tool added and left unchanged.
+replaced. Ownership is recorded when the tool writes a block or pointer
+(`created_block`, `created_claude`), so removal keeps matching content the
+project already had instead of inferring ownership from a hash. Use
+`--upgrade-block` to move an unmodified block to the current version after
+reviewing the diff, and `--uninstall` to remove only what this tool added and
+left unchanged.
 """
 
 from __future__ import annotations
@@ -186,6 +189,10 @@ def adopt(repo: Path, *, dry_run: bool = False) -> None:
     created_agents = created_agents or previous.get("created_agents", False)
     created_claude = (claude_action == "write") or previous.get("created_claude", False)
     created_state = create_state or previous.get("created_state", False)
+    # Content equality is not ownership: a project may already carry the exact
+    # block or pointer. Record whether this tool inserted it, so removal can
+    # keep what it found instead of inferring ownership from a matching hash.
+    created_block = add_block or previous.get("created_block", False)
 
     print(f"Paths to Modernity protocol in {repo}")
     print(f"  AGENTS.md: {'append marked block' if add_block else 'block present, unchanged'}")
@@ -215,6 +222,7 @@ def adopt(repo: Path, *, dry_run: bool = False) -> None:
         "created_state": created_state,
         "created_claude": created_claude,
         "created_agents": created_agents,
+        "created_block": created_block,
     }
     _write_manifest(repo, manifest)
     print("Adopted.")
@@ -329,6 +337,10 @@ def uninstall(repo: Path, *, dry_run: bool = False) -> None:
             "the protocol block in AGENTS.md was edited since adoption; remove "
             "it by hand instead of letting the tool delete your changes."
         )
+    elif "created_block" not in manifest:
+        block_action = "kept (no ownership record)"
+    elif not manifest["created_block"]:
+        block_action = "kept (pre-existing)"
     else:
         block_action = "remove"
 
@@ -339,7 +351,10 @@ def uninstall(repo: Path, *, dry_run: bool = False) -> None:
             raise AdoptError(
                 "CLAUDE.md was edited since adoption; remove it by hand."
             )
-        claude_action = "remove"
+        if not manifest.get("created_claude", False):
+            claude_action = "kept (pre-existing)"
+        else:
+            claude_action = "remove"
 
     state = repo / STATE_RELATIVE
     state_action = "absent"

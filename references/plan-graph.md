@@ -54,6 +54,19 @@ files and would silently discard the edit; it also stops on a duplicate
 governance block or a missing install manifest. Nothing is moved until every
 check passes.
 
+The governance block gets the same treatment. The v3 manifest records the hash
+of the block the installer wrote, so a block that no longer matches carries
+local rules. The tool prints the difference and refuses, because it replaces the
+whole block. Move those rules outside the markers, then rerun with
+`--replace-governance-block` to confirm the replacement:
+
+```bash
+python3 -B scripts/migrate_plan_graph_v3.py /path/to/repository --replace-governance-block
+```
+
+A manifest that records no block hash cannot vouch for the block at all; it is
+refused the same way unless that flag says the replacement is intended.
+
 If a migrated source references a path the tool did not rewrite, validation
 fails and the migration rolls back; reconcile by hand and rerun. Editing the
 generated views by hand to satisfy validation is never correct: regenerate them.
@@ -130,7 +143,7 @@ _aiHumanInteract/
     validate.py
     build_graph.py
     test_plan_graph.py
-  knowledge/            Knowledge-debt records, when the project keeps them
+  knowledge-debt/       Knowledge-debt records, when the project keeps them
 ```
 
 The `_aiHumanInteract/` root belongs to the skill family, not to any one tool.

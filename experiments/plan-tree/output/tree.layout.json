@@ -1,0 +1,648 @@
+{
+  "viewBox": [
+    4178,
+    1602
+  ],
+  "nodes": [
+    {
+      "id": "WP-001",
+      "x": 34.0,
+      "y": 502.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "ST-001",
+      "x": 44.8,
+      "y": 346.0,
+      "z": 24,
+      "w": 240,
+      "h": 68,
+      "level": "short-term",
+      "status": "done"
+    },
+    {
+      "id": "WP-002",
+      "x": 330.0,
+      "y": 502.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-003",
+      "x": 330.0,
+      "y": 586.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-019",
+      "x": 330.0,
+      "y": 670.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "ST-002",
+      "x": 340.8,
+      "y": 346.0,
+      "z": 24,
+      "w": 240,
+      "h": 68,
+      "level": "short-term",
+      "status": "done"
+    },
+    {
+      "id": "WP-004",
+      "x": 626.0,
+      "y": 502.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-005",
+      "x": 626.0,
+      "y": 586.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-006",
+      "x": 626.0,
+      "y": 670.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "ST-003",
+      "x": 636.8,
+      "y": 346.0,
+      "z": 24,
+      "w": 240,
+      "h": 68,
+      "level": "short-term",
+      "status": "done"
+    },
+    {
+      "id": "WP-007",
+      "x": 922.0,
+      "y": 502.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-008",
+      "x": 1218.0,
+      "y": 502.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "ST-004",
+      "x": 1080.8,
+      "y": 346.0,
+      "z": 24,
+      "w": 240,
+      "h": 68,
+      "level": "short-term",
+      "status": "done"
+    },
+    {
+      "id": "MT-001",
+      "x": 573.6,
+      "y": 190.0,
+      "z": 48,
+      "w": 240,
+      "h": 68,
+      "level": "mid-term",
+      "status": "done"
+    },
+    {
+      "id": "WP-009",
+      "x": 1514.0,
+      "y": 502.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-010",
+      "x": 1810.0,
+      "y": 502.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "ST-005",
+      "x": 1672.8,
+      "y": 346.0,
+      "z": 24,
+      "w": 240,
+      "h": 68,
+      "level": "short-term",
+      "status": "done"
+    },
+    {
+      "id": "WP-011",
+      "x": 2106.0,
+      "y": 502.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-012",
+      "x": 2106.0,
+      "y": 586.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "superseded"
+    },
+    {
+      "id": "WP-020",
+      "x": 2106.0,
+      "y": 670.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-042",
+      "x": 2106.0,
+      "y": 754.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "ST-006",
+      "x": 2116.8,
+      "y": 346.0,
+      "z": 24,
+      "w": 240,
+      "h": 68,
+      "level": "short-term",
+      "status": "done"
+    },
+    {
+      "id": "WP-021",
+      "x": 2402.0,
+      "y": 502.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-022",
+      "x": 2402.0,
+      "y": 586.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-023",
+      "x": 2402.0,
+      "y": 670.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-024",
+      "x": 2402.0,
+      "y": 754.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-028",
+      "x": 2402.0,
+      "y": 838.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-030",
+      "x": 2402.0,
+      "y": 922.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-031",
+      "x": 2402.0,
+      "y": 1006.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-032",
+      "x": 2402.0,
+      "y": 1090.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-033",
+      "x": 2402.0,
+      "y": 1174.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-034",
+      "x": 2402.0,
+      "y": 1258.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-038",
+      "x": 2402.0,
+      "y": 1342.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-040",
+      "x": 2402.0,
+      "y": 1426.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-041",
+      "x": 2402.0,
+      "y": 1510.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "ST-010",
+      "x": 2412.8,
+      "y": 346.0,
+      "z": 24,
+      "w": 240,
+      "h": 68,
+      "level": "short-term",
+      "status": "done"
+    },
+    {
+      "id": "WP-025",
+      "x": 2698.0,
+      "y": 502.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "superseded"
+    },
+    {
+      "id": "WP-026",
+      "x": 2698.0,
+      "y": 586.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "superseded"
+    },
+    {
+      "id": "WP-027",
+      "x": 2698.0,
+      "y": 670.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "superseded"
+    },
+    {
+      "id": "WP-029",
+      "x": 2698.0,
+      "y": 754.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-043",
+      "x": 2698.0,
+      "y": 838.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "ST-011",
+      "x": 2708.8,
+      "y": 346.0,
+      "z": 24,
+      "w": 240,
+      "h": 68,
+      "level": "short-term",
+      "status": "superseded"
+    },
+    {
+      "id": "WP-035",
+      "x": 2994.0,
+      "y": 502.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-036",
+      "x": 2994.0,
+      "y": 586.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-037",
+      "x": 2994.0,
+      "y": 670.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "in_progress"
+    },
+    {
+      "id": "WP-039",
+      "x": 2994.0,
+      "y": 754.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "ST-012",
+      "x": 3004.8,
+      "y": 346.0,
+      "z": 24,
+      "w": 240,
+      "h": 68,
+      "level": "short-term",
+      "status": "in_progress"
+    },
+    {
+      "id": "MT-002",
+      "x": 2349.6,
+      "y": 190.0,
+      "z": 48,
+      "w": 240,
+      "h": 68,
+      "level": "mid-term",
+      "status": "in_progress"
+    },
+    {
+      "id": "WP-013",
+      "x": 3290.0,
+      "y": 502.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-014",
+      "x": 3586.0,
+      "y": 502.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "superseded"
+    },
+    {
+      "id": "ST-007",
+      "x": 3448.8,
+      "y": 346.0,
+      "z": 24,
+      "w": 240,
+      "h": 68,
+      "level": "short-term",
+      "status": "superseded"
+    },
+    {
+      "id": "MT-003",
+      "x": 3459.6,
+      "y": 190.0,
+      "z": 48,
+      "w": 240,
+      "h": 68,
+      "level": "mid-term",
+      "status": "superseded"
+    },
+    {
+      "id": "WP-044",
+      "x": 3882.0,
+      "y": 502.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-045",
+      "x": 3882.0,
+      "y": 586.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "in_progress"
+    },
+    {
+      "id": "WP-046",
+      "x": 3882.0,
+      "y": 670.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "proposed"
+    },
+    {
+      "id": "WP-047",
+      "x": 3882.0,
+      "y": 754.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "proposed"
+    },
+    {
+      "id": "WP-052",
+      "x": 3882.0,
+      "y": 838.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-053",
+      "x": 3882.0,
+      "y": 922.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-054",
+      "x": 3882.0,
+      "y": 1006.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-055",
+      "x": 3882.0,
+      "y": 1090.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "WP-056",
+      "x": 3882.0,
+      "y": 1174.0,
+      "z": 0,
+      "w": 240,
+      "h": 68,
+      "level": "work-package",
+      "status": "done"
+    },
+    {
+      "id": "ST-013",
+      "x": 3892.8,
+      "y": 346.0,
+      "z": 24,
+      "w": 240,
+      "h": 68,
+      "level": "short-term",
+      "status": "in_progress"
+    },
+    {
+      "id": "MT-004",
+      "x": 3903.6,
+      "y": 190.0,
+      "z": 48,
+      "w": 240,
+      "h": 68,
+      "level": "mid-term",
+      "status": "in_progress"
+    },
+    {
+      "id": "LT-001",
+      "x": 2249.4,
+      "y": 34.0,
+      "z": 72,
+      "w": 240,
+      "h": 68,
+      "level": "long-term",
+      "status": "in_progress"
+    }
+  ]
+}

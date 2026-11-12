@@ -9,16 +9,20 @@ of migrating it, so this tool performs the migration as one reversible step:
 2. copy the tree to a temporary backup
 3. move `_plan/` to `_aiHumanInteract/plan/`
 4. rewrite repository-relative `_plan/` references in Markdown sources
-5. replace the marked governance block in AGENTS.md, when present
+5. replace the marked governance block in AGENTS.md, when present and
+   verifiably unmodified
 6. reinstall the v4 tools, validate the sources, rebuild the views
 
 Any failure restores the backup and AGENTS.md, and leaves no second tree.
-Use `--dry-run` to print the plan without touching the repository.
+Use `--dry-run` to print the plan without touching the repository. A block the
+v3 manifest cannot vouch for is never replaced unless you pass
+`--replace-governance-block` after moving any local rules out of it.
 """
 
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import shutil
 import subprocess
@@ -130,23 +134,70 @@ def _plan_rewrites(current_after_move: Path) -> list[tuple[Path, int]]:
     return planned
 
 
-def _governance_replace(repo: Path) -> tuple[bool, str | None]:
-    """Return whether AGENTS.md carries the marked block, and its future content."""
+def _has_block(repo: Path) -> bool:
     path = repo / "AGENTS.md"
     if not path.is_file():
-        return False, None
+        return False
     text = path.read_text(encoding="utf-8")
     if text.count(installer.START_MARKER) > 1:
         raise MigrationError(
             "AGENTS.md contains more than one plan-graph block; "
             "keep one and rerun"
         )
-    if installer.START_MARKER not in text:
-        return False, None
-    fragment = installer._fragment()
+    return installer.START_MARKER in text
+
+
+def _block_diff(old: str, new: str) -> str:
+    return "\n".join(
+        difflib.unified_diff(
+            old.splitlines(),
+            new.splitlines(),
+            fromfile="governance block (installed)",
+            tofile="governance block (v4)",
+            lineterm="",
+        )
+    )
+
+
+def _governance_replacement(
+    repo: Path, manifest: dict, *, replace_unverified: bool
+) -> str:
+    """Return AGENTS.md text with the v4 governance block in place.
+
+    Content equality is not ownership. The v3 manifest recorded the hash of the
+    block it installed, so a mismatch means the block carries local rules that
+    replacing it would drop. Refuse unless the user explicitly asks to replace.
+    """
+    path = repo / "AGENTS.md"
+    text = path.read_text(encoding="utf-8")
     start = text.index(installer.START_MARKER)
     end = text.index(installer.END_MARKER, start) + len(installer.END_MARKER)
-    return True, text[:start] + fragment + text[end:]
+    installed = text[start:end]
+    fragment = installer._fragment()
+
+    if not replace_unverified:
+        agents_record = manifest.get("agents")
+        recorded = (
+            agents_record.get("block_sha256")
+            if isinstance(agents_record, dict)
+            else None
+        )
+        if recorded is None:
+            raise MigrationError(
+                "AGENTS.md carries a plan-graph block, but the v3 manifest "
+                "recorded no hash for it, so local edits cannot be ruled out. "
+                "Review the block and rerun with --replace-governance-block if "
+                "it holds nothing you need to keep."
+            )
+        if installer._sha256_bytes(installed.encode("utf-8")) != recorded:
+            print(_block_diff(installed, fragment))
+            raise MigrationError(
+                "AGENTS.md governance block was edited after installation; the "
+                "migration replaces the whole block and would drop those edits. "
+                "Move them outside the markers, then rerun with "
+                "--replace-governance-block."
+            )
+    return text[:start] + fragment + text[end:]
 
 
 def _run(python: str, script: Path, repo: Path) -> None:
@@ -162,12 +213,14 @@ def _run(python: str, script: Path, repo: Path) -> None:
 def _describe(repo: Path, legacy: Path) -> tuple[list[tuple[Path, int]], bool, bool]:
     current = repo / installer.PLAN_RELATIVE
     rewrites = _plan_rewrites(legacy)
-    has_block, _ = _governance_replace(repo)
+    has_block = _has_block(repo)
     has_views = (legacy / "structure").is_dir()
     return rewrites, has_block, has_views
 
 
-def migrate(repo: Path, *, dry_run: bool = False) -> None:
+def migrate(
+    repo: Path, *, dry_run: bool = False, replace_governance_block: bool = False
+) -> None:
     repo = repo.resolve()
     if not repo.is_dir():
         raise MigrationError(f"repository directory does not exist: {repo}")
@@ -187,13 +240,19 @@ def migrate(repo: Path, *, dry_run: bool = False) -> None:
         print(f"    {path.relative_to(repo)} ({count} reference(s))")
     print(f"  AGENTS.md governance block: {'replace' if has_block else 'absent'}")
     print(f"  generated views: {'rebuild' if has_views else 'none installed'}")
+
+    replacement = None
+    if has_block:
+        replacement = _governance_replacement(
+            repo, manifest, replace_unverified=replace_governance_block
+        )
+
     if dry_run:
         print("Dry run only; no files were changed.")
         return
 
     agents_path = repo / "AGENTS.md"
     saved_agents = agents_path.read_bytes() if agents_path.is_file() else None
-    replacement = _governance_replace(repo)[1] if has_block else None
     with tempfile.TemporaryDirectory(prefix="paths-modernity-v3-backup-") as raw:
         backup = Path(raw) / "plan"
         shutil.copytree(legacy, backup)
@@ -249,9 +308,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("repository", type=Path)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--replace-governance-block",
+        action="store_true",
+        help="replace a governance block even when local edits cannot be ruled out",
+    )
     args = parser.parse_args(argv)
     try:
-        migrate(args.repository, dry_run=args.dry_run)
+        migrate(
+            args.repository,
+            dry_run=args.dry_run,
+            replace_governance_block=args.replace_governance_block,
+        )
     except MigrationError as exc:
         print(f"Migration failed: {exc}", file=sys.stderr)
         return 1

@@ -112,11 +112,13 @@ Offer; do not diagnose, and do not turn the batch into a curriculum.
 ## Recording
 
 Prefer the project's existing glossary, ADRs, or decision records. Create a
-directory only when none exists and the person agrees:
+directory only when none exists and the person agrees. Name it for the debt,
+not for knowledge: these records hold gaps, and a `knowledge/` directory invites
+the glossary this rule exists to prevent.
 
 ```text
 _aiHumanInteract/
-  knowledge/
+  knowledge-debt/
     <topic>.md
 ```
 

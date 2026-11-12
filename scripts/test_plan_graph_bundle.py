@@ -188,9 +188,23 @@ def build_v3_installation(repo: Path) -> None:
         name: _sha256_file(legacy / name[len("_plan/"):])
         for name in manifest["managed_files"]
     }
-    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     agents = repo / "AGENTS.md"
-    agents.write_text(_to_v3(agents.read_text(encoding="utf-8")), encoding="utf-8")
+    agents_text = _to_v3(agents.read_text(encoding="utf-8"))
+    agents.write_text(agents_text, encoding="utf-8")
+    # A real v3 installer recorded the hash of the block it wrote. Recompute it
+    # after rewriting the block to v3, or the fixture would describe a block the
+    # installer never produced and the migration would rightly distrust it.
+    start = agents_text.index("<!-- paths-to-modernity:plan-graph:start -->")
+    end = agents_text.index("<!-- paths-to-modernity:plan-graph:end -->", start) + len(
+        "<!-- paths-to-modernity:plan-graph:end -->"
+    )
+    manifest["agents"] = {
+        "mode": "appended",
+        "block_sha256": hashlib.sha256(
+            agents_text[start:end].encode("utf-8")
+        ).hexdigest(),
+    }
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
 
 def exercise_migration(root: Path) -> None:
@@ -251,6 +265,46 @@ def exercise_migration(root: Path) -> None:
     if (edited / "_aiHumanInteract" / "plan").exists():
         raise RuntimeError("refused migration still moved the tree")
 
+    governance = root / "migration-edited-governance"
+    governance.mkdir()
+    build_v3_installation(governance)
+    agents = governance / "AGENTS.md"
+    end_marker = "<!-- paths-to-modernity:plan-graph:end -->"
+    rule = "Local rule: keep billing changes reviewed."
+    agents.write_text(
+        agents.read_text(encoding="utf-8").replace(
+            end_marker, f"\n{rule}\n{end_marker}"
+        ),
+        encoding="utf-8",
+    )
+    before = agents.read_text(encoding="utf-8")
+    run_expect_failure((sys.executable, str(MIGRATOR), str(governance)), SKILL_ROOT)
+    if agents.read_text(encoding="utf-8") != before:
+        raise RuntimeError("refused migration changed the governance block")
+    if not (governance / "_plan").is_dir():
+        raise RuntimeError("refused migration moved the v3 tree")
+
+    run(
+        (sys.executable, str(MIGRATOR), str(governance), "--replace-governance-block"),
+        SKILL_ROOT,
+    )
+    replaced = agents.read_text(encoding="utf-8")
+    if rule in replaced:
+        raise RuntimeError("explicit replacement kept the governed block unchanged")
+    if "_aiHumanInteract/plan/" not in replaced:
+        raise RuntimeError("migration did not install the v4 governance block")
+
+    unrecorded = root / "migration-unrecorded-block"
+    unrecorded.mkdir()
+    build_v3_installation(unrecorded)
+    manifest_path = unrecorded / "_plan" / "install-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["agents"] = {"mode": "unchanged"}
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    run_expect_failure((sys.executable, str(MIGRATOR), str(unrecorded)), SKILL_ROOT)
+    if not (unrecorded / "_plan").is_dir():
+        raise RuntimeError("unrecorded governance block was replaced anyway")
+
 
 
 def exercise_adoption(root: Path) -> None:
@@ -292,6 +346,42 @@ def exercise_adoption(root: Path) -> None:
     if (clash / "CLAUDE.md").read_text(encoding="utf-8") != "project-owned\n":
         raise RuntimeError("adoption overwrote an existing CLAUDE.md")
 
+    block = PROTOCOL_BLOCK.read_text(encoding="utf-8").rstrip("\n")
+    pointer = (
+        "This repository is governed by `AGENTS.md`. Read it before acting; it "
+        "takes precedence over tool defaults.\n"
+    )
+    preexisting = root / "adoption-preexisting"
+    preexisting.mkdir()
+    (preexisting / "AGENTS.md").write_text(
+        "Project rules that predate adoption.\n\n" + block + "\n", encoding="utf-8"
+    )
+    (preexisting / "CLAUDE.md").write_text(pointer, encoding="utf-8")
+    run((sys.executable, str(ADOPTER), str(preexisting)), SKILL_ROOT)
+    run((sys.executable, str(ADOPTER), str(preexisting), "--uninstall"), SKILL_ROOT)
+    kept = (
+        (preexisting / "AGENTS.md").read_text(encoding="utf-8")
+        if (preexisting / "AGENTS.md").is_file()
+        else ""
+    )
+    if "Project rules that predate adoption." not in kept or block not in kept:
+        raise RuntimeError("uninstall removed a block the project already had")
+    if not (preexisting / "CLAUDE.md").is_file():
+        raise RuntimeError("uninstall removed a pre-existing CLAUDE.md")
+
+    legacy = root / "adoption-legacy-manifest"
+    legacy.mkdir()
+    run((sys.executable, str(ADOPTER), str(legacy)), SKILL_ROOT)
+    legacy_manifest = legacy / "_aiHumanInteract" / "adopt-manifest.json"
+    manifest = json.loads(legacy_manifest.read_text(encoding="utf-8"))
+    del manifest["created_block"]
+    legacy_manifest.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    run((sys.executable, str(ADOPTER), str(legacy), "--uninstall"), SKILL_ROOT)
+    if not (legacy / "AGENTS.md").is_file():
+        raise RuntimeError("uninstall removed a block without an ownership record")
+    if block not in (legacy / "AGENTS.md").read_text(encoding="utf-8"):
+        raise RuntimeError("uninstall removed a block without an ownership record")
+
 
 def exercise_block_upgrade(root: Path) -> None:
     """An unmodified block upgrades after review; an edited one never does."""
@@ -301,7 +391,7 @@ def exercise_block_upgrade(root: Path) -> None:
     original = PROTOCOL_BLOCK.read_text(encoding="utf-8")
     try:
         PROTOCOL_BLOCK.write_text(
-            original.replace("paths-to-modernity-protocol-v1", "paths-to-modernity-protocol-v2")
+            original.replace("paths-to-modernity-protocol-v2", "paths-to-modernity-protocol-v3")
             .replace(
                 "are outputs. Never edit them as the authority.",
                 "are outputs. Never edit them as the authority. Regenerate them.",
@@ -322,7 +412,7 @@ def exercise_block_upgrade(root: Path) -> None:
         manifest = json.loads(
             (repo / "_aiHumanInteract" / "adopt-manifest.json").read_text(encoding="utf-8")
         )
-        if manifest["protocol_version"] != "paths-to-modernity-protocol-v2":
+        if manifest["protocol_version"] != "paths-to-modernity-protocol-v3":
             raise RuntimeError("upgrade did not record the new protocol version")
 
         edited = root / "adoption-upgrade-edited"
