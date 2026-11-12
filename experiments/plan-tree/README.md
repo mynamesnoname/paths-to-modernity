@@ -19,7 +19,9 @@ screen_y = y - z
 ```
 
 Each card gets a ground shadow and, when `z > 0`, an extruded side face down to
-its ground footprint. Cards stay front-facing, so labels remain readable.
+its ground footprint. Cards stay front-facing, so labels remain readable. The visual treatment
+follows the 2026-11-12 palette review: muted status borders, neutral gray
+extrusion, a lighter canvas, and word-aware wrapping.
 
 Implemented in `tree_layout.py`:
 
@@ -59,15 +61,15 @@ Regenerating the PNG needs a rasterizer; the checked-in file was produced with
 `sharp` from the standalone SVG:
 
 ```bash
-node -e "require('sharp')('output/tree.svg',{density:144}).png().toFile('output/tree.png')"
+node -e "require('sharp')('output/tree.svg',{density:144}).flatten({background:'#F6F6F4'}).png().toFile('output/tree.png')"
 ```
 
 ## Layout knobs
 
 | Constant | Current | Effect |
 |---|---|---|
-| `LEVEL_Z` | 72 / 48 / 24 / 0 | height of each level; larger means stronger steps |
-| `DEPTH_X` | 0.45 | horizontal shift per z unit |
+| `LEVEL_Z` | 48 / 32 / 16 / 0 | height of each level; larger means stronger steps |
+| `DEPTH_X` | 0.35 | horizontal shift per z unit |
 | `GAP_X` | 56 | horizontal gap between sibling subtrees |
 | `PARENT_CHILD_GAP` | 64 | vertical gap between generations |
 | `LEAF_GAP` | 16 | gap inside a stacked leaf column |
@@ -76,8 +78,9 @@ node -e "require('sharp')('output/tree.svg',{density:144}).png().toFile('output/
 ## Known limits
 
 - Only parent-child connectors are drawn; the 163 typed edges are not rendered.
-- Node labels are truncated to two lines; the full text is in the detail panel
-  and the native hover title.
+- Node labels wrap at word boundaries for Latin and at any character for CJK,
+  then truncate to two lines; the full text is in the detail panel and the
+  native hover title.
 - The projection is fixed. There is no orbit or camera; rotating the view would
   need a different rendering stack.
 - No collapse, search, or status filters yet.

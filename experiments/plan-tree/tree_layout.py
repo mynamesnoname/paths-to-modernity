@@ -31,16 +31,17 @@ SIBLING_GAP_Y = 20
 ROOT_GAP = 110
 MARGIN = 72
 
-LEVEL_Z = {"long-term": 72, "mid-term": 48, "short-term": 24, "work-package": 0}
-DEPTH_X = 0.45
+LEVEL_Z = {"long-term": 48, "mid-term": 32, "short-term": 16, "work-package": 0}
+DEPTH_X = 0.35
 
 STATUS_STYLE = {
-    "done": ("#ebfbee", "#2f9e44", "#1b4332"),
-    "in_progress": ("#fff4e6", "#e8590c", "#7f2704"),
-    "proposed": ("#e7f5ff", "#1971c2", "#0b3d66"),
-    "blocked": ("#fff5f5", "#c92a2a", "#6b1111"),
-    "superseded": ("#f8f9fa", "#adb5bd", "#6c757d"),
+    "done": ("#EDF7F0", "#A7CEB4", "#234B36"),
+    "in_progress": ("#FFF4E8", "#E7BA91", "#80512A"),
+    "proposed": ("#EFF5FC", "#B3C9E2", "#31577D"),
+    "blocked": ("#FCEEEE", "#E0ACAC", "#873F3F"),
+    "superseded": ("#F1F2F4", "#C9CDD2", "#777D85"),
 }
+SECONDARY_TEXT = "#78838D"
 LEVEL_TAG = {
     "long-term": "LT",
     "mid-term": "MT",
@@ -48,10 +49,10 @@ LEVEL_TAG = {
     "work-package": "WP",
 }
 LEVEL_COLOR = {
-    "long-term": "#7048e8",
-    "mid-term": "#1971c2",
-    "short-term": "#0c8599",
-    "work-package": "#868e96",
+    "long-term": "#7766A6",
+    "mid-term": "#6487AD",
+    "short-term": "#6F9DA2",
+    "work-package": "#A4ADB7",
 }
 
 
@@ -195,21 +196,35 @@ def layout_forest(
     return placed, width + MARGIN * 2, height + MARGIN * 2
 
 
-def wrap_title(title: str, limit: int = 15, max_lines: int = 2) -> list[str]:
+def _text_width(text: str) -> float:
+    return sum(12.5 if ord(char) > 0x2E80 else 6.9 for char in text)
+
+
+def wrap_title(title: str, max_width: float = 212, max_lines: int = 2) -> list[str]:
     lines: list[str] = []
     current = ""
-    for char in title:
-        current += char
-        if len(current) >= limit:
-            lines.append(current)
-            current = ""
-            if len(lines) == max_lines:
-                break
-    if current and len(lines) < max_lines:
-        lines.append(current)
-    if len(lines) == max_lines and len("".join(lines)) < len(title):
-        lines[-1] = lines[-1][:-1] + "…"
-    return lines
+    index = 0
+    while index < len(title):
+        char = title[index]
+        if _text_width(current + char) <= max_width:
+            current += char
+            index += 1
+            continue
+        if len(lines) == max_lines - 1:
+            break
+        cut = current.rfind(" ")
+        if cut > 0 and len(current) - cut <= 14:
+            lines.append(current[:cut].rstrip())
+            current = current[cut + 1 :] + char
+        else:
+            lines.append(current.rstrip())
+            current = char
+        index += 1
+    if len(lines) < max_lines:
+        lines.append(current.rstrip())
+    if index < len(title) and lines:
+        lines[-1] = lines[-1].rstrip() + "…"
+    return [line for line in lines if line][:max_lines]
 
 
 def edge_markup(
@@ -280,23 +295,23 @@ def ground_markup(placed: list[tuple[PlanNode, float, float, float]]) -> str:
         gx, gy = ground_of(px, py, z)
         parts.append(
             f'<ellipse cx="{gx + NODE_W / 2:.1f}" cy="{gy + NODE_H:.1f}" '
-            f'rx="{NODE_W / 2 + 8:.1f}" ry="9" fill="#000" opacity="0.06"/>'
+            f'rx="{NODE_W / 2 - 2:.1f}" ry="5" fill="#000" opacity="0.05"/>'
         )
     for node, px, py, z in placed:
         if z <= 0:
             continue
         gx, gy = ground_of(px, py, z)
-        face = _darken(STATUS_STYLE.get(node.status, ("#ffffff",))[0])
         parts.append(
             f'<path class="side" d="M {px:.1f} {py + NODE_H:.1f} '
             f'L {px + NODE_W:.1f} {py + NODE_H:.1f} '
             f'L {gx + NODE_W:.1f} {gy + NODE_H:.1f} '
-            f'L {gx:.1f} {gy + NODE_H:.1f} Z" fill="{face}" stroke="{face}"/>'
+            f'L {gx:.1f} {gy + NODE_H:.1f} Z" '
+            f'fill="#E1E5E8" stroke="#D5DADF" stroke-width="0.8"/>'
         )
     return '<g id="ground-layer">' + "".join(parts) + "</g>"
 
 
-def card_path(x: float, y: float, width: float, height: float, radius: float = 10) -> str:
+def card_path(x: float, y: float, width: float, height: float, radius: float = 5) -> str:
     """Rounded on the right, square on the left so the accent bar aligns."""
     return (
         f"M {x:.1f} {y:.1f} H {x + width - radius:.1f} "
@@ -329,13 +344,13 @@ def svg_markup(placed: list[tuple[PlanNode, float, float, float]]) -> str:
             f'fill="{fill}" stroke="{stroke}" stroke-width="1.5"{dashed}/>'
             f'<rect class="accent" x="{x - 1:.1f}" y="{y:.1f}" width="7" '
             f'height="{NODE_H}" fill="{level_color}"/>'
-            f'<text x="{x + 14:.1f}" y="{y + 21:.1f}" class="id" fill="{text}">{html.escape(node.node_id)}</text>'
-            f'<text x="{x + NODE_W - 10:.1f}" y="{y + 21:.1f}" class="tag" text-anchor="end" '
+            f'<text x="{x + 14:.1f}" y="{y + 20:.1f}" class="id" fill="{SECONDARY_TEXT}">{html.escape(node.node_id)}</text>'
+            f'<text x="{x + NODE_W - 10:.1f}" y="{y + 20:.1f}" class="tag" text-anchor="end" '
             f'fill="{level_color}">{LEVEL_TAG.get(node.level, "")}</text>'
         )
         for line_index, line in enumerate(wrap_title(node.title)):
             parts.append(
-                f'<text x="{x + 14:.1f}" y="{y + 40 + line_index * 16:.1f}" '
+                f'<text x="{x + 14:.1f}" y="{y + 41 + line_index * 17:.1f}" '
                 f'class="title" fill="{text}">{html.escape(line)}</text>'
             )
         parts.append("</g>")
@@ -350,13 +365,13 @@ HTML = """<!DOCTYPE html>
 <title>Plan tree — {title}</title>
 <style>
   :root {{ color-scheme: light; }}
-  html, body {{ margin: 0; height: 100%; background: #f1f3f5;
+  html, body {{ margin: 0; height: 100%; background: #F6F6F4;
     font-family: "WenQuanYi Micro Hei", "Noto Sans CJK SC", "Segoe UI", sans-serif; }}
   #canvas {{ width: 100%; height: 100%; display: block; cursor: grab; }}
   #canvas.dragging {{ cursor: grabbing; }}
-  .id {{ font-size: 12px; font-weight: 700; letter-spacing: .02em; }}
-  .title {{ font-size: 12px; }}
-  .tag {{ font-size: 9px; font-weight: 700; letter-spacing: .08em; opacity: .85; }}
+  .id {{ font-size: 11px; font-weight: 500; letter-spacing: .02em; }}
+  .title {{ font-size: 13px; font-weight: 600; }}
+  .tag {{ font-size: 10px; font-weight: 600; letter-spacing: .08em; opacity: .8; }}
   .node:hover .card {{ filter: brightness(.97); }}
   #hud {{ position: fixed; left: 16px; top: 16px; background: rgba(255,255,255,.94);
     border: 1px solid #dee2e6; border-radius: 10px; padding: 12px 14px;
@@ -380,14 +395,14 @@ HTML = """<!DOCTYPE html>
   #panel .kind {{ color: #495057; margin-top: 6px; font-size: 11px; }}
   #close {{ position: absolute; right: 12px; top: 8px; border: 0; background: none;
     font-size: 20px; line-height: 1; cursor: pointer; color: #868e96; }}
-  .edge {{ fill: none; stroke: #ced4da; stroke-width: 1.2; stroke-linejoin: round;
-    transition: stroke .12s ease, stroke-width .12s ease; }}
-  .edge.hot {{ stroke: #5f3dc4; stroke-width: 2.4; }}
+  .edge {{ fill: none; stroke: #B8C0C9; stroke-width: 1.2; stroke-linejoin: round;
+    stroke-linecap: round; transition: stroke .12s ease, stroke-width .12s ease; }}
+  .edge.hot {{ stroke: #5078B8; stroke-width: 2.2; }}
   .halo {{ fill: transparent; }}
-  .halo.on {{ fill: #d0ebff; }}
+  .halo.on {{ fill: #E8F0FB; }}
   .node {{ cursor: pointer; }}
-  .node.selected .card {{ stroke-width: 3;
-    filter: drop-shadow(0 0 4px rgba(95,61,196,.45)); }}
+  .node.selected .card {{ stroke: #5078B8; stroke-width: 2.5;
+    filter: drop-shadow(0 0 4px rgba(80,120,184,.35)); }}
   #reset {{ margin-top: 6px; border: 1px solid #ced4da; background: #fff; border-radius: 6px;
     padding: 3px 8px; font-size: 11px; cursor: pointer; }}
 </style>
@@ -622,18 +637,18 @@ def main(argv: list[str] | None = None) -> int:
     }
     svg_style = (
         "<style>"
-        ".edge{fill:none;stroke:#ced4da;stroke-width:1.2;stroke-linejoin:round}"
+        ".edge{fill:none;stroke:#B8C0C9;stroke-width:1.2;stroke-linejoin:round;stroke-linecap:round}"
         ".halo{fill:none}"
         ".id{font-family:'WenQuanYi Micro Hei','Noto Sans CJK SC',sans-serif;"
-        "font-size:12px;font-weight:700;letter-spacing:.02em}"
-        ".title{font-family:'WenQuanYi Micro Hei','Noto Sans CJK SC',sans-serif;font-size:12px}"
+        "font-size:11px;font-weight:500;letter-spacing:.02em}"
+        ".title{font-family:'WenQuanYi Micro Hei','Noto Sans CJK SC',sans-serif;font-size:13px;font-weight:600}"
         ".tag{font-family:'WenQuanYi Micro Hei','Noto Sans CJK SC',sans-serif;"
-        "font-size:9px;font-weight:700;letter-spacing:.08em;opacity:.85}"
+        "font-size:10px;font-weight:600;letter-spacing:.08em;opacity:.8}"
         "</style>"
     )
     (out_dir / "tree.svg").write_text(
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width:.0f}" height="{height:.0f}" '
-        f'viewBox="0 0 {width:.0f} {height:.0f}">{svg_style}{body}</svg>\n',
+        f'viewBox="0 0 {width:.0f} {height:.0f}">{svg_style}<rect width="100%" height="100%" fill="#F6F6F4"/>{body}</svg>\n',
         encoding="utf-8",
     )
 
