@@ -246,7 +246,7 @@ def edge_markup(
             for child, cx, cy in kids:
                 ccy = cy + NODE_H / 2
                 parts.append(
-                    f'<path class="edge" data-to="{child.node_id}" '
+                    f'<path class="edge" data-to="{child.node_id}" data-from="{parent_id}" '
                     f'd="M {pbx:.1f} {pby:.1f} H {midx:.1f} '
                     f'V {ccy:.1f} H {cx:.1f}"/>'
                 )
@@ -264,14 +264,14 @@ def edge_markup(
                 for child, cx, cy in members:
                     center = cy + NODE_H / 2
                     parts.append(
-                        f'<path class="edge" data-to="{child.node_id}" '
+                        f'<path class="edge" data-to="{child.node_id}" data-from="{parent_id}" '
                         f'd="M {pbx:.1f} {pby:.1f} V {midy:.1f} H {spine:.1f} '
                         f'V {center:.1f} H {cx:.1f}"/>'
                     )
             else:
                 for child, cx, cy in members:
                     parts.append(
-                        f'<path class="edge" data-to="{child.node_id}" '
+                        f'<path class="edge" data-to="{child.node_id}" data-from="{parent_id}" '
                         f'd="M {pbx:.1f} {pby:.1f} V {midy:.1f} '
                         f'H {cx + NODE_W / 2:.1f} V {cy:.1f}"/>'
                     )
@@ -377,8 +377,13 @@ HTML = """<!DOCTYPE html>
     border: 1px solid #dee2e6; border-radius: 10px; padding: 12px 14px;
     font-size: 12px; line-height: 1.6; box-shadow: 0 2px 8px rgba(0,0,0,.06); }}
   #hud b {{ font-size: 13px; }}
-  #hud .swatch {{ display: inline-block; width: 10px; height: 10px; border-radius: 3px;
-    margin-right: 5px; vertical-align: -1px; }}
+  #hud .swatch {{ display: inline-block; width: 9px; height: 9px; border-radius: 50%; }}
+  #filters {{ display: flex; flex-wrap: wrap; gap: 6px; margin: 7px 0 2px; max-width: 340px; }}
+  .filter {{ display: inline-flex; align-items: center; gap: 5px; border: 1px solid #dee2e6;
+    background: #fff; border-radius: 999px; padding: 2px 8px; font: inherit; font-size: 11px;
+    color: #495057; cursor: pointer; }}
+  .filter b {{ font-weight: 600; color: #212529; }}
+  .filter.active {{ border-color: #5078B8; background: #E8F0FB; }}
   #hud .hint {{ color: #868e96; margin-top: 6px; }}
   #panel {{ position: fixed; top: 0; right: 0; width: 380px; height: 100%;
     background: #fff; border-left: 1px solid #dee2e6; box-shadow: -4px 0 16px rgba(0,0,0,.08);
@@ -422,13 +427,9 @@ HTML = """<!DOCTYPE html>
   <g id="scene">{body}</g>
 </svg>
 <div id="hud">
-  <b>{title}</b><br/>
-  {counts}<br/>
-  <span class="swatch" style="background:#ebfbee;border:1px solid #2f9e44"></span>done
-  <span class="swatch" style="background:#fff4e6;border:1px solid #e8590c"></span>in progress
-  <span class="swatch" style="background:#e7f5ff;border:1px solid #1971c2"></span>proposed
-  <span class="swatch" style="background:#f8f9fa;border:1px solid #adb5bd"></span>superseded
-  <div class="hint">点击节点查看详情 · 滚轮缩放 · 拖拽平移 · 当前仅父子连线</div>
+  <b>{title}</b>
+  <div id="filters">{filters}</div>
+  <div class="hint">点击节点查看详情 · 点状态筛选 · 滚轮缩放 · 拖拽平移</div>
   <button id="reset">100%</button>
   <button id="fit">适应宽度</button>
 </div>
@@ -452,6 +453,7 @@ HTML = """<!DOCTYPE html>
   const resizer = document.getElementById('panel-resizer');
   const PANEL_MIN = 300, PANEL_MAX = 900, PANEL_DEFAULT = 380;
   let resizingPanel = false;
+  let selectedId = null;
 
   function setPanelWidth(width) {{
     const max = Math.max(PANEL_MIN, Math.min(PANEL_MAX, window.innerWidth - 240));
@@ -513,6 +515,7 @@ HTML = """<!DOCTYPE html>
   function show(id) {
     const d = DETAILS[id];
     if (!d) return;
+    selectedId = id;
     document.querySelectorAll('.node.selected').forEach(n => n.classList.remove('selected'));
     nodeById.get(id)?.classList.add('selected');
     clearHot();
@@ -577,12 +580,46 @@ HTML = """<!DOCTYPE html>
     history.replaceState(null, '', '#' + encodeURIComponent(id));
   }
   function hidePanel() {
+    selectedId = null;
     panel.hidden = true;
     document.querySelectorAll('.node.selected').forEach(n => n.classList.remove('selected'));
     document.querySelectorAll('.halo.on').forEach(h => h.classList.remove('on'));
     clearHot();
     history.replaceState(null, '', location.pathname + location.search);
   }
+  const filterButtons = [...document.querySelectorAll('.filter')];
+  const activeStatuses = new Set();
+
+  function nodeVisible(id) {
+    return activeStatuses.size === 0 || activeStatuses.has(DETAILS[id].status);
+  }
+
+  function applyFilter() {
+    document.querySelectorAll('.node').forEach(node => {
+      node.style.display = nodeVisible(node.dataset.id) ? '' : 'none';
+    });
+    document.querySelectorAll('.halo').forEach(halo => {
+      halo.style.display = nodeVisible(halo.dataset.id) ? '' : 'none';
+    });
+    document.querySelectorAll('.edge').forEach(path => {
+      const to = path.dataset.to;
+      const from = path.dataset.from;
+      const visible = nodeVisible(to) && (!from || nodeVisible(from));
+      path.style.display = visible ? '' : 'none';
+    });
+    if (selectedId && !nodeVisible(selectedId)) hidePanel();
+  }
+
+  filterButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const status = button.dataset.status;
+      if (activeStatuses.has(status)) activeStatuses.delete(status);
+      else activeStatuses.add(status);
+      button.classList.toggle('active', activeStatuses.has(status));
+      applyFilter();
+    });
+  });
+
   document.getElementById('scene').addEventListener('click', (event) => {
     if (moved) { moved = false; return; }
     const g = event.target.closest('.node');
@@ -647,6 +684,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("graph", type=Path)
     parser.add_argument("out_dir", type=Path)
     parser.add_argument("--direction", choices=("down", "right"), default="down")
+    parser.add_argument("--title", help="title shown in the HUD")
     args = parser.parse_args(argv)
 
     roots = load_nodes(args.graph)
@@ -668,10 +706,13 @@ def main(argv: list[str] | None = None) -> int:
     height = (max_y - min_y) + 48
 
     out_dir = args.out_dir
-    try:
-        project = args.graph.parents[3].name
-    except IndexError:
-        project = args.graph.parent.name
+    if args.title:
+        project = args.title
+    else:
+        try:
+            project = args.graph.resolve().parents[3].name
+        except IndexError:
+            project = args.graph.name
     out_dir.mkdir(parents=True, exist_ok=True)
     body = (
         ground_markup(projected)
@@ -716,11 +757,27 @@ def main(argv: list[str] | None = None) -> int:
     counts: dict[str, int] = {}
     for node, _, _, _ in projected:
         counts[node.status] = counts.get(node.status, 0) + 1
-    count_text = " · ".join(f"{key} {value}" for key, value in sorted(counts.items()))
+    labels = {
+        "done": "done",
+        "in_progress": "in progress",
+        "proposed": "proposed",
+        "blocked": "blocked",
+        "superseded": "superseded",
+    }
+    filter_html = "".join(
+        (
+            f'<button class="filter" data-status="{status}" title="filter {labels[status]}">'
+            f'<span class="swatch" style="background:{STATUS_STYLE[status][0]};'
+            f'border:1px solid {STATUS_STYLE[status][1]}"></span>'
+            f'{labels[status]} <b>{counts[status]}</b></button>'
+        )
+        for status in ("done", "in_progress", "proposed", "blocked", "superseded")
+        if counts.get(status)
+    )
     page = HTML.replace("{{", "{").replace("}}", "}")
     page = (
         page.replace("{title}", project)
-        .replace("{counts}", count_text)
+        .replace("{filters}", filter_html)
         .replace("{width}", f"{width:.0f}")
         .replace("{height}", f"{height:.0f}")
         .replace("{body}", body)

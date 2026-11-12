@@ -32,6 +32,8 @@ Implemented in `tree_layout.py`:
   column instead of fanning out;
 - parent-child connectors only; a stacked leaf owns the full path from its
   parent down the shared spine, so selecting it highlights exactly that route;
+- status chips filter the tree (multi-select); a filtered-out selection closes
+  the panel;
 - click a node to open a scrollable detail panel (full title, objective,
   deliverables, acceptance, links, evidence); `Esc` closes it; the URL hash
   deep-links to a node;
@@ -49,7 +51,7 @@ a maintained copy.
 ## Run
 
 ```bash
-python3 tree_layout.py input/graph.json output --direction down
+python3 tree_layout.py input/graph.json output --direction down --title "FORMA plan tree"
 ```
 
 That writes `output/tree.html`, `output/tree.svg`, and
