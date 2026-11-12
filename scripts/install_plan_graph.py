@@ -66,21 +66,28 @@ def _fragment() -> str:
     ).strip()
 
 
-def _refuse_unmigrated_v3_tree(repo: Path) -> None:
-    """A v4 install must not build itself beside an untouched v3 tree."""
+def _refuse_competing_trees(repo: Path) -> None:
+    """Refuse to act while a v3 tree exists; never let two plan trees coexist."""
     legacy = repo / "_plan"
-    if legacy.is_dir() and not (repo / PLAN_RELATIVE).exists():
+    if not legacy.is_dir():
+        return
+    current = repo / PLAN_RELATIVE
+    if current.exists():
         raise InstallError(
-            "found a v3 plan tree at _plan/; v4 reads _aiHumanInteract/plan/ and "
-            "will not migrate it. Move _plan/ to _aiHumanInteract/plan/, delete "
-            "_plan/install-manifest.json, then reinstall and rebuild the views."
+            "both _plan/ and _aiHumanInteract/plan/ exist. Two plan trees cannot "
+            "coexist; reconcile them by hand before reinstalling."
         )
+    raise InstallError(
+        "found a v3 plan tree at _plan/; v4 reads _aiHumanInteract/plan/ and "
+        "will not migrate it. Run scripts/migrate_plan_graph_v3.py, or move "
+        "_plan/ to _aiHumanInteract/plan/ by hand after reading the migration "
+        "steps in references/plan-graph.md."
+    )
 
 
 def _read_manifest(repo: Path) -> dict[str, Any] | None:
     path = repo / MANIFEST_RELATIVE
     if not path.exists():
-        _refuse_unmigrated_v3_tree(repo)
         return None
     if not path.is_file():
         raise InstallError(f"install manifest is not a regular file: {path}")
@@ -180,6 +187,7 @@ def install(repo: Path, update_agents: bool, *, dry_run: bool = False) -> None:
     if not repo.is_dir():
         raise InstallError(f"repository directory does not exist: {repo}")
 
+    _refuse_competing_trees(repo)
     previous = _read_manifest(repo)
     copies, created_dirs, agents_action = _installation_plan(repo, update_agents)
     _print_install_plan(
@@ -290,6 +298,7 @@ def uninstall(repo: Path, *, dry_run: bool = False) -> None:
     repo = repo.resolve()
     if not repo.is_dir():
         raise InstallError(f"repository directory does not exist: {repo}")
+    _refuse_competing_trees(repo)
     manifest = _read_manifest(repo)
     if manifest is None:
         raise InstallError(f"no install manifest found at {repo / MANIFEST_RELATIVE}")

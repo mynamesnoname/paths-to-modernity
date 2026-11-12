@@ -232,9 +232,9 @@
   ],
   "schema_version": "paths-to-modernity-plan-graph-v4",
   "source_of_truth": [
-    "plan/long-term/*.md",
-    "plan/mid-term/*.md",
-    "plan/short-term/*.md",
-    "plan/work-package/*.md"
+    "_aiHumanInteract/plan/long-term/*.md",
+    "_aiHumanInteract/plan/mid-term/*.md",
+    "_aiHumanInteract/plan/short-term/*.md",
+    "_aiHumanInteract/plan/work-package/*.md"
   ]
 }

@@ -99,7 +99,13 @@ def graph_edges(nodes: Mapping[str, PlanNode]) -> list[dict[str, str]]:
     )
 
 
-def graph_payload(nodes: Mapping[str, PlanNode]) -> dict:
+def _plan_prefix(plan_root: Path) -> str:
+    """Repository-relative location of the plan tree, e.g. `_aiHumanInteract/plan`."""
+    repo_root = plan_root.parents[1]
+    return os.path.relpath(plan_root, repo_root).replace(os.sep, "/")
+
+
+def graph_payload(plan_root: Path, nodes: Mapping[str, PlanNode]) -> dict:
     node_payload = [node.as_payload() for node in ordered_nodes(nodes)]
     edges = graph_edges(nodes)
     return {
@@ -108,7 +114,7 @@ def graph_payload(nodes: Mapping[str, PlanNode]) -> dict:
         "edge_count": len(edges),
         "levels": list(LEVELS),
         "source_of_truth": [
-            f"{PLAN_ROOT.name}/{level}/*.md" for level in LEVELS
+            f"{_plan_prefix(plan_root)}/{level}/*.md" for level in LEVELS
         ],
         "nodes": node_payload,
         "edges": edges,
@@ -391,7 +397,7 @@ def render_outputs(
 ) -> dict[Path, str]:
     structure = plan_root / "structure"
     payload = json.dumps(
-        graph_payload(nodes),
+        graph_payload(plan_root, nodes),
         ensure_ascii=False,
         indent=2,
         sort_keys=True,

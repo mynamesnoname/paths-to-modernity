@@ -40,7 +40,7 @@ class ProjectionContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.nodes = validate.require_valid_graph(PLAN_ROOT, REPO_ROOT)
-        cls.payload = build_graph.graph_payload(cls.nodes)
+        cls.payload = build_graph.graph_payload(PLAN_ROOT, cls.nodes)
 
     def test_json_is_versioned_and_complete(self) -> None:
         self.assertEqual(
@@ -49,6 +49,21 @@ class ProjectionContractTests(unittest.TestCase):
         self.assertEqual(
             {node["id"] for node in self.payload["nodes"]}, set(self.nodes)
         )
+
+    def test_source_of_truth_resolves(self) -> None:
+        """Discovery globs must name existing files under the same root as node sources."""
+        patterns = self.payload["source_of_truth"]
+        self.assertTrue(patterns)
+        sources = {node.source for node in self.nodes.values()}
+        for pattern in patterns:
+            self.assertNotIn("\\", pattern)
+            matches = sorted(REPO_ROOT.glob(pattern))
+            self.assertTrue(matches, f"{pattern} matches no file")
+            for match in matches:
+                self.assertIn(match.relative_to(REPO_ROOT).as_posix(), sources)
+        prefix = patterns[0].rsplit("/", 2)[0]
+        for source in sources:
+            self.assertTrue(source.startswith(prefix + "/"), source)
 
     def test_canvas_is_valid_json(self) -> None:
         canvas = json.loads(build_graph.graph_canvas(self.nodes))
