@@ -25,6 +25,7 @@ from pathlib import Path
 NODE_W = 240
 NODE_H = 68
 ACCENT_W = 7
+CARD_STROKE = 1.5
 GAP_X = 56
 PARENT_CHILD_GAP = 64
 LEAF_GAP = 16
@@ -357,10 +358,10 @@ def svg_markup(placed: list[tuple[PlanNode, float, float, float]]) -> str:
             f'<g class="node" data-id="{html.escape(node.node_id)}">'
             f'<title>{html.escape(node.title)}</title>'
             f'<path class="card" d="{card_path(x, y, NODE_W, NODE_H)}" fill="{fill}"/>'
-            f'<rect class="accent" x="{x:.1f}" y="{y:.1f}" width="{ACCENT_W}" '
-            f'height="{NODE_H}" fill="{level_color}"/>'
+            f'<rect class="accent" x="{x:.1f}" y="{y - CARD_STROKE / 2:.1f}" width="{ACCENT_W}" '
+            f'height="{NODE_H + CARD_STROKE}" fill="{level_color}"/>'
             f'<path class="card-outline" d="{card_outline(x, y, NODE_W, NODE_H)}" '
-            f'fill="none" stroke="{stroke}" stroke-width="1.5"{dashed}/>'
+            f'fill="none" stroke="{stroke}" stroke-width="{CARD_STROKE}"{dashed}/>'
             f'<path class="card-select" d="{card_path(x, y, NODE_W, NODE_H)}" fill="none"/>'
             f'<text x="{x + 14:.1f}" y="{y + 20:.1f}" class="id" fill="{SECONDARY_TEXT}">{html.escape(node.node_id)}</text>'
             f'<text x="{x + NODE_W - 10:.1f}" y="{y + 20:.1f}" class="tag" text-anchor="end" '
