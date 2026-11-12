@@ -541,8 +541,8 @@ HTML = """<!DOCTYPE html>
           { opacity: 1, transform: 'translateY(0)' },
         ],
         {
-          duration: 220,
-          delay: Math.min(index * 24, 220),
+          duration: 320,
+          delay: Math.min(index * 28, 280),
           easing: 'cubic-bezier(.2, .7, .3, 1)',
           fill: 'both',
         }
