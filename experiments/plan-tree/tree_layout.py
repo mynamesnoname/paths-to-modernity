@@ -24,6 +24,7 @@ from pathlib import Path
 
 NODE_W = 240
 NODE_H = 68
+ACCENT_W = 7
 GAP_X = 56
 PARENT_CHILD_GAP = 64
 LEAF_GAP = 16
@@ -313,6 +314,19 @@ def ground_markup(placed: list[tuple[PlanNode, float, float, float]]) -> str:
     return '<g id="ground-layer">' + "".join(parts) + "</g>"
 
 
+def card_outline(
+    x: float, y: float, width: float, height: float, radius: float = 5, notch: float = ACCENT_W
+) -> str:
+    """Top, right and bottom edges only; the accent strip owns the left edge."""
+    return (
+        f"M {x + notch:.1f} {y:.1f} H {x + width - radius:.1f} "
+        f"Q {x + width:.1f} {y:.1f} {x + width:.1f} {y + radius:.1f} "
+        f"V {y + height - radius:.1f} "
+        f"Q {x + width:.1f} {y + height:.1f} {x + width - radius:.1f} {y + height:.1f} "
+        f"H {x + notch:.1f}"
+    )
+
+
 def card_path(x: float, y: float, width: float, height: float, radius: float = 5) -> str:
     """Rounded on the right, square on the left so the accent bar aligns."""
     return (
@@ -342,10 +356,11 @@ def svg_markup(placed: list[tuple[PlanNode, float, float, float]]) -> str:
         parts.append(
             f'<g class="node" data-id="{html.escape(node.node_id)}">'
             f'<title>{html.escape(node.title)}</title>'
-            f'<path class="card" d="{card_path(x, y, NODE_W, NODE_H)}" '
-            f'fill="{fill}" stroke="{stroke}" stroke-width="1.5"{dashed}/>'
-            f'<rect class="accent" x="{x - 1:.1f}" y="{y:.1f}" width="7" '
+            f'<path class="card" d="{card_path(x, y, NODE_W, NODE_H)}" fill="{fill}"/>'
+            f'<rect class="accent" x="{x:.1f}" y="{y:.1f}" width="{ACCENT_W}" '
             f'height="{NODE_H}" fill="{level_color}"/>'
+            f'<path class="card-outline" d="{card_outline(x, y, NODE_W, NODE_H)}" '
+            f'fill="none" stroke="{stroke}" stroke-width="1.5"{dashed}/>'
             f'<text x="{x + 14:.1f}" y="{y + 20:.1f}" class="id" fill="{SECONDARY_TEXT}">{html.escape(node.node_id)}</text>'
             f'<text x="{x + NODE_W - 10:.1f}" y="{y + 20:.1f}" class="tag" text-anchor="end" '
             f'fill="{level_color}">{LEVEL_TAG.get(node.level, "")}</text>'
@@ -433,7 +448,7 @@ HTML = """<!DOCTYPE html>
   .halo {{ fill: transparent; pointer-events: none; }}
   .halo.on {{ fill: #DCEBFA; filter: blur(4px); }}
   .node {{ cursor: pointer; }}
-  .node.selected .card {{ stroke: #5078B8; stroke-width: 2.5;
+  .node.selected .card-outline {{ stroke: #5078B8; stroke-width: 2.5;
     filter: drop-shadow(0 0 4px rgba(80,120,184,.35)); }}
   #reset {{ margin-top: 6px; border: 1px solid #ced4da; background: #fff; border-radius: 6px;
     padding: 3px 8px; font-size: 11px; cursor: pointer; }}
