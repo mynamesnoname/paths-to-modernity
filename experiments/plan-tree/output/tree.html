@@ -35,6 +35,16 @@
   #panel[hidden] { display: none; }
   #panel-head { flex: none; position: relative; padding: 16px 18px 10px;
     border-bottom: 1px solid #e9ecef; }
+  #panel-head.status-done { background: #EDF7F0; border-bottom-color: #A7CEB4; }
+  #panel-head.status-in_progress { background: #FFF4E8; border-bottom-color: #E7BA91; }
+  #panel-head.status-proposed { background: #EFF5FC; border-bottom-color: #B3C9E2; }
+  #panel-head.status-blocked { background: #FCEEEE; border-bottom-color: #E0ACAC; }
+  #panel-head.status-superseded { background: #F1F2F4; border-bottom-color: #C9CDD2; }
+  #panel-head.status-done h3 { color: #234B36; }
+  #panel-head.status-in_progress h3 { color: #80512A; }
+  #panel-head.status-proposed h3 { color: #31577D; }
+  #panel-head.status-blocked h3 { color: #873F3F; }
+  #panel-head.status-superseded h3 { color: #777D85; }
   #panel-resizer { position: absolute; left: -3px; top: 0; bottom: 0; width: 7px;
     cursor: col-resize; z-index: 2; }
   #panel-resizer::after { content: ""; position: absolute; left: 3px; top: 50%;
@@ -159,6 +169,7 @@
     const d = DETAILS[id];
     if (!d) return;
     selectedId = id;
+    panelHead.className = 'status-' + d.status;
     document.querySelectorAll('.node.selected').forEach(n => n.classList.remove('selected'));
     nodeById.get(id)?.classList.add('selected');
     clearHot();
