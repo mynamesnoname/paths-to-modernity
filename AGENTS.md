@@ -12,6 +12,10 @@ separate from the governance fragment installed into target projects.
   owns the mapping from concepts to fields.
 - `assets/plan-graph/` is the installation bundle. Keep its tools and
   installed guidance aligned with the specification.
+- `assets/protocol/` holds the project-level protocol block and the recovery
+  skeleton that `scripts/adopt_project.py` injects into a target project. The
+  block is generated output, not a second copy of the skill: keep it to
+  pointers and the four invariants, and change its wording in one place.
 - `assets/plan-graph/example/_aiHumanInteract/plan/structure/` contains generated views;
   never edit them by hand.
 - `agents/openai.yaml` is UI metadata, not runtime instructions.
@@ -31,6 +35,14 @@ and run the bundle regression:
 ```bash
 python3 -B assets/plan-graph/_aiHumanInteract/plan/build_graph.py --root assets/plan-graph/example/_aiHumanInteract/plan
 python3 -B scripts/test_plan_graph_bundle.py
+```
+
+Adopting the protocol into a project (AGENTS.md block, CLAUDE.md pointer,
+`_aiHumanInteract/state/active.md` skeleton):
+
+```bash
+python3 -B scripts/adopt_project.py /path/to/repository --dry-run
+python3 -B scripts/adopt_project.py /path/to/repository
 ```
 
 Migrating a target project installed by an earlier bundle:

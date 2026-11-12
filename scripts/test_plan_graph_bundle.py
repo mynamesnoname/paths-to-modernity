@@ -19,6 +19,7 @@ EXAMPLE_ROOT = BUNDLE_ROOT / "example"
 TOOL_NAMES = ("validate.py", "build_graph.py", "test_plan_graph.py")
 INSTALLER = SKILL_ROOT / "scripts" / "install_plan_graph.py"
 MIGRATOR = SKILL_ROOT / "scripts" / "migrate_plan_graph_v3.py"
+ADOPTER = SKILL_ROOT / "scripts" / "adopt_project.py"
 V3_SCHEMA = "paths-to-modernity-plan-graph-v3"
 SCHEMA_VERSION = "paths-to-modernity-plan-graph-v4"
 
@@ -251,6 +252,46 @@ def exercise_migration(root: Path) -> None:
 
 
 
+def exercise_adoption(root: Path) -> None:
+    """Protocol adoption must be idempotent, non-destructive, and reversible."""
+    repo = root / "adoption"
+    repo.mkdir()
+    run((sys.executable, str(ADOPTER), str(repo), "--dry-run"), SKILL_ROOT)
+    if (repo / "AGENTS.md").exists():
+        raise RuntimeError("adoption dry run wrote AGENTS.md")
+
+    run((sys.executable, str(ADOPTER), str(repo)), SKILL_ROOT)
+    agents = (repo / "AGENTS.md").read_text(encoding="utf-8")
+    if "paths-to-modernity:protocol:start" not in agents:
+        raise RuntimeError("adoption did not write the protocol block")
+    if not (repo / "CLAUDE.md").is_file():
+        raise RuntimeError("adoption did not write the CLAUDE.md pointer")
+    state = repo / "_aiHumanInteract" / "state" / "active.md"
+    if not state.is_file():
+        raise RuntimeError("adoption did not create the state skeleton")
+
+    before = agents
+    run((sys.executable, str(ADOPTER), str(repo)), SKILL_ROOT)
+    if (repo / "AGENTS.md").read_text(encoding="utf-8") != before:
+        raise RuntimeError("adoption is not idempotent")
+
+    state.write_text(state.read_text(encoding="utf-8") + "- local progress\n", encoding="utf-8")
+    run((sys.executable, str(ADOPTER), str(repo), "--uninstall"), SKILL_ROOT)
+    if (repo / "AGENTS.md").exists():
+        raise RuntimeError("uninstall left an AGENTS.md it had created")
+    if (repo / "CLAUDE.md").exists():
+        raise RuntimeError("uninstall left CLAUDE.md")
+    if not state.is_file() or "local progress" not in state.read_text(encoding="utf-8"):
+        raise RuntimeError("uninstall discarded an edited state file")
+
+    clash = root / "adoption-clash"
+    clash.mkdir()
+    (clash / "CLAUDE.md").write_text("project-owned\n", encoding="utf-8")
+    run_expect_failure((sys.executable, str(ADOPTER), str(clash)), SKILL_ROOT)
+    if (clash / "CLAUDE.md").read_text(encoding="utf-8") != "project-owned\n":
+        raise RuntimeError("adoption overwrote an existing CLAUDE.md")
+
+
 def main() -> int:
     require_consistent_schema_version()
     with tempfile.TemporaryDirectory(prefix="paths-modernity-example-") as raw:
@@ -279,6 +320,7 @@ def main() -> int:
             plan_dir,
         )
         exercise_migration(root)
+        exercise_adoption(root)
     print("Plan Graph v4 bundle checks passed")
     return 0
 
