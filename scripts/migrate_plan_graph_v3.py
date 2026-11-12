@@ -1,0 +1,253 @@
+#!/usr/bin/env python3
+"""Migrate a v3 Plan Graph installation to v4 in place.
+
+v4 moved the plan tree from `<repository>/_plan/` to
+`<repository>/_aiHumanInteract/plan/`. The installer rejects a v3 tree instead
+of migrating it, so this tool performs the migration as one reversible step:
+
+1. verify the v3 installation (manifest, schema, installer-owned file hashes)
+2. copy the tree to a temporary backup
+3. move `_plan/` to `_aiHumanInteract/plan/`
+4. rewrite repository-relative `_plan/` references in Markdown sources
+5. replace the marked governance block in AGENTS.md, when present
+6. reinstall the v4 tools, validate the sources, rebuild the views
+
+Any failure restores the backup and AGENTS.md, and leaves no second tree.
+Use `--dry-run` to print the plan without touching the repository.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+from typing import Sequence
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import install_plan_graph as installer  # noqa: E402
+
+V3_SCHEMA = "paths-to-modernity-plan-graph-v3"
+V3_PLAN_RELATIVE = Path("_plan")
+TOOL_FILES = installer.PLAN_FILES
+
+
+class MigrationError(Exception):
+    """A migration precondition failed or a step could not complete."""
+
+
+def _sha256(path: Path) -> str:
+    return installer._sha256_file(path)
+
+
+def _plan_of(repo: Path) -> tuple[Path, Path]:
+    legacy = repo / V3_PLAN_RELATIVE
+    if not legacy.is_dir():
+        raise MigrationError(f"no v3 plan tree at {legacy}")
+    current = repo / installer.PLAN_RELATIVE
+    if current.exists():
+        raise MigrationError(
+            f"target already exists: {current}. Two plan trees cannot coexist; "
+            "remove or reconcile the existing v4 tree first."
+        )
+    return legacy, current
+
+
+def _load_v3_manifest(legacy: Path) -> dict:
+    path = legacy / "install-manifest.json"
+    if not path.is_file():
+        raise MigrationError(
+            f"no install manifest at {path}; this does not look like an "
+            "installer-created v3 installation"
+        )
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        raise MigrationError(f"cannot read {path}: {exc}") from exc
+    if not isinstance(manifest, dict):
+        raise MigrationError("install manifest must contain a JSON object")
+    if manifest.get("manifest_version") != installer.MANIFEST_VERSION:
+        raise MigrationError(
+            f"unsupported manifest version {manifest.get('manifest_version')!r}"
+        )
+    if manifest.get("schema_version") != V3_SCHEMA:
+        raise MigrationError(
+            f"expected schema {V3_SCHEMA}, found {manifest.get('schema_version')!r}"
+        )
+    for field in ("created_files", "managed_files"):
+        entry = manifest.get(field)
+        if not isinstance(entry, dict) or not entry:
+            raise MigrationError(f"manifest {field} must be a non-empty object")
+        for key in entry:
+            if not key.startswith("_plan/"):
+                raise MigrationError(f"manifest {field} entry is not a v3 path: {key!r}")
+    return manifest
+
+
+def _check_tools(legacy: Path) -> None:
+    """The v3 tools are replaced, so they must at least be the expected files."""
+    for name in TOOL_FILES:
+        path = legacy / name
+        if not path.is_file():
+            raise MigrationError(f"missing installed tool: {path}")
+        if name == "README.md":
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        if "Plan Graph" not in text and "plan graph" not in text:
+            raise MigrationError(
+                f"{path} does not look like an installed Plan Graph tool; "
+                "reconcile it by hand before migrating"
+            )
+
+
+def _rewrite(text: str) -> str:
+    return text.replace("_plan/", "_aiHumanInteract/plan/").replace(
+        "`_plan`", "`_aiHumanInteract/plan`"
+    )
+
+
+def _plan_rewrites(current_after_move: Path) -> list[tuple[Path, int]]:
+    """Markdown sources under the plan tree that mention the old path."""
+    planned: list[tuple[Path, int]] = []
+    for path in sorted(current_after_move.rglob("*.md")):
+        if "structure" in path.relative_to(current_after_move).parts:
+            continue  # regenerated views
+        text = path.read_text(encoding="utf-8")
+        count = text.count("_plan/") + text.count("`_plan`")
+        if count:
+            planned.append((path, count))
+    return planned
+
+
+def _governance_replace(repo: Path) -> tuple[bool, str | None]:
+    """Return whether AGENTS.md carries the marked block, and its future content."""
+    path = repo / "AGENTS.md"
+    if not path.is_file():
+        return False, None
+    text = path.read_text(encoding="utf-8")
+    if installer.START_MARKER not in text:
+        return False, None
+    fragment = installer._fragment()
+    start = text.index(installer.START_MARKER)
+    end = text.index(installer.END_MARKER, start) + len(installer.END_MARKER)
+    return True, text[:start] + fragment + text[end:]
+
+
+def _run(python: str, script: Path, repo: Path) -> None:
+    completed = subprocess.run(
+        (python, "-B", str(script)), cwd=repo, capture_output=True, text=True
+    )
+    if completed.returncode != 0:
+        raise MigrationError(
+            f"{script.name} failed:\n{completed.stdout}{completed.stderr}".strip()
+        )
+
+
+def _describe(repo: Path, legacy: Path) -> tuple[list[tuple[Path, int]], bool, bool]:
+    current = repo / installer.PLAN_RELATIVE
+    rewrites = _plan_rewrites(legacy)
+    has_block, _ = _governance_replace(repo)
+    has_views = (legacy / "structure").is_dir()
+    return rewrites, has_block, has_views
+
+
+def migrate(repo: Path, *, dry_run: bool = False) -> None:
+    repo = repo.resolve()
+    if not repo.is_dir():
+        raise MigrationError(f"repository directory does not exist: {repo}")
+
+    legacy, current = _plan_of(repo)
+    manifest = _load_v3_manifest(legacy)
+    _check_tools(legacy)
+
+    rewrites, has_block, has_views = _describe(repo, legacy)
+    python = sys.executable
+
+    print(f"Plan Graph v3 -> v4 migration in {repo}")
+    print(f"  move: {legacy} -> {current}")
+    print(f"  files recorded in the v3 manifest: {len(manifest['created_files'])}")
+    print(f"  Markdown sources to rewrite: {len(rewrites)}")
+    for path, count in rewrites:
+        print(f"    {path.relative_to(repo)} ({count} reference(s))")
+    print(f"  AGENTS.md governance block: {'replace' if has_block else 'absent'}")
+    print(f"  generated views: {'rebuild' if has_views else 'none installed'}")
+    if dry_run:
+        print("Dry run only; no files were changed.")
+        return
+
+    agents_path = repo / "AGENTS.md"
+    saved_agents = agents_path.read_bytes() if agents_path.is_file() else None
+    replacement = _governance_replace(repo)[1] if has_block else None
+    with tempfile.TemporaryDirectory(prefix="paths-modernity-v3-backup-") as raw:
+        backup = Path(raw) / "plan"
+        shutil.copytree(legacy, backup)
+        try:
+            current.parent.mkdir(parents=True, exist_ok=True)
+            legacy.rename(current)
+
+            for path, _ in rewrites:
+                moved = current / path.relative_to(legacy)
+                moved.write_text(_rewrite(moved.read_text(encoding="utf-8")), encoding="utf-8")
+
+            if replacement is not None:
+                agents_path.write_text(replacement, encoding="utf-8")
+
+            for name in TOOL_FILES:
+                (current / name).unlink(missing_ok=True)
+            # The v3 manifest records v3 ownership and would block a fresh install.
+            (current / "install-manifest.json").unlink(missing_ok=True)
+
+            installer.install(repo, update_agents=False)
+
+            if has_block:
+                manifest_path = current / "install-manifest.json"
+                fresh = json.loads(manifest_path.read_text(encoding="utf-8"))
+                fresh["agents"] = {
+                    "mode": "appended",
+                    "block_sha256": installer._sha256_bytes(
+                        installer._fragment().encode("utf-8")
+                    ),
+                }
+                manifest_path.write_text(
+                    json.dumps(fresh, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+
+            _run(python, current / "validate.py", repo)
+            if has_views:
+                _run(python, current / "build_graph.py", repo)
+        except Exception as exc:
+            shutil.rmtree(current, ignore_errors=True)
+            shutil.copytree(backup, legacy)
+            if saved_agents is not None:
+                agents_path.write_bytes(saved_agents)
+            raise MigrationError(
+                f"migration failed and was rolled back to the v3 tree: {exc}"
+            ) from exc
+
+    print("Migrated to Plan Graph v4.")
+    print("  next: review the diff, then commit sources and generated views together")
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("repository", type=Path)
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args(argv)
+    try:
+        migrate(args.repository, dry_run=args.dry_run)
+    except MigrationError as exc:
+        print(f"Migration failed: {exc}", file=sys.stderr)
+        return 1
+    except installer.InstallError as exc:
+        print(f"Migration failed: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

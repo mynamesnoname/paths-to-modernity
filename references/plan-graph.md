@@ -30,21 +30,34 @@ deliberate local adaptations must keep their tools and contract consistent.
 
 v4 moves the plan tree from `<repository>/_plan/` to
 `<repository>/_aiHumanInteract/plan/`, so that plan records and
-[knowledge records](knowledge-debt.md) share one visible root. Nothing else in
-the contract changes; operations, relationships, statuses, and node fields stay
-as they were.
+[knowledge records](knowledge-debt.md) share one visible root. Operations,
+relationships, statuses, and node fields are unchanged.
 
-The move is deliberately breaking. A v3 installation is not migrated
-automatically and v4 consumers reject it:
+The move is deliberately breaking. v4 consumers reject a v3 installation, and
+the installer refuses to build beside it rather than overwrite anything. Run the
+migration from the skill root:
 
-1. move the existing `_plan/` directory to `_aiHumanInteract/plan/`;
-2. remove the old v3 `install-manifest.json`, which records paths under `_plan/`
-   and can no longer be honoured;
-3. reinstall the bundle, which reinstalls the tools at their new paths;
-4. rebuild the views, since generated paths embed the new location.
+```bash
+python3 -B scripts/migrate_plan_graph_v3.py /path/to/repository --dry-run
+python3 -B scripts/migrate_plan_graph_v3.py /path/to/repository
+```
 
-Regenerate rather than edit the moved views. A v3 installation left in place is
-detected and refused, not overwritten.
+The tool verifies the v3 manifest and schema, copies the tree to a temporary
+backup, moves it, rewrites repository-relative `_plan/` references in the
+Markdown sources, replaces the marked governance block when `AGENTS.md` carries
+one, reinstalls the v4 tools, then validates and rebuilds the views. Any failure
+restores the backup and `AGENTS.md`, and leaves no second tree.
+
+It does not decide for you where a user edit conflicts with the bundle. If a
+migrated source references a path the tool did not rewrite, validation fails and
+the migration rolls back; reconcile by hand and rerun. Editing the generated
+views by hand to satisfy validation is never correct: regenerate them.
+
+Manual migration remains possible, but the steps are not the four lines this
+guide once gave. Moving the tree alone leaves the v3 tools in place, and the v4
+installer will refuse to overwrite them. A manual migration must also remove the
+installed tool files and the v3 manifest, rewrite source links, and update the
+governance block, which is exactly what the tool does.
 
 ## Source plans and generated views
 

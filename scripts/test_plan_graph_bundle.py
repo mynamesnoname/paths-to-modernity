@@ -16,6 +16,9 @@ SKILL_ROOT = Path(__file__).resolve().parent.parent
 BUNDLE_ROOT = SKILL_ROOT / "assets" / "plan-graph"
 EXAMPLE_ROOT = BUNDLE_ROOT / "example"
 TOOL_NAMES = ("validate.py", "build_graph.py", "test_plan_graph.py")
+INSTALLER = SKILL_ROOT / "scripts" / "install_plan_graph.py"
+MIGRATOR = SKILL_ROOT / "scripts" / "migrate_plan_graph_v3.py"
+V3_SCHEMA = "paths-to-modernity-plan-graph-v3"
 SCHEMA_VERSION = "paths-to-modernity-plan-graph-v4"
 
 
@@ -145,6 +148,89 @@ def exercise_installer(root: Path) -> None:
         raise RuntimeError("v4 installer built beside an unmigrated v3 tree")
 
 
+def _to_v3(text: str) -> str:
+    return text.replace("_aiHumanInteract/plan/", "_plan/").replace(
+        SCHEMA_VERSION, V3_SCHEMA
+    )
+
+
+def build_v3_installation(repo: Path) -> None:
+    """Fabricate a plausible v3 install: v3 paths, schema, tools, and governance."""
+    run((sys.executable, str(INSTALLER), str(repo), "--update-agents"), SKILL_ROOT)
+    plan = repo / "_aiHumanInteract" / "plan"
+    shutil.copytree(EXAMPLE_ROOT / "_aiHumanInteract" / "plan", plan, dirs_exist_ok=True)
+    legacy = repo / "_plan"
+    plan.rename(legacy)
+    for file in legacy.rglob("*.md"):
+        file.write_text(_to_v3(file.read_text(encoding="utf-8")), encoding="utf-8")
+    for file in legacy.glob("*.py"):
+        file.write_text(_to_v3(file.read_text(encoding="utf-8")), encoding="utf-8")
+    manifest_path = legacy / "install-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["schema_version"] = V3_SCHEMA
+    for key in ("created_files", "managed_files"):
+        manifest[key] = {
+            name.replace("_aiHumanInteract/plan/", "_plan/"): digest
+            for name, digest in manifest[key].items()
+        }
+    manifest["created_dirs"] = [
+        name.replace("_aiHumanInteract/plan", "_plan")
+        for name in manifest.get("created_dirs", [])
+    ]
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    agents = repo / "AGENTS.md"
+    agents.write_text(_to_v3(agents.read_text(encoding="utf-8")), encoding="utf-8")
+
+
+def exercise_migration(root: Path) -> None:
+    """v3 -> v4 must succeed on a real install, and roll back on failure."""
+    repo = root / "migration-target"
+    repo.mkdir()
+    build_v3_installation(repo)
+    node = repo / "_plan" / "work-package" / "WP-001.md"
+    node.write_text(
+        node.read_text(encoding="utf-8").replace(
+            "quietly legible under operational pressure", "legible in a hurry"
+        ),
+        encoding="utf-8",
+    )
+
+    run((sys.executable, str(MIGRATOR), str(repo), "--dry-run"), SKILL_ROOT)
+    if not (repo / "_plan").is_dir():
+        raise RuntimeError("migration dry run moved the v3 tree")
+
+    run((sys.executable, str(MIGRATOR), str(repo)), SKILL_ROOT)
+    if (repo / "_plan").exists():
+        raise RuntimeError("migration left the v3 tree in place")
+    migrated = repo / "_aiHumanInteract" / "plan"
+    text = (migrated / "work-package" / "WP-001.md").read_text(encoding="utf-8")
+    if "legible in a hurry" not in text:
+        raise RuntimeError("migration lost a user edit")
+    if "_plan/" in text:
+        raise RuntimeError("migration left a v3 path in a source node")
+    manifest = json.loads((migrated / "install-manifest.json").read_text(encoding="utf-8"))
+    if manifest["schema_version"] != SCHEMA_VERSION:
+        raise RuntimeError("migration did not record the v4 manifest")
+    run((sys.executable, "-B", "_aiHumanInteract/plan/validate.py"), repo)
+
+    broken = root / "migration-rollback"
+    broken.mkdir()
+    build_v3_installation(broken)
+    bad = broken / "_plan" / "work-package" / "WP-001.md"
+    bad.write_text(
+        bad.read_text(encoding="utf-8").replace('status: "ready"', 'status: "nonsense"'),
+        encoding="utf-8",
+    )
+    run_expect_failure((sys.executable, str(MIGRATOR), str(broken)), SKILL_ROOT)
+    if not (broken / "_plan").is_dir():
+        raise RuntimeError("failed migration did not restore the v3 tree")
+    if (broken / "_aiHumanInteract" / "plan").exists():
+        raise RuntimeError("failed migration left a second plan tree")
+    if not (broken / "AGENTS.md").exists():
+        raise RuntimeError("failed migration left AGENTS.md missing")
+
+
+
 def main() -> int:
     require_consistent_schema_version()
     with tempfile.TemporaryDirectory(prefix="paths-modernity-example-") as raw:
@@ -172,6 +258,7 @@ def main() -> int:
             ),
             plan_dir,
         )
+        exercise_migration(root)
     print("Plan Graph v4 bundle checks passed")
     return 0
 

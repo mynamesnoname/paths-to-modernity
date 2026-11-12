@@ -68,6 +68,20 @@
 
 结果：`Plan Graph v4 bundle checks passed`（12 tests）。
 
+### 迁移工具与 v4 修正（2026-11-12）
+
+第三轮评审指出 v4 有两处工程缺陷，均已修复并加测试：
+
+| 问题 | 修复 |
+|---|---|
+| `graph.json` 的 `source_of_truth` 用 `PLAN_ROOT.name`，生成 `plan/…` 而非 `_aiHumanInteract/plan/…` | 改为按 `plan_root` 相对仓库根计算；新增语义断言：每条 glob 必须展开到真实文件，且与节点 `source` 同前缀 |
+| 双树防护可绕过（预建空新目录即放行；已存在 v4 manifest 时不再检查） | 守卫移到 `install`/`uninstall` 入口，且不再以「新目录存在」当作已迁移；两种并存状态都拒绝 |
+| 迁移指南与安装器行为冲突（搬完后 v3 工具仍在，安装器按哈希拒绝覆盖） | 新增 `scripts/migrate_plan_graph_v3.py`，见下 |
+
+迁移工具做的是：校验 v3 manifest 与 schema → 临时备份 → 移动目录 → 改写源节点内的 `_plan/` 引用 → 替换 `AGENTS.md` 中的标记块 → 删除 v3 工具与旧 manifest → 安装 v4 → 校验并重建视图。任一步失败则整体回滚，恢复 v3 树与 `AGENTS.md`，不留第二棵树。
+
+回归新增两条正向用例：真实 v3 fixture 的完整升级（含用户编辑保留、链接改写、manifest 升版），以及校验失败时的回滚。
+
 **未迁移的旧安装不会自动升级**，这是有意的：v4 安装器拒绝在未搬迁的 `_plan/` 旁另建一棵树，避免出现两套并存的计划。
 
 ### 补充 — 报告细化为「分拣 + 一次明示授权」（2026-11-11）

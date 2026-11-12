@@ -33,6 +33,13 @@ python3 -B assets/plan-graph/_aiHumanInteract/plan/build_graph.py --root assets/
 python3 -B scripts/test_plan_graph_bundle.py
 ```
 
+Migrating a target project installed by an earlier bundle:
+
+```bash
+python3 -B scripts/migrate_plan_graph_v3.py /path/to/repository --dry-run
+python3 -B scripts/migrate_plan_graph_v3.py /path/to/repository
+```
+
 The regression checks installation preview and removal, schema alignment,
 source validity, and generated-view freshness. Success ends with
 `Plan Graph v4 bundle checks passed`.
