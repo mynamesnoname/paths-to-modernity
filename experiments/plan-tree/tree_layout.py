@@ -406,12 +406,15 @@ HTML = """<!DOCTYPE html>
   #panel-head.status-proposed h3 {{ color: #31577D; }}
   #panel-head.status-blocked h3 {{ color: #873F3F; }}
   #panel-head.status-superseded h3 {{ color: #777D85; }}
-  #panel-resizer {{ position: absolute; left: -3px; top: 0; bottom: 0; width: 7px;
+  #panel-resizer {{ position: absolute; left: -7px; top: 0; bottom: 0; width: 14px;
     cursor: col-resize; z-index: 2; }}
-  #panel-resizer::after {{ content: ""; position: absolute; left: 3px; top: 50%;
-    width: 1px; height: 44px; margin-top: -22px; background: #dee2e6; }}
-  #panel-resizer:hover::after, #panel-resizer.dragging::after {{ background: #B8C0C9; }}
+  #panel-resizer::after {{ content: ""; position: absolute; left: 6px; top: 50%;
+    width: 2px; height: 56px; margin-top: -28px; border-radius: 1px; background: #CED4DA; }}
+  #panel-resizer:hover {{ background: rgba(80,120,184,.08); }}
+  #panel-resizer:hover::after, #panel-resizer.dragging::after {{ background: #5078B8; }}
   body.resizing {{ user-select: none; cursor: col-resize; }}
+  #shade {{ display: none; }}
+  #shade.on {{ display: block; }}
   #panel-body {{ flex: 1; min-height: 0; overflow-y: auto; padding: 12px 18px 20px; }}
   #panel h3 {{ margin: 0 26px 4px 0; font-size: 14px; line-height: 1.4; }}
   #panel .meta {{ color: #868e96; margin-bottom: 6px; }}
@@ -439,10 +442,12 @@ HTML = """<!DOCTYPE html>
 <body>
 <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
   <g id="scene">{body}</g>
+  <rect id="shade" width="100%" height="100%" fill="#1B1B1B" opacity="0.45"/>
+  <g id="top-layer"></g>
 </svg>
 <div id="hud">
   <b>{title}</b>
-  <div id="filters">{filters}</div>
+  <div id="filters">{filters}<button id="filter-all" class="filter filter-all">全选</button></div>
   <div class="hint">点击节点查看详情 · 点状态筛选 · 滚轮缩放 · 拖拽平移</div>
   <button id="reset">100%</button>
   <button id="fit">适应宽度</button>
@@ -459,6 +464,11 @@ HTML = """<!DOCTYPE html>
   const DETAILS = {details};
   const svg = document.getElementById('canvas');
   const scene = document.getElementById('scene');
+  const topLayer = document.getElementById('top-layer');
+  const shade = document.getElementById('shade');
+  const nodeLayer = document.getElementById('node-layer');
+  const haloLayer = document.getElementById('halo-layer');
+  const groundLayer = document.getElementById('ground-layer');
   const W = {width}, H = {height};
   let k = 1, tx = 0, ty = 0, dragging = false, lastX = 0, lastY = 0, moved = false;
   const panel = document.getElementById('panel');
@@ -627,29 +637,31 @@ HTML = """<!DOCTYPE html>
     clearHot();
     history.replaceState(null, '', location.pathname + location.search);
   }
-  const filterButtons = [...document.querySelectorAll('.filter')];
+  const filterButtons = [...document.querySelectorAll('.filter[data-status]')];
   const activeStatuses = new Set();
 
   function nodeVisible(id) {
     return activeStatuses.size === 0 || activeStatuses.has(DETAILS[id].status);
   }
 
+  function clearTop() {
+    topLayer.querySelectorAll('.node').forEach(el => nodeLayer.appendChild(el));
+    topLayer.querySelectorAll('.halo').forEach(el => haloLayer.appendChild(el));
+    topLayer.querySelectorAll('.shadow, .side').forEach(el => groundLayer.appendChild(el));
+  }
+
   function applyFilter() {
-    document.querySelectorAll('.node').forEach(node => {
-      node.style.display = nodeVisible(node.dataset.id) ? '' : 'none';
-    });
-    document.querySelectorAll('.halo').forEach(halo => {
-      halo.style.display = nodeVisible(halo.dataset.id) ? '' : 'none';
-    });
-    document.querySelectorAll('#ground-layer [data-id]').forEach(item => {
-      item.style.display = nodeVisible(item.dataset.id) ? '' : 'none';
-    });
-    document.querySelectorAll('.edge').forEach(path => {
-      const to = path.dataset.to;
-      const from = path.dataset.from;
-      const visible = nodeVisible(to) && (!from || nodeVisible(from));
-      path.style.display = visible ? '' : 'none';
-    });
+    clearTop();
+    const filtering = activeStatuses.size > 0;
+    shade.classList.toggle('on', filtering);
+    if (filtering) {
+      const ground = [...document.querySelectorAll('#ground-layer [data-id]')].filter(el => nodeVisible(el.dataset.id));
+      const halos = [...document.querySelectorAll('.halo')].filter(el => nodeVisible(el.dataset.id));
+      const nodes = [...document.querySelectorAll('.node')].filter(el => nodeVisible(el.dataset.id));
+      ground.forEach(el => topLayer.appendChild(el));
+      halos.forEach(el => topLayer.appendChild(el));
+      nodes.forEach(el => topLayer.appendChild(el));
+    }
     if (selectedId && !nodeVisible(selectedId)) hidePanel();
   }
 
@@ -663,7 +675,13 @@ HTML = """<!DOCTYPE html>
     });
   });
 
-  document.getElementById('scene').addEventListener('click', (event) => {
+  document.getElementById('filter-all').addEventListener('click', () => {
+    activeStatuses.clear();
+    filterButtons.forEach(button => button.classList.remove('active'));
+    applyFilter();
+  });
+
+  svg.addEventListener('click', (event) => {
     if (moved) { moved = false; return; }
     const g = event.target.closest('.node');
     if (g) show(g.dataset.id);
@@ -672,7 +690,9 @@ HTML = """<!DOCTYPE html>
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape') hidePanel(); });
 
   function apply() {{
-    scene.setAttribute('transform', `translate(${{tx}} ${{ty}}) scale(${{k}})`);
+    const transform = `translate(${{tx}} ${{ty}}) scale(${{k}})`;
+    scene.setAttribute('transform', transform);
+    topLayer.setAttribute('transform', transform);
   }}
   function fitWidth() {{
     const r = svg.getBoundingClientRect();

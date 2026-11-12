@@ -32,8 +32,9 @@ Implemented in `tree_layout.py`:
   column instead of fanning out;
 - parent-child connectors only; a stacked leaf owns the full path from its
   parent down the shared spine, so selecting it highlights exactly that route;
-- status chips filter the tree (multi-select); a filtered-out selection closes
-  the panel;
+- status chips filter the tree (multi-select) by dimming the rest under a
+  translucent shade and raising matching cards; 全选 clears the filter; a
+  filtered-out selection closes the panel;
 - click a node to open a scrollable detail panel (full title, objective,
   deliverables, acceptance, links, evidence); `Esc` closes it; the URL hash
   deep-links to a node;
