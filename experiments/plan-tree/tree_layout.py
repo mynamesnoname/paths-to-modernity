@@ -294,7 +294,8 @@ def ground_markup(placed: list[tuple[PlanNode, float, float, float]]) -> str:
     for node, px, py, z in placed:
         gx, gy = ground_of(px, py, z)
         parts.append(
-            f'<ellipse cx="{gx + NODE_W / 2:.1f}" cy="{gy + NODE_H:.1f}" '
+            f'<ellipse class="shadow" data-id="{html.escape(node.node_id)}" '
+            f'cx="{gx + NODE_W / 2:.1f}" cy="{gy + NODE_H:.1f}" '
             f'rx="{NODE_W / 2 - 2:.1f}" ry="5" fill="#000" opacity="0.05"/>'
         )
     for node, px, py, z in placed:
@@ -302,7 +303,8 @@ def ground_markup(placed: list[tuple[PlanNode, float, float, float]]) -> str:
             continue
         gx, gy = ground_of(px, py, z)
         parts.append(
-            f'<path class="side" d="M {px:.1f} {py + NODE_H:.1f} '
+            f'<path class="side" data-id="{html.escape(node.node_id)}" '
+            f'd="M {px:.1f} {py + NODE_H:.1f} '
             f'L {px + NODE_W:.1f} {py + NODE_H:.1f} '
             f'L {gx + NODE_W:.1f} {gy + NODE_H:.1f} '
             f'L {gx:.1f} {gy + NODE_H:.1f} Z" '
@@ -600,6 +602,9 @@ HTML = """<!DOCTYPE html>
     });
     document.querySelectorAll('.halo').forEach(halo => {
       halo.style.display = nodeVisible(halo.dataset.id) ? '' : 'none';
+    });
+    document.querySelectorAll('#ground-layer [data-id]').forEach(item => {
+      item.style.display = nodeVisible(item.dataset.id) ? '' : 'none';
     });
     document.querySelectorAll('.edge').forEach(path => {
       const to = path.dataset.to;
