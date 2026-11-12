@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import subprocess
@@ -148,6 +149,10 @@ def exercise_installer(root: Path) -> None:
         raise RuntimeError("v4 installer built beside an unmigrated v3 tree")
 
 
+def _sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def _to_v3(text: str) -> str:
     return text.replace("_aiHumanInteract/plan/", "_plan/").replace(
         SCHEMA_VERSION, V3_SCHEMA
@@ -177,6 +182,10 @@ def build_v3_installation(repo: Path) -> None:
         name.replace("_aiHumanInteract/plan", "_plan")
         for name in manifest.get("created_dirs", [])
     ]
+    manifest["managed_files"] = {
+        name: _sha256_file(legacy / name[len("_plan/"):])
+        for name in manifest["managed_files"]
+    }
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     agents = repo / "AGENTS.md"
     agents.write_text(_to_v3(agents.read_text(encoding="utf-8")), encoding="utf-8")
@@ -228,6 +237,17 @@ def exercise_migration(root: Path) -> None:
         raise RuntimeError("failed migration left a second plan tree")
     if not (broken / "AGENTS.md").exists():
         raise RuntimeError("failed migration left AGENTS.md missing")
+
+    edited = root / "migration-edited-tool"
+    edited.mkdir()
+    build_v3_installation(edited)
+    tool = edited / "_plan" / "validate.py"
+    tool.write_text(tool.read_text(encoding="utf-8") + "# local rule\n", encoding="utf-8")
+    run_expect_failure((sys.executable, str(MIGRATOR), str(edited)), SKILL_ROOT)
+    if "# local rule" not in tool.read_text(encoding="utf-8"):
+        raise RuntimeError("migration discarded a user-modified tool file")
+    if (edited / "_aiHumanInteract" / "plan").exists():
+        raise RuntimeError("refused migration still moved the tree")
 
 
 

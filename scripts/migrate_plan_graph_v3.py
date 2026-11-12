@@ -46,8 +46,10 @@ def _sha256(path: Path) -> str:
 
 def _plan_of(repo: Path) -> tuple[Path, Path]:
     legacy = repo / V3_PLAN_RELATIVE
-    if not legacy.is_dir():
+    if not legacy.exists():
         raise MigrationError(f"no v3 plan tree at {legacy}")
+    if not legacy.is_dir():
+        raise MigrationError(f"{legacy} is not a directory; expected a v3 plan tree")
     current = repo / installer.PLAN_RELATIVE
     if current.exists():
         raise MigrationError(
@@ -88,19 +90,24 @@ def _load_v3_manifest(legacy: Path) -> dict:
     return manifest
 
 
-def _check_tools(legacy: Path) -> None:
-    """The v3 tools are replaced, so they must at least be the expected files."""
+def _check_tools(legacy: Path, manifest: dict) -> None:
+    """Installer-owned tools are replaced; user edits there must be resolved first."""
+    managed = manifest["managed_files"]
     for name in TOOL_FILES:
         path = legacy / name
         if not path.is_file():
             raise MigrationError(f"missing installed tool: {path}")
-        if name == "README.md":
-            continue
-        text = path.read_text(encoding="utf-8", errors="replace")
-        if "Plan Graph" not in text and "plan graph" not in text:
+        recorded = managed.get(f"_plan/{name}")
+        if recorded is None:
             raise MigrationError(
-                f"{path} does not look like an installed Plan Graph tool; "
-                "reconcile it by hand before migrating"
+                f"manifest does not record {name}; this installation is not "
+                "the one the manifest describes"
+            )
+        if _sha256(path) != recorded:
+            raise MigrationError(
+                f"{path} was modified after installation. The migration replaces "
+                "installed tools, so move your changes aside and reinstall them "
+                "as a local extension before migrating."
             )
 
 
@@ -129,6 +136,11 @@ def _governance_replace(repo: Path) -> tuple[bool, str | None]:
     if not path.is_file():
         return False, None
     text = path.read_text(encoding="utf-8")
+    if text.count(installer.START_MARKER) > 1:
+        raise MigrationError(
+            "AGENTS.md contains more than one plan-graph block; "
+            "keep one and rerun"
+        )
     if installer.START_MARKER not in text:
         return False, None
     fragment = installer._fragment()
@@ -162,7 +174,7 @@ def migrate(repo: Path, *, dry_run: bool = False) -> None:
 
     legacy, current = _plan_of(repo)
     manifest = _load_v3_manifest(legacy)
-    _check_tools(legacy)
+    _check_tools(legacy, manifest)
 
     rewrites, has_block, has_views = _describe(repo, legacy)
     python = sys.executable

@@ -48,10 +48,20 @@ Markdown sources, replaces the marked governance block when `AGENTS.md` carries
 one, reinstalls the v4 tools, then validates and rebuilds the views. Any failure
 restores the backup and `AGENTS.md`, and leaves no second tree.
 
-It does not decide for you where a user edit conflicts with the bundle. If a
-migrated source references a path the tool did not rewrite, validation fails and
-the migration rolls back; reconcile by hand and rerun. Editing the generated
-views by hand to satisfy validation is never correct: regenerate them.
+The tool refuses rather than guessing. It stops when an installed tool file no
+longer matches the hash in the v3 manifest, because migrating replaces those
+files and would silently discard the edit; it also stops on a duplicate
+governance block or a missing install manifest. Nothing is moved until every
+check passes.
+
+If a migrated source references a path the tool did not rewrite, validation
+fails and the migration rolls back; reconcile by hand and rerun. Editing the
+generated views by hand to satisfy validation is never correct: regenerate them.
+
+The tools also enforce the layout. `validate.py`, `build_graph.py`, and the
+regression run accept only `<repository>/_aiHumanInteract/plan/`; pointing
+`--root` at a directory elsewhere fails with an explicit error rather than
+producing repository-relative paths that resolve nowhere.
 
 Manual migration remains possible, but the steps are not the four lines this
 guide once gave. Moving the tree alone leaves the v3 tools in place, and the v4

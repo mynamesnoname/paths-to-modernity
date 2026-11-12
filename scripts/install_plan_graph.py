@@ -79,9 +79,9 @@ def _refuse_competing_trees(repo: Path) -> None:
         )
     raise InstallError(
         "found a v3 plan tree at _plan/; v4 reads _aiHumanInteract/plan/ and "
-        "will not migrate it. Run scripts/migrate_plan_graph_v3.py, or move "
-        "_plan/ to _aiHumanInteract/plan/ by hand after reading the migration "
-        "steps in references/plan-graph.md."
+        "will not migrate it. Run the skill's migrate_plan_graph_v3.py against "
+        "this repository, or follow the manual steps in its references/"
+        "plan-graph.md."
     )
 
 

@@ -15,6 +15,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 
 PLAN_ROOT = Path(__file__).resolve().parent
+PLAN_RELATIVE = Path("_aiHumanInteract/plan")
 REPO_ROOT = PLAN_ROOT.parents[1]
 LEVELS = ("long-term", "mid-term", "short-term", "work-package")
 PREFIXES = {
@@ -719,6 +720,12 @@ def load_and_validate(
 
     plan_root = plan_root.resolve()
     repo_root = (repo_root or plan_root.parents[1]).resolve()
+    expected = repo_root / PLAN_RELATIVE
+    if plan_root != expected:
+        raise PlanGraphError(
+            f"unsupported plan location: {plan_root}. v4 reads {expected}; "
+            "point --root at a repository that follows the v4 layout."
+        )
     nodes: dict[str, PlanNode] = {}
     errors: list[str] = []
     counts: Counter[str] = Counter()
