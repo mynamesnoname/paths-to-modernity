@@ -267,6 +267,48 @@ def edge_markup(
     return '<g id="edge-layer">' + "".join(parts) + "</g>"
 
 
+CARD_MARK_STYLE = {
+    "supersedes": ("↓", 56),
+    "conflicts_with": ("✕", 48),
+    "alternative_of": ("→", 48),
+}
+
+
+def card_mark_markup(
+    placed: list[tuple[PlanNode, float, float, float]], edges: list[dict]
+) -> str:
+    """Large watermark marks on the referenced card, shown with its owner."""
+    pos = {node.node_id: (x, y) for node, x, y, _ in placed}
+    parts: list[str] = []
+    for edge in edges:
+        relation = edge.get("relationship")
+        if relation not in CARD_MARK_STYLE:
+            continue
+        source, target = edge.get("from"), edge.get("to")
+        if source not in pos or target not in pos:
+            continue
+        tx, ty = pos[target]
+        cx = tx + NODE_W / 2
+        cy = ty + NODE_H / 2
+        glyph, size = CARD_MARK_STYLE[relation]
+        body = (
+            f'<text x="{cx:.1f}" y="{cy:.1f}" text-anchor="middle" '
+            f'dominant-baseline="central" fill="#495057" fill-opacity="0.16" '
+            f'font-size="{size}" font-weight="700">{glyph}</text>'
+        )
+        if relation == "alternative_of":
+            body += (
+                f'<text x="{cx:.1f}" y="{cy + 30:.1f}" text-anchor="middle" '
+                f'fill="#495057" fill-opacity="0.16" font-size="10" '
+                f'font-weight="600">alt</text>'
+            )
+        parts.append(
+            f'<g class="card-mark" data-owner="{source}" data-target="{target}" '
+            f'data-relation="{relation}" style="display:none">{body}</g>'
+        )
+    return '<g id="card-mark-layer">' + "".join(parts) + "</g>"
+
+
 def ground_of(px: float, py: float, z: float) -> tuple[float, float]:
     return px - z * DEPTH_X, py + z
 
@@ -479,6 +521,7 @@ HTML = """<!DOCTYPE html>
   .edge {{ fill: none; stroke: #B8C0C9; stroke-width: 1.2; stroke-linejoin: round;
     stroke-linecap: round; transition: stroke .12s ease, stroke-width .12s ease; }}
   .edge.hot {{ stroke: #5078B8; stroke-width: 2.2; }}
+  .card-mark {{ pointer-events: none; }}
   .halo {{ fill: transparent; pointer-events: none; }}
   .halo.on {{ fill: #DCEBFA; filter: blur(4px); }}
   .node {{ cursor: pointer; }}
@@ -689,6 +732,9 @@ HTML = """<!DOCTYPE html>
       });
       panelBody.append(ul);
     }
+    document.querySelectorAll('.card-mark').forEach(mark => {
+      mark.style.display = mark.dataset.owner === id ? '' : 'none';
+    });
     panel.hidden = false;
     revealPanel();
     history.replaceState(null, '', '#' + encodeURIComponent(id));
@@ -699,6 +745,7 @@ HTML = """<!DOCTYPE html>
     document.querySelectorAll('.node.selected').forEach(n => n.classList.remove('selected'));
     document.querySelectorAll('.halo.on').forEach(h => h.classList.remove('on'));
     clearHot();
+    document.querySelectorAll('.card-mark').forEach(mark => { mark.style.display = 'none'; });
     history.replaceState(null, '', location.pathname + location.search);
   }
   const filterButtons = [...document.querySelectorAll('.filter[data-status]')];
@@ -1074,6 +1121,7 @@ def render_html(payload: dict, title: str) -> str:
         + halo_markup(projected)
         + edge_markup(projected, "down")
         + svg_markup(projected)
+        + card_mark_markup(projected, payload.get("edges", []))
         + '<g id="hot-layer"></g>'
     )
     details = {

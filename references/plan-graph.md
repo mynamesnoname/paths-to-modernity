@@ -97,8 +97,9 @@ Markdown nodes are the editable source of truth. The builder generates:
 For a visual read, open `structure/graph.html`. It is one self-contained file
 with no network dependencies; selection, status filtering, a `Ctrl/Cmd+K`
 search surface, and panel resizing are local to the page and write nothing back.
-Selecting a node opens a panel that lists all seven relation types; each
-related plan is a link that navigates to it. It is a generated view, so
+Selecting a node also stamps a large watermark on the referenced card for
+supersession, conflict, and alternative relations. The panel lists all seven
+relation types; each related plan is a link that navigates to it. It is a generated view, so
 regenerate and commit it with the source nodes; `--check` covers it like the
 other views.
 
