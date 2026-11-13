@@ -267,6 +267,91 @@ def edge_markup(
     return '<g id="edge-layer">' + "".join(parts) + "</g>"
 
 
+RELATION_COLORS = {
+    "prerequisite_for": "#C92A2A",
+    "enables": "#2B8A3E",
+    "validates": "#1864AB",
+}
+BADGE_STYLE = {
+    "supersedes": ("↓", "superseded by"),
+    "conflicts_with": ("✕", "conflicts with"),
+    "alternative_of": ("alt", "alternative of"),
+}
+
+
+def relation_markup(
+    placed: list[tuple[PlanNode, float, float, float]], edges: list[dict]
+) -> str:
+    """Typed relation edges, hidden until a node is selected."""
+    pos = {node.node_id: (x, y) for node, x, y, _ in placed}
+    parts: list[str] = []
+    for edge in edges:
+        relation = edge.get("relationship")
+        if relation not in RELATION_COLORS:
+            continue
+        source, target = edge.get("from"), edge.get("to")
+        if source not in pos or target not in pos:
+            continue
+        fx, fy = pos[source]
+        tx, ty = pos[target]
+        sx, sy = fx + NODE_W, fy + NODE_H / 2
+        ex, ey = tx + NODE_W, ty + NODE_H / 2
+        curve = max(48.0, abs(ex - sx) * 0.25)
+        parts.append(
+            f'<path class="relation" data-relation="{relation}" '
+            f'data-from="{source}" data-to="{target}" style="display:none" '
+            f'd="M {sx:.1f} {sy:.1f} C {sx + curve:.1f} {sy:.1f}, '
+            f'{ex + curve:.1f} {ey:.1f}, {ex:.1f} {ey:.1f}" '
+            f'stroke="{RELATION_COLORS[relation]}" '
+            f'marker-end="url(#arrow-{relation})"/>'
+        )
+    return '<g id="relation-layer">' + "".join(parts) + "</g>"
+
+
+def badge_markup(
+    placed: list[tuple[PlanNode, float, float, float]], edges: list[dict]
+) -> str:
+    """Non-edge relations as gray badges on the referenced card."""
+    pos = {node.node_id: (x, y) for node, x, y, _ in placed}
+    counters: dict[tuple[str, str], int] = {}
+    parts: list[str] = []
+    for edge in edges:
+        relation = edge.get("relationship")
+        if relation not in BADGE_STYLE:
+            continue
+        source, target = edge.get("from"), edge.get("to")
+        if source not in pos or target not in pos:
+            continue
+        tx, ty = pos[target]
+        key = (source, target)
+        index = counters.get(key, 0)
+        counters[key] = index + 1
+        bx = tx + NODE_W - 24
+        by = max(12.0, ty - 12 - index * 22)
+        glyph, phrase = BADGE_STYLE[relation]
+        if relation == "alternative_of":
+            shape = (
+                f'<rect x="{bx - 17:.1f}" y="{by - 9:.1f}" width="34" height="18" '
+                f'rx="9" fill="#495057" fill-opacity="0.65"/>'
+                f'<text x="{bx:.1f}" y="{by + 3:.1f}" text-anchor="middle" '
+                f'fill="#ffffff" font-size="8">→ alt</text>'
+            )
+        else:
+            shape = (
+                f'<circle cx="{bx:.1f}" cy="{by:.1f}" r="10" fill="#495057" '
+                f'fill-opacity="0.65"/>'
+                f'<text x="{bx:.1f}" y="{by + 3.5:.1f}" text-anchor="middle" '
+                f'fill="#ffffff" font-size="11">{glyph}</text>'
+            )
+        parts.append(
+            f'<g class="badge" data-owner="{source}" data-target="{target}" '
+            f'data-relation="{relation}" style="display:none">'
+            f'<title>{target} {phrase} {source}</title>'
+            f"{shape}</g>"
+        )
+    return '<g id="badge-layer">' + "".join(parts) + "</g>"
+
+
 def ground_of(px: float, py: float, z: float) -> tuple[float, float]:
     return px - z * DEPTH_X, py + z
 
@@ -462,6 +547,25 @@ HTML = """<!DOCTYPE html>
   #panel code {{ background: #f1f3f5; padding: 1px 4px; border-radius: 3px;
     font-size: 11px; word-break: break-all; }}
   #panel .kind {{ color: #495057; margin-top: 6px; font-size: 11px; }}
+  #relation-legend {{ display: flex; gap: 10px; margin-top: 7px; font-size: 10px;
+    color: #495057; }}
+  #relation-legend[hidden] {{ display: none; }}
+  .rel-swatch {{ display: inline-block; width: 14px; height: 2px;
+    vertical-align: 3px; margin-right: 4px; }}
+  .relation {{ fill: none; stroke-width: 1.6; }}
+  .badge {{ pointer-events: none; }}
+  #panel .rel-summary {{ margin-top: 6px; font-size: 10px; color: #495057;
+    display: flex; flex-wrap: wrap; gap: 4px 10px; }}
+  #panel .rel-summary b {{ font-weight: 600; }}
+  #panel .rel-block {{ margin-top: 4px; }}
+  #panel .rel-row {{ display: flex; gap: 8px; margin: 3px 0; font-size: 11px;
+    line-height: 1.5; }}
+  #panel .rel-label {{ flex: none; width: 84px; color: #868e96; }}
+  #panel .rel-values {{ flex: 1; min-width: 0; }}
+  #panel .rel-link {{ display: inline-flex; align-items: baseline; gap: 5px;
+    color: #31577D; text-decoration: none; margin: 0 8px 2px 0; }}
+  #panel .rel-link:hover {{ text-decoration: underline; }}
+  #panel .rel-empty {{ color: #adb5bd; }}
   #close {{ position: absolute; right: 12px; top: 10px; border: 0; background: none;
     font-size: 20px; line-height: 1; cursor: pointer; color: #868e96; }}
   .edge {{ fill: none; stroke: #B8C0C9; stroke-width: 1.2; stroke-linejoin: round;
@@ -481,6 +585,17 @@ HTML = """<!DOCTYPE html>
 </head>
 <body>
 <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow-prerequisite_for" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#C92A2A"/>
+    </marker>
+    <marker id="arrow-enables" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#2B8A3E"/>
+    </marker>
+    <marker id="arrow-validates" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#1864AB"/>
+    </marker>
+  </defs>
   <g id="scene">{body}</g>
   <rect id="shade" width="100%" height="100%" fill="#1B1B1B"/>
   <g id="top-layer"></g>
@@ -490,6 +605,11 @@ HTML = """<!DOCTYPE html>
   <div id="filters">{filters}<button id="filter-all" class="filter filter-all">全选</button></div>
   <button id="search-open" type="button">搜索 <kbd>Ctrl/⌘K</kbd></button>
   <div id="search-chip" hidden><span id="search-chip-text"></span><button id="search-clear" aria-label="clear search">×</button></div>
+  <div id="relation-legend" hidden>
+    <span><i class="rel-swatch" style="background:#C92A2A"></i>depends</span>
+    <span><i class="rel-swatch" style="background:#2B8A3E"></i>enables</span>
+    <span><i class="rel-swatch" style="background:#1864AB"></i>validates</span>
+  </div>
   <div class="hint">点击节点查看详情 · Ctrl/⌘K 搜索 · 点状态筛选 · 滚轮缩放 · 拖拽平移</div>
   <button id="reset">100%</button>
   <button id="fit">适应宽度</button>
@@ -511,6 +631,7 @@ HTML = """<!DOCTYPE html>
 </aside>
 <script>
   const DETAILS = {details};
+  const RELATIONS = {relations};
   const svg = document.getElementById('canvas');
   const scene = document.getElementById('scene');
   const topLayer = document.getElementById('top-layer');
@@ -631,6 +752,8 @@ HTML = """<!DOCTYPE html>
     [...panelHead.children].forEach(child => { if (child.id !== 'close') child.remove(); });
     panelHead.append(el('h3', null, d.id + ' · ' + d.title));
     panelHead.append(el('div', 'meta', d.level + ' · ' + d.status + ' · updated ' + d.updated + (d.parent ? ' · parent ' + d.parent : '')));
+    panelHead.append(renderRelationSummary(id));
+    panelBody.append(renderRelations(id));
     panelBody.scrollTop = 0;
     if (d.objective) {
       panelBody.append(el('h4', null, 'Objective'));
@@ -674,6 +797,13 @@ HTML = """<!DOCTYPE html>
       });
       panelBody.append(ul);
     }
+    document.querySelectorAll('.relation').forEach(path => {
+      path.style.display = (path.dataset.from === id || path.dataset.to === id) ? '' : 'none';
+    });
+    document.querySelectorAll('.badge').forEach(badge => {
+      badge.style.display = badge.dataset.owner === id ? '' : 'none';
+    });
+    document.getElementById('relation-legend').hidden = false;
     panel.hidden = false;
     revealPanel();
     history.replaceState(null, '', '#' + encodeURIComponent(id));
@@ -684,6 +814,9 @@ HTML = """<!DOCTYPE html>
     document.querySelectorAll('.node.selected').forEach(n => n.classList.remove('selected'));
     document.querySelectorAll('.halo.on').forEach(h => h.classList.remove('on'));
     clearHot();
+    document.querySelectorAll('.relation').forEach(path => { path.style.display = 'none'; });
+    document.querySelectorAll('.badge').forEach(badge => { badge.style.display = 'none'; });
+    document.getElementById('relation-legend').hidden = true;
     history.replaceState(null, '', location.pathname + location.search);
   }
   const filterButtons = [...document.querySelectorAll('.filter[data-status]')];
@@ -781,6 +914,97 @@ HTML = """<!DOCTYPE html>
     searchChipText.textContent = value ? '搜索：' + value : '';
   }
 
+  function relationCounts(rel) {
+    const count = (list, type) => (list || []).filter(item => item.type === type).length;
+    return {
+      parent: (rel.parent ? 1 : 0) + (rel.children || []).length,
+      depends: count(rel.in, 'prerequisite_for') + count(rel.out, 'prerequisite_for'),
+      enables: count(rel.in, 'enables') + count(rel.out, 'enables'),
+      validates: count(rel.in, 'validates') + count(rel.out, 'validates'),
+      supersedes: count(rel.in, 'supersedes') + count(rel.out, 'supersedes'),
+      conflicts: count(rel.in, 'conflicts_with') + count(rel.out, 'conflicts_with'),
+      alternative: count(rel.in, 'alternative_of') + count(rel.out, 'alternative_of'),
+    };
+  }
+
+  function renderRelationSummary(id) {
+    const counts = relationCounts(RELATIONS[id] || {});
+    const labels = {
+      parent: 'parent', depends: 'depends', enables: 'enables',
+      validates: 'validates', supersedes: 'supersedes',
+      conflicts: 'conflicts', alternative: 'alternative',
+    };
+    const summary = el('div', 'rel-summary');
+    let any = false;
+    for (const [key, label] of Object.entries(labels)) {
+      if (!counts[key]) continue;
+      any = true;
+      const item = el('span', null, label + ' ');
+      item.append(el('b', null, String(counts[key])));
+      summary.append(item);
+    }
+    if (!any) summary.textContent = 'no relations';
+    return summary;
+  }
+
+  function relationLink(targetId) {
+    const detail = DETAILS[targetId] || { status: 'superseded', title: targetId };
+    const link = document.createElement('a');
+    link.className = 'rel-link';
+    link.href = '#' + encodeURIComponent(targetId);
+    link.dataset.id = targetId;
+    const dot = document.createElement('span');
+    dot.className = 'dot dot-' + detail.status;
+    link.append(dot, document.createTextNode(targetId + ' · ' + detail.title));
+    return link;
+  }
+
+  function relationRow(label, targets) {
+    const row = el('div', 'rel-row');
+    const name = el('span', 'rel-label', label);
+    const values = el('span', 'rel-values');
+    if (!targets.length) {
+      values.append(el('span', 'rel-empty', 'none'));
+    } else {
+      targets.forEach(target => values.append(relationLink(target)));
+    }
+    row.append(name, values);
+    return row;
+  }
+
+  function renderRelations(id) {
+    const rel = RELATIONS[id] || {};
+    const block = el('div', 'rel-block');
+    block.append(el('h4', null, 'Relations'));
+    const outgoing = type => (rel.out || []).filter(item => item.type === type).map(item => item.target);
+    const incoming = type => (rel.in || []).filter(item => item.type === type).map(item => item.target);
+    block.append(relationRow('Parent', rel.parent ? [rel.parent] : []));
+    block.append(relationRow('Children', rel.children || []));
+    block.append(relationRow('Depends on', incoming('prerequisite_for')));
+    block.append(relationRow('Required by', outgoing('prerequisite_for')));
+    block.append(relationRow('Enables', outgoing('enables')));
+    block.append(relationRow('Enabled by', incoming('enables')));
+    block.append(relationRow('Validates', outgoing('validates')));
+    block.append(relationRow('Validated by', incoming('validates')));
+    block.append(relationRow('Supersedes', outgoing('supersedes')));
+    block.append(relationRow('Superseded by', incoming('supersedes')));
+    const conflicts = [...new Set([...outgoing('conflicts_with'), ...incoming('conflicts_with')])];
+    block.append(relationRow('Conflicts with', conflicts));
+    block.append(relationRow('Alternative of', outgoing('alternative_of')));
+    block.append(relationRow('Has alternative', incoming('alternative_of')));
+    return block;
+  }
+
+  function navigateTo(id) {
+    activeStatuses.clear();
+    filterButtons.forEach(button => button.classList.remove('active'));
+    searchInput.value = '';
+    queryTokens = [];
+    applyFilter(false);
+    closeSearch();
+    show(id);
+  }
+
   function clearTop() {
     topLayer.querySelectorAll('.node').forEach(el => nodeLayer.appendChild(el));
     topLayer.querySelectorAll('.halo').forEach(el => haloLayer.appendChild(el));
@@ -865,6 +1089,12 @@ HTML = """<!DOCTYPE html>
     if (g) show(g.dataset.id);
   });
   document.getElementById('close').addEventListener('click', hidePanel);
+  panelBody.addEventListener('click', (event) => {
+    const link = event.target.closest('a.rel-link');
+    if (!link) return;
+    event.preventDefault();
+    navigateTo(link.dataset.id);
+  });
   document.addEventListener('keydown', (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
       event.preventDefault();
@@ -961,7 +1191,9 @@ def render_html(payload: dict, title: str) -> str:
         ground_markup(projected)
         + halo_markup(projected)
         + edge_markup(projected, "down")
+        + relation_markup(projected, payload.get("edges", []))
         + svg_markup(projected)
+        + badge_markup(projected, payload.get("edges", []))
         + '<g id="hot-layer"></g>'
     )
     details = {
@@ -981,6 +1213,27 @@ def render_html(payload: dict, title: str) -> str:
         }
         for node, _, _, _ in projected
     }
+
+    relations: dict[str, dict] = {
+        node_id: {"parent": detail["parent"], "children": [], "out": [], "in": []}
+        for node_id, detail in details.items()
+    }
+    for node_id, detail in details.items():
+        parent = detail["parent"]
+        if parent in relations:
+            relations[parent]["children"].append(node_id)
+    for edge in payload.get("edges", []):
+        relation = edge.get("relationship")
+        if relation == "decomposes_to":
+            continue
+        source, target = edge.get("from"), edge.get("to")
+        if source in relations and target in relations:
+            relations[source]["out"].append({"type": relation, "target": target})
+            relations[target]["in"].append({"type": relation, "target": source})
+    for entry in relations.values():
+        entry["children"].sort()
+        entry["out"].sort(key=lambda item: (item["type"], item["target"]))
+        entry["in"].sort(key=lambda item: (item["type"], item["target"]))
 
     counts: dict[str, int] = {}
     for node, _, _, _ in projected:
@@ -1011,4 +1264,5 @@ def render_html(payload: dict, title: str) -> str:
         .replace("{height}", f"{height:.0f}")
         .replace("{body}", body)
         .replace("{details}", json.dumps(details, ensure_ascii=False).replace("</", "<\\/"))
+        .replace("{relations}", json.dumps(relations, ensure_ascii=False).replace("</", "<\\/"))
     )
