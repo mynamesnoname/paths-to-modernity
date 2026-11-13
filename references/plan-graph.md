@@ -99,10 +99,15 @@ with no network dependencies; selection, status filtering, a `Ctrl/Cmd+K`
 search surface, and panel resizing are local to the page and write nothing back.
 Selecting a node also stamps a large watermark on the referenced card for
 supersession, conflict, and alternative relations. The panel lists the cross-cutting relations with links and marks parent/children
-as `see the graph`, since the canvas already shows them. The view opens in an
+as `see the graph`, since the canvas already shows them. Existing repository
+paths in Source, Links, and Evidence are relative links; external or missing
+references stay as text. The view opens in an
 overview fit; the HUD also offers 100%, fit-width, and overview. It is a generated view, so
 regenerate and commit it with the source nodes; `--check` covers it like the
 other views.
+
+To read existing plans, run `build_graph.py --check`; if it reports current,
+deliver `graph.html` as is. To update, run `build_graph.py`, then `--check`.
 
 For machine discovery, check the version, locate a node by ID, then follow its
 `source` path relative to the repository root. Read the source for decisions
@@ -364,8 +369,19 @@ If the authorized task includes adopting project governance, inspect applicable
 commands when it is missing. Absence means missing semantics, not a missing
 heading. Reconcile conflicting local rules before installation.
 
-The installer refuses differing files and older installations. It records its
-additions in `_aiHumanInteract/plan/install-manifest.json`, independently of project plans.
+The installer refuses files it cannot verify. It records its additions in
+`_aiHumanInteract/plan/install-manifest.json`, independently of project plans.
+A v4 installation from an older bundle is upgraded when its managed files still
+match the hashes recorded by the previous install; locally edited files are
+refused.
+
+To upgrade an existing v4 installation, rerun the same install command. The
+manifest records the hash of each managed file and of the governance block from
+the previous install; files and blocks that still match are replaced, while
+locally edited ones are refused. `--dry-run` lists additions and replacements.
+The manifest also records a `bundle_version` independent of the graph schema,
+so a viewer update does not require a schema change. After an upgrade, rebuild
+the views with `build_graph.py`.
 Preview removal from the same skill installation:
 
 ```bash
@@ -390,6 +406,6 @@ python3 -B _aiHumanInteract/plan/build_graph.py --check
 python3 -B -m unittest discover -s _aiHumanInteract/plan -p 'test_*.py' -v
 ```
 
-The builder validates before generating all four views. `--check` validates
+The builder validates before generating all five views. `--check` validates
 and checks freshness without writing. Commit source nodes and generated views
 together. For bundle-maintainer checks, follow the skill's [AGENTS.md](../AGENTS.md).

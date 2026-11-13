@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Plan tree — example plan graph</title>
+<title>Plan tree — Plan graph</title>
 <style>
   :root { color-scheme: light; }
   html, body { margin: 0; height: 100%; background: #F6F6F4;
@@ -56,6 +56,7 @@
   .search-empty { padding: 12px 10px; color: #868e96; font-size: 11px; }
   .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
   .dot-done { background: #A7CEB4; }
+  .dot-ready { background: #9CCFC7; }
   .dot-in_progress { background: #E7BA91; }
   .dot-proposed { background: #B3C9E2; }
   .dot-blocked { background: #E0ACAC; }
@@ -104,6 +105,10 @@
   #panel code { background: #f1f3f5; padding: 1px 4px; border-radius: 3px;
     font-size: 11px; word-break: break-all; }
   #panel .kind { color: #495057; margin-top: 6px; font-size: 11px; }
+  #panel .source { margin: 2px 0 0; font-size: 11px; color: #495057; }
+  #panel a.ref-link { color: #31577D; text-decoration: none;
+    word-break: break-all; }
+  #panel a.ref-link:hover { text-decoration: underline; }
   #panel .rel-summary { margin-top: 6px; font-size: 10px; color: #495057;
     display: flex; flex-wrap: wrap; gap: 4px 10px; }
   #panel .rel-summary b { font-weight: 600; }
@@ -137,13 +142,13 @@
 </head>
 <body>
 <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
-  <g id="scene"><g id="ground-layer"><ellipse class="shadow" data-id="WP-001" cx="154.0" cy="546.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><ellipse class="shadow" data-id="WP-002" cx="450.0" cy="546.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><ellipse class="shadow" data-id="ST-001" cx="302.0" cy="414.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><ellipse class="shadow" data-id="MT-001" cx="302.0" cy="282.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><ellipse class="shadow" data-id="LT-001" cx="302.0" cy="150.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><path class="side" data-id="ST-001" d="M 187.6 398.0 L 427.6 398.0 L 422.0 414.0 L 182.0 414.0 Z" fill="#E1E5E8" stroke="#D5DADF" stroke-width="0.8"/><path class="side" data-id="MT-001" d="M 193.2 250.0 L 433.2 250.0 L 422.0 282.0 L 182.0 282.0 Z" fill="#E1E5E8" stroke="#D5DADF" stroke-width="0.8"/><path class="side" data-id="LT-001" d="M 198.8 102.0 L 438.8 102.0 L 422.0 150.0 L 182.0 150.0 Z" fill="#E1E5E8" stroke="#D5DADF" stroke-width="0.8"/></g><g id="halo-layer"><rect class="halo" data-id="WP-001" x="24.0" y="468.0" width="260" height="88" rx="14"/><rect class="halo" data-id="WP-002" x="320.0" y="468.0" width="260" height="88" rx="14"/><rect class="halo" data-id="ST-001" x="177.6" y="320.0" width="260" height="88" rx="14"/><rect class="halo" data-id="MT-001" x="183.2" y="172.0" width="260" height="88" rx="14"/><rect class="halo" data-id="LT-001" x="188.8" y="24.0" width="260" height="88" rx="14"/></g><g id="edge-layer"><path class="edge" data-to="WP-001" data-from="ST-001" d="M 307.6 398.0 V 430.0 H 154.0 V 478.0"/><path class="edge" data-to="WP-002" data-from="ST-001" d="M 307.6 398.0 V 430.0 H 450.0 V 478.0"/><path class="edge" data-to="ST-001" data-from="MT-001" d="M 313.2 250.0 V 282.0 H 307.6 V 330.0"/><path class="edge" data-to="MT-001" data-from="LT-001" d="M 318.8 102.0 V 134.0 H 313.2 V 182.0"/></g><g id="node-layer"><g class="node" data-id="WP-001"><title>Define the routing trace schema</title><path class="card" d="M 34.0 478.0 H 269.0 Q 274.0 478.0 274.0 483.0 V 541.0 Q 274.0 546.0 269.0 546.0 H 34.0 Z" fill="#ffffff"/><rect class="accent" x="34.0" y="477.2" width="7" height="69.5" fill="#A4ADB7"/><path class="card-outline" d="M 41.0 478.0 H 269.0 Q 274.0 478.0 274.0 483.0 V 541.0 Q 274.0 546.0 269.0 546.0 H 41.0" fill="none" stroke="#adb5bd" stroke-width="1.5"/><path class="card-select" d="M 34.0 478.0 H 269.0 Q 274.0 478.0 274.0 483.0 V 541.0 Q 274.0 546.0 269.0 546.0 H 34.0 Z" fill="none"/><text x="48.0" y="498.0" class="id" fill="#78838D">WP-001</text><text x="264.0" y="498.0" class="tag" text-anchor="end" fill="#A4ADB7">WP</text><text x="48.0" y="519.0" class="title" fill="#212529">Define the routing trace</text><text x="48.0" y="536.0" class="title" fill="#212529">schema</text></g><g class="node" data-id="WP-002"><title>Verify trace replay</title><path class="card" d="M 330.0 478.0 H 565.0 Q 570.0 478.0 570.0 483.0 V 541.0 Q 570.0 546.0 565.0 546.0 H 330.0 Z" fill="#EFF5FC"/><rect class="accent" x="330.0" y="477.2" width="7" height="69.5" fill="#A4ADB7"/><path class="card-outline" d="M 337.0 478.0 H 565.0 Q 570.0 478.0 570.0 483.0 V 541.0 Q 570.0 546.0 565.0 546.0 H 337.0" fill="none" stroke="#B3C9E2" stroke-width="1.5"/><path class="card-select" d="M 330.0 478.0 H 565.0 Q 570.0 478.0 570.0 483.0 V 541.0 Q 570.0 546.0 565.0 546.0 H 330.0 Z" fill="none"/><text x="344.0" y="498.0" class="id" fill="#78838D">WP-002</text><text x="560.0" y="498.0" class="tag" text-anchor="end" fill="#A4ADB7">WP</text><text x="344.0" y="519.0" class="title" fill="#31577D">Verify trace replay</text></g><g class="node" data-id="ST-001"><title>Introduce and verify a trace schema</title><path class="card" d="M 187.6 330.0 H 422.6 Q 427.6 330.0 427.6 335.0 V 393.0 Q 427.6 398.0 422.6 398.0 H 187.6 Z" fill="#ffffff"/><rect class="accent" x="187.6" y="329.2" width="7" height="69.5" fill="#6F9DA2"/><path class="card-outline" d="M 194.6 330.0 H 422.6 Q 427.6 330.0 427.6 335.0 V 393.0 Q 427.6 398.0 422.6 398.0 H 194.6" fill="none" stroke="#adb5bd" stroke-width="1.5"/><path class="card-select" d="M 187.6 330.0 H 422.6 Q 427.6 330.0 427.6 335.0 V 393.0 Q 427.6 398.0 422.6 398.0 H 187.6 Z" fill="none"/><text x="201.6" y="350.0" class="id" fill="#78838D">ST-001</text><text x="417.6" y="350.0" class="tag" text-anchor="end" fill="#6F9DA2">ST</text><text x="201.6" y="371.0" class="title" fill="#212529">Introduce and verify a trace</text><text x="201.6" y="388.0" class="title" fill="#212529">schema</text></g><g class="node" data-id="MT-001"><title>Provide reproducible routing traces</title><path class="card" d="M 193.2 182.0 H 428.2 Q 433.2 182.0 433.2 187.0 V 245.0 Q 433.2 250.0 428.2 250.0 H 193.2 Z" fill="#ffffff"/><rect class="accent" x="193.2" y="181.2" width="7" height="69.5" fill="#6487AD"/><path class="card-outline" d="M 200.2 182.0 H 428.2 Q 433.2 182.0 433.2 187.0 V 245.0 Q 433.2 250.0 428.2 250.0 H 200.2" fill="none" stroke="#adb5bd" stroke-width="1.5"/><path class="card-select" d="M 193.2 182.0 H 428.2 Q 433.2 182.0 433.2 187.0 V 245.0 Q 433.2 250.0 428.2 250.0 H 193.2 Z" fill="none"/><text x="207.2" y="202.0" class="id" fill="#78838D">MT-001</text><text x="423.2" y="202.0" class="tag" text-anchor="end" fill="#6487AD">MT</text><text x="207.2" y="223.0" class="title" fill="#212529">Provide reproducible routing</text><text x="207.2" y="240.0" class="title" fill="#212529">traces</text></g><g class="node" data-id="LT-001"><title>Make automated routing accountable</title><path class="card" d="M 198.8 34.0 H 433.8 Q 438.8 34.0 438.8 39.0 V 97.0 Q 438.8 102.0 433.8 102.0 H 198.8 Z" fill="#ffffff"/><rect class="accent" x="198.8" y="33.2" width="7" height="69.5" fill="#7766A6"/><path class="card-outline" d="M 205.8 34.0 H 433.8 Q 438.8 34.0 438.8 39.0 V 97.0 Q 438.8 102.0 433.8 102.0 H 205.8" fill="none" stroke="#adb5bd" stroke-width="1.5"/><path class="card-select" d="M 198.8 34.0 H 433.8 Q 438.8 34.0 438.8 39.0 V 97.0 Q 438.8 102.0 433.8 102.0 H 198.8 Z" fill="none"/><text x="212.8" y="54.0" class="id" fill="#78838D">LT-001</text><text x="428.8" y="54.0" class="tag" text-anchor="end" fill="#7766A6">LT</text><text x="212.8" y="75.0" class="title" fill="#212529">Make automated routing</text><text x="212.8" y="92.0" class="title" fill="#212529">accountable</text></g></g><g id="card-mark-layer"></g><g id="hot-layer"></g></g>
+  <g id="scene"><g id="ground-layer"><ellipse class="shadow" data-id="WP-001" cx="154.0" cy="546.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><ellipse class="shadow" data-id="WP-002" cx="450.0" cy="546.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><ellipse class="shadow" data-id="ST-001" cx="302.0" cy="414.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><ellipse class="shadow" data-id="MT-001" cx="302.0" cy="282.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><ellipse class="shadow" data-id="LT-001" cx="302.0" cy="150.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><path class="side" data-id="ST-001" d="M 187.6 398.0 L 427.6 398.0 L 422.0 414.0 L 182.0 414.0 Z" fill="#E1E5E8" stroke="#D5DADF" stroke-width="0.8"/><path class="side" data-id="MT-001" d="M 193.2 250.0 L 433.2 250.0 L 422.0 282.0 L 182.0 282.0 Z" fill="#E1E5E8" stroke="#D5DADF" stroke-width="0.8"/><path class="side" data-id="LT-001" d="M 198.8 102.0 L 438.8 102.0 L 422.0 150.0 L 182.0 150.0 Z" fill="#E1E5E8" stroke="#D5DADF" stroke-width="0.8"/></g><g id="halo-layer"><rect class="halo" data-id="WP-001" x="24.0" y="468.0" width="260" height="88" rx="14"/><rect class="halo" data-id="WP-002" x="320.0" y="468.0" width="260" height="88" rx="14"/><rect class="halo" data-id="ST-001" x="177.6" y="320.0" width="260" height="88" rx="14"/><rect class="halo" data-id="MT-001" x="183.2" y="172.0" width="260" height="88" rx="14"/><rect class="halo" data-id="LT-001" x="188.8" y="24.0" width="260" height="88" rx="14"/></g><g id="edge-layer"><path class="edge" data-to="WP-001" data-from="ST-001" d="M 307.6 398.0 V 430.0 H 154.0 V 478.0"/><path class="edge" data-to="WP-002" data-from="ST-001" d="M 307.6 398.0 V 430.0 H 450.0 V 478.0"/><path class="edge" data-to="ST-001" data-from="MT-001" d="M 313.2 250.0 V 282.0 H 307.6 V 330.0"/><path class="edge" data-to="MT-001" data-from="LT-001" d="M 318.8 102.0 V 134.0 H 313.2 V 182.0"/></g><g id="node-layer"><g class="node" data-id="WP-001"><title>Define the routing trace schema</title><path class="card" d="M 34.0 478.0 H 269.0 Q 274.0 478.0 274.0 483.0 V 541.0 Q 274.0 546.0 269.0 546.0 H 34.0 Z" fill="#EAF7F5"/><rect class="accent" x="34.0" y="477.2" width="7" height="69.5" fill="#A4ADB7"/><path class="card-outline" d="M 41.0 478.0 H 269.0 Q 274.0 478.0 274.0 483.0 V 541.0 Q 274.0 546.0 269.0 546.0 H 41.0" fill="none" stroke="#9CCFC7" stroke-width="1.5"/><path class="card-select" d="M 34.0 478.0 H 269.0 Q 274.0 478.0 274.0 483.0 V 541.0 Q 274.0 546.0 269.0 546.0 H 34.0 Z" fill="none"/><text x="48.0" y="498.0" class="id" fill="#78838D">WP-001</text><text x="264.0" y="498.0" class="tag" text-anchor="end" fill="#A4ADB7">WP</text><text x="48.0" y="519.0" class="title" fill="#1F5A52">Define the routing trace</text><text x="48.0" y="536.0" class="title" fill="#1F5A52">schema</text></g><g class="node" data-id="WP-002"><title>Verify trace replay</title><path class="card" d="M 330.0 478.0 H 565.0 Q 570.0 478.0 570.0 483.0 V 541.0 Q 570.0 546.0 565.0 546.0 H 330.0 Z" fill="#EFF5FC"/><rect class="accent" x="330.0" y="477.2" width="7" height="69.5" fill="#A4ADB7"/><path class="card-outline" d="M 337.0 478.0 H 565.0 Q 570.0 478.0 570.0 483.0 V 541.0 Q 570.0 546.0 565.0 546.0 H 337.0" fill="none" stroke="#B3C9E2" stroke-width="1.5"/><path class="card-select" d="M 330.0 478.0 H 565.0 Q 570.0 478.0 570.0 483.0 V 541.0 Q 570.0 546.0 565.0 546.0 H 330.0 Z" fill="none"/><text x="344.0" y="498.0" class="id" fill="#78838D">WP-002</text><text x="560.0" y="498.0" class="tag" text-anchor="end" fill="#A4ADB7">WP</text><text x="344.0" y="519.0" class="title" fill="#31577D">Verify trace replay</text></g><g class="node" data-id="ST-001"><title>Introduce and verify a trace schema</title><path class="card" d="M 187.6 330.0 H 422.6 Q 427.6 330.0 427.6 335.0 V 393.0 Q 427.6 398.0 422.6 398.0 H 187.6 Z" fill="#EAF7F5"/><rect class="accent" x="187.6" y="329.2" width="7" height="69.5" fill="#6F9DA2"/><path class="card-outline" d="M 194.6 330.0 H 422.6 Q 427.6 330.0 427.6 335.0 V 393.0 Q 427.6 398.0 422.6 398.0 H 194.6" fill="none" stroke="#9CCFC7" stroke-width="1.5"/><path class="card-select" d="M 187.6 330.0 H 422.6 Q 427.6 330.0 427.6 335.0 V 393.0 Q 427.6 398.0 422.6 398.0 H 187.6 Z" fill="none"/><text x="201.6" y="350.0" class="id" fill="#78838D">ST-001</text><text x="417.6" y="350.0" class="tag" text-anchor="end" fill="#6F9DA2">ST</text><text x="201.6" y="371.0" class="title" fill="#1F5A52">Introduce and verify a trace</text><text x="201.6" y="388.0" class="title" fill="#1F5A52">schema</text></g><g class="node" data-id="MT-001"><title>Provide reproducible routing traces</title><path class="card" d="M 193.2 182.0 H 428.2 Q 433.2 182.0 433.2 187.0 V 245.0 Q 433.2 250.0 428.2 250.0 H 193.2 Z" fill="#EAF7F5"/><rect class="accent" x="193.2" y="181.2" width="7" height="69.5" fill="#6487AD"/><path class="card-outline" d="M 200.2 182.0 H 428.2 Q 433.2 182.0 433.2 187.0 V 245.0 Q 433.2 250.0 428.2 250.0 H 200.2" fill="none" stroke="#9CCFC7" stroke-width="1.5"/><path class="card-select" d="M 193.2 182.0 H 428.2 Q 433.2 182.0 433.2 187.0 V 245.0 Q 433.2 250.0 428.2 250.0 H 193.2 Z" fill="none"/><text x="207.2" y="202.0" class="id" fill="#78838D">MT-001</text><text x="423.2" y="202.0" class="tag" text-anchor="end" fill="#6487AD">MT</text><text x="207.2" y="223.0" class="title" fill="#1F5A52">Provide reproducible routing</text><text x="207.2" y="240.0" class="title" fill="#1F5A52">traces</text></g><g class="node" data-id="LT-001"><title>Make automated routing accountable</title><path class="card" d="M 198.8 34.0 H 433.8 Q 438.8 34.0 438.8 39.0 V 97.0 Q 438.8 102.0 433.8 102.0 H 198.8 Z" fill="#EAF7F5"/><rect class="accent" x="198.8" y="33.2" width="7" height="69.5" fill="#7766A6"/><path class="card-outline" d="M 205.8 34.0 H 433.8 Q 438.8 34.0 438.8 39.0 V 97.0 Q 438.8 102.0 433.8 102.0 H 205.8" fill="none" stroke="#9CCFC7" stroke-width="1.5"/><path class="card-select" d="M 198.8 34.0 H 433.8 Q 438.8 34.0 438.8 39.0 V 97.0 Q 438.8 102.0 433.8 102.0 H 198.8 Z" fill="none"/><text x="212.8" y="54.0" class="id" fill="#78838D">LT-001</text><text x="428.8" y="54.0" class="tag" text-anchor="end" fill="#7766A6">LT</text><text x="212.8" y="75.0" class="title" fill="#1F5A52">Make automated routing</text><text x="212.8" y="92.0" class="title" fill="#1F5A52">accountable</text></g></g><g id="card-mark-layer"></g><g id="hot-layer"></g></g>
   <rect id="shade" width="100%" height="100%" fill="#1B1B1B"/>
   <g id="top-layer"></g>
 </svg>
 <div id="hud">
-  <b>example plan graph</b>
-  <div id="filters"><button class="filter" data-status="proposed" title="filter proposed"><span class="swatch" style="background:#EFF5FC;border:1px solid #B3C9E2"></span>proposed <b>1</b></button><button id="filter-all" class="filter filter-all">全选</button></div>
+  <b>Plan graph</b>
+  <div id="filters"><button class="filter" data-status="proposed" title="filter proposed"><span class="swatch" style="background:#EFF5FC;border:1px solid #B3C9E2"></span>proposed <b>1</b></button><button class="filter" data-status="ready" title="filter ready"><span class="swatch" style="background:#EAF7F5;border:1px solid #9CCFC7"></span>ready <b>4</b></button><button id="filter-all" class="filter filter-all">全选</button></div>
   <button id="search-open" type="button">搜索 <kbd>Ctrl/⌘K</kbd></button>
   <div id="search-chip" hidden><span id="search-chip-text"></span><button id="search-clear" aria-label="clear search">×</button></div>
   <div class="hint">点击节点查看详情 · Ctrl/⌘K 搜索 · 点状态筛选 · 滚轮缩放 · 拖拽平移</div>
@@ -169,6 +174,7 @@
 <script>
   const DETAILS = {"WP-001": {"id": "WP-001", "title": "Define the routing trace schema", "level": "work-package", "status": "ready", "updated": "2026-09-15", "parent": "ST-001", "source": "_aiHumanInteract/plan/work-package/WP-001.md", "objective": "Define the minimum trace needed to reproduce a routing decision.", "deliverables": ["Versioned routing trace schema"], "acceptance": ["The schema records decision inputs, selected rule, and outcome"], "links": {"plan": ["_aiHumanInteract/plan/work-package/WP-001.md"], "docs": ["_aiHumanInteract/plan/requirements/REQ-001.md"], "code": ["src/routing_trace.py"]}, "evidence": []}, "WP-002": {"id": "WP-002", "title": "Verify trace replay", "level": "work-package", "status": "proposed", "updated": "2026-09-15", "parent": "ST-001", "source": "_aiHumanInteract/plan/work-package/WP-002.md", "objective": "Verify that a trace reader reproduces the recorded routing choice.", "deliverables": ["Replay validation"], "acceptance": ["The reader reproduces the expected route from a fixture trace"], "links": {"plan": ["_aiHumanInteract/plan/work-package/WP-002.md"], "tests": ["tests/test_routing_trace.py"]}, "evidence": []}, "ST-001": {"id": "ST-001", "title": "Introduce and verify a trace schema", "level": "short-term", "status": "ready", "updated": "2026-09-15", "parent": "MT-001", "source": "_aiHumanInteract/plan/short-term/ST-001.md", "objective": "Deliver a trace schema and a reader that verifies replayability.", "deliverables": ["Trace schema", "Trace reader validation"], "acceptance": ["A recorded trace can be replayed by the reader"], "links": {"plan": ["_aiHumanInteract/plan/short-term/ST-001.md"], "docs": ["_aiHumanInteract/plan/requirements/REQ-001.md"]}, "evidence": []}, "MT-001": {"id": "MT-001", "title": "Provide reproducible routing traces", "level": "mid-term", "status": "ready", "updated": "2026-09-15", "parent": "LT-001", "source": "_aiHumanInteract/plan/mid-term/MT-001.md", "objective": "Represent each routing choice as a reproducible trace.", "deliverables": ["A stable trace representation"], "acceptance": ["A trace contains the inputs and rule outcome needed for replay"], "links": {"plan": ["_aiHumanInteract/plan/mid-term/MT-001.md"], "docs": ["_aiHumanInteract/plan/requirements/REQ-001.md"]}, "evidence": []}, "LT-001": {"id": "LT-001", "title": "Make automated routing accountable", "level": "long-term", "status": "ready", "updated": "2026-09-15", "parent": null, "source": "_aiHumanInteract/plan/long-term/LT-001.md", "objective": "Operators can inspect and explain automated routing behavior.", "deliverables": ["A traceable routing-decision capability"], "acceptance": ["Routing decisions can be reproduced from stored evidence"], "links": {"plan": ["_aiHumanInteract/plan/long-term/LT-001.md"], "docs": ["_aiHumanInteract/plan/requirements/REQ-001.md"]}, "evidence": []}};
   const RELATIONS = {"WP-001": {"parent": "ST-001", "children": [], "out": [{"type": "prerequisite_for", "target": "WP-002"}], "in": []}, "WP-002": {"parent": "ST-001", "children": [], "out": [], "in": [{"type": "prerequisite_for", "target": "WP-001"}]}, "ST-001": {"parent": "MT-001", "children": ["WP-001", "WP-002"], "out": [], "in": []}, "MT-001": {"parent": "LT-001", "children": ["ST-001"], "out": [], "in": []}, "LT-001": {"parent": null, "children": ["MT-001"], "out": [], "in": []}};
+  const REF_STATUS = {"_aiHumanInteract/plan/work-package/WP-001.md": true, "_aiHumanInteract/plan/requirements/REQ-001.md": true, "src/routing_trace.py": false, "_aiHumanInteract/plan/work-package/WP-002.md": true, "tests/test_routing_trace.py": false, "_aiHumanInteract/plan/short-term/ST-001.md": true, "_aiHumanInteract/plan/mid-term/MT-001.md": true, "_aiHumanInteract/plan/long-term/LT-001.md": true};
   const svg = document.getElementById('canvas');
   const scene = document.getElementById('scene');
   const topLayer = document.getElementById('top-layer');
@@ -286,6 +292,7 @@
       cursor = DETAILS[cursor].parent;
     }
     panelBody.replaceChildren();
+    if (d.source) panelBody.append(sourceLine(d.source));
     [...panelHead.children].forEach(child => { if (child.id !== 'close') child.remove(); });
     panelHead.append(el('h3', null, d.id + ' · ' + d.title));
     panelHead.append(el('div', 'meta', d.level + ' · ' + d.status + ' · updated ' + d.updated + (d.parent ? ' · parent ' + d.parent : '')));
@@ -314,9 +321,7 @@
         const items = Array.isArray(links[kind]) ? links[kind] : [links[kind]];
         items.forEach(x => {
           const li = document.createElement('li');
-          const code = document.createElement('code');
-          code.textContent = x;
-          li.append(code);
+          li.append(referenceNode(x));
           ul.append(li);
         });
         panelBody.append(ul);
@@ -327,9 +332,7 @@
       const ul = document.createElement('ul');
       d.evidence.forEach(x => {
         const li = document.createElement('li');
-        const code = document.createElement('code');
-        code.textContent = x;
-        li.append(code);
+        li.append(referenceNode(x));
         ul.append(li);
       });
       panelBody.append(ul);
@@ -488,6 +491,26 @@
     dot.className = 'dot dot-' + detail.status;
     link.append(dot, document.createTextNode(targetId + ' · ' + detail.title));
     return link;
+  }
+
+  function referenceNode(value) {
+    if (REF_STATUS[value] === true) {
+      const link = document.createElement('a');
+      link.className = 'ref-link';
+      const clean = value.startsWith('./') ? value.slice(2) : value;
+      link.href = clean.startsWith('/') ? clean : '../../../' + encodeURI(clean);
+      link.textContent = value;
+      return link;
+    }
+    const code = document.createElement('code');
+    code.textContent = value;
+    return code;
+  }
+
+  function sourceLine(source) {
+    const line = el('div', 'source');
+    line.append(document.createTextNode('Source: '), referenceNode(source));
+    return line;
   }
 
   function relationRow(label, targets, emptyText = 'none') {

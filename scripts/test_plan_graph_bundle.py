@@ -23,6 +23,11 @@ ADOPTER = SKILL_ROOT / "scripts" / "adopt_project.py"
 PROTOCOL_BLOCK = SKILL_ROOT / "assets" / "protocol" / "AGENTS.protocol.md"
 V3_SCHEMA = "paths-to-modernity-plan-graph-v3"
 SCHEMA_VERSION = "paths-to-modernity-plan-graph-v4"
+sys.path.insert(0, str(SKILL_ROOT / "scripts"))
+import install_plan_graph as installer  # noqa: E402
+sys.path.insert(0, str(BUNDLE_ROOT / "_aiHumanInteract/plan"))
+import plan_view as bundle_view  # noqa: E402
+import validate as bundle_validate  # noqa: E402
 
 
 def require_consistent_schema_version() -> None:
@@ -421,8 +426,7 @@ def exercise_block_upgrade(root: Path) -> None:
         agents = edited / "AGENTS.md"
         agents.write_text(
             agents.read_text(encoding="utf-8").replace(
-                "Readiness is relative to the next commitment.",
-                "Readiness is whatever feels right.",
+                "Readiness is relative to the next commitment.", "Readiness is whatever feels right."
             ),
             encoding="utf-8",
         )
@@ -436,11 +440,100 @@ def exercise_block_upgrade(root: Path) -> None:
         PROTOCOL_BLOCK.write_text(original, encoding="utf-8")
 
 
+def exercise_upgrade(root: Path) -> None:
+    """An unmodified older v4 install upgrades; local edits still refuse."""
+    repo = root / "upgrade-target"
+    repo.mkdir()
+    run((sys.executable, str(INSTALLER), str(repo), "--update-agents"), SKILL_ROOT)
+    manifest_path = repo / "_aiHumanInteract/plan/install-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    old_block = installer._fragment().replace("## Plan Management", "## Old Plan Management")
+    agents = repo / "AGENTS.md"
+    installed_block = installer._agent_block(agents.read_text(encoding="utf-8"))
+    assert installed_block is not None
+    agents.write_text(
+        agents.read_text(encoding="utf-8").replace(installed_block, old_block),
+        encoding="utf-8",
+    )
+    manifest["agents"] = {
+        "mode": "created",
+        "block_sha256": hashlib.sha256(old_block.encode("utf-8")).hexdigest(),
+    }
+
+    for name in ("README.md", "build_graph.py"):
+        target = repo / "_aiHumanInteract/plan" / name
+        target.write_text(f"old {name}\n", encoding="utf-8")
+        digest = hashlib.sha256(target.read_bytes()).hexdigest()
+        manifest["managed_files"][f"_aiHumanInteract/plan/{name}"] = digest
+        manifest["created_files"][f"_aiHumanInteract/plan/{name}"] = digest
+
+    plan_view = repo / "_aiHumanInteract/plan/plan_view.py"
+    plan_view.unlink()
+    manifest["managed_files"].pop("_aiHumanInteract/plan/plan_view.py", None)
+    manifest["created_files"].pop("_aiHumanInteract/plan/plan_view.py", None)
+    manifest.pop("bundle_version", None)
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+    run(
+        (sys.executable, str(INSTALLER), str(repo), "--update-agents", "--dry-run"),
+        SKILL_ROOT,
+    )
+    if (repo / "_aiHumanInteract/plan/README.md").read_text(encoding="utf-8") != "old README.md\n":
+        raise RuntimeError("upgrade dry run changed a managed file")
+
+    run((sys.executable, str(INSTALLER), str(repo), "--update-agents"), SKILL_ROOT)
+    if (repo / "_aiHumanInteract/plan/README.md").read_bytes() != (
+        BUNDLE_ROOT / "_aiHumanInteract/plan/README.md"
+    ).read_bytes():
+        raise RuntimeError("upgrade did not replace an unmodified managed file")
+    if not plan_view.is_file():
+        raise RuntimeError("upgrade did not add plan_view.py")
+    if installer._agent_block(agents.read_text(encoding="utf-8")) != installer._fragment():
+        raise RuntimeError("upgrade did not replace the unmodified governance block")
+    upgraded = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if upgraded.get("bundle_version") != installer.BUNDLE_VERSION:
+        raise RuntimeError("upgrade did not record the bundle version")
+    run((sys.executable, str(INSTALLER), str(repo), "--uninstall"), SKILL_ROOT)
+    if (repo / "AGENTS.md").exists() or plan_view.exists():
+        raise RuntimeError("uninstall after upgrade left owned content")
+
+    edited = root / "upgrade-edited"
+    edited.mkdir()
+    run((sys.executable, str(INSTALLER), str(edited)), SKILL_ROOT)
+    readme = edited / "_aiHumanInteract/plan/README.md"
+    readme.write_text(readme.read_text(encoding="utf-8") + "local edit\n", encoding="utf-8")
+    run_expect_failure((sys.executable, str(INSTALLER), str(edited)), SKILL_ROOT)
+    if "local edit" not in readme.read_text(encoding="utf-8"):
+        raise RuntimeError("upgrade overwrote a locally edited managed file")
+
+    governance = root / "upgrade-governance-edited"
+    governance.mkdir()
+    run((sys.executable, str(INSTALLER), str(governance), "--update-agents"), SKILL_ROOT)
+    agents = governance / "AGENTS.md"
+    agents.write_text(
+        agents.read_text(encoding="utf-8").replace(
+            "## Plan Management",
+            "## Local Plan Management",
+        ),
+        encoding="utf-8",
+    )
+    run_expect_failure(
+        (sys.executable, str(INSTALLER), str(governance), "--update-agents"),
+        SKILL_ROOT,
+    )
+    if "Local Plan Management" not in agents.read_text(encoding="utf-8"):
+        raise RuntimeError("upgrade overwrote a locally edited governance block")
+
+
 def main() -> int:
     require_consistent_schema_version()
+    if set(bundle_view.STATUS_STYLE) != bundle_validate.STATUSES:
+        raise RuntimeError("viewer status styles do not cover the validator statuses")
     with tempfile.TemporaryDirectory(prefix="paths-modernity-example-") as raw:
         root = Path(raw)
         exercise_installer(root)
+        exercise_upgrade(root)
         repository = root / "example"
         shutil.copytree(EXAMPLE_ROOT, repository)
         for name in TOOL_NAMES:
@@ -453,7 +546,15 @@ def main() -> int:
         page = (repository / "_aiHumanInteract/plan/structure/graph.html").read_text(
             encoding="utf-8"
         )
-        if "LT-001" not in page or "WP-001" not in page or 'id="search-surface"' not in page or 'RELATIONS' not in page or 'id="card-mark-layer"' not in page or 'id="overview"' not in page:
+        for name in ("repo-a", "repo-b"):
+            target = root / name
+            shutil.copytree(repository, target)
+            run((python, "-B", "_aiHumanInteract/plan/build_graph.py"), target)
+        page_a = (root / "repo-a/_aiHumanInteract/plan/structure/graph.html").read_bytes()
+        page_b = (root / "repo-b/_aiHumanInteract/plan/structure/graph.html").read_bytes()
+        if page_a != page_b:
+            raise RuntimeError("graph.html depends on the checkout directory name")
+        if "LT-001" not in page or "WP-001" not in page or 'id="search-surface"' not in page or 'RELATIONS' not in page or 'id="card-mark-layer"' not in page or 'id="overview"' not in page or 'data-status="ready"' not in page or 'REF_STATUS' not in page:
             raise RuntimeError("graph.html does not embed the plan nodes and search")
         run(
             (

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import html
 import json
+from pathlib import Path
 from dataclasses import dataclass, field
 
 NODE_W = 240
@@ -25,9 +26,10 @@ LEVEL_Z = {"long-term": 48, "mid-term": 32, "short-term": 16, "work-package": 0}
 DEPTH_X = 0.35
 
 STATUS_STYLE = {
+    "proposed": ("#EFF5FC", "#B3C9E2", "#31577D"),
+    "ready": ("#EAF7F5", "#9CCFC7", "#1F5A52"),
     "done": ("#EDF7F0", "#A7CEB4", "#234B36"),
     "in_progress": ("#FFF4E8", "#E7BA91", "#80512A"),
-    "proposed": ("#EFF5FC", "#B3C9E2", "#31577D"),
     "blocked": ("#FCEEEE", "#E0ACAC", "#873F3F"),
     "superseded": ("#F1F2F4", "#C9CDD2", "#777D85"),
 }
@@ -459,6 +461,7 @@ HTML = """<!DOCTYPE html>
   .search-empty {{ padding: 12px 10px; color: #868e96; font-size: 11px; }}
   .dot {{ width: 8px; height: 8px; border-radius: 50%; flex: none; }}
   .dot-done {{ background: #A7CEB4; }}
+  .dot-ready {{ background: #9CCFC7; }}
   .dot-in_progress {{ background: #E7BA91; }}
   .dot-proposed {{ background: #B3C9E2; }}
   .dot-blocked {{ background: #E0ACAC; }}
@@ -507,6 +510,10 @@ HTML = """<!DOCTYPE html>
   #panel code {{ background: #f1f3f5; padding: 1px 4px; border-radius: 3px;
     font-size: 11px; word-break: break-all; }}
   #panel .kind {{ color: #495057; margin-top: 6px; font-size: 11px; }}
+  #panel .source {{ margin: 2px 0 0; font-size: 11px; color: #495057; }}
+  #panel a.ref-link {{ color: #31577D; text-decoration: none;
+    word-break: break-all; }}
+  #panel a.ref-link:hover {{ text-decoration: underline; }}
   #panel .rel-summary {{ margin-top: 6px; font-size: 10px; color: #495057;
     display: flex; flex-wrap: wrap; gap: 4px 10px; }}
   #panel .rel-summary b {{ font-weight: 600; }}
@@ -572,6 +579,7 @@ HTML = """<!DOCTYPE html>
 <script>
   const DETAILS = {details};
   const RELATIONS = {relations};
+  const REF_STATUS = {ref_status};
   const svg = document.getElementById('canvas');
   const scene = document.getElementById('scene');
   const topLayer = document.getElementById('top-layer');
@@ -689,6 +697,7 @@ HTML = """<!DOCTYPE html>
       cursor = DETAILS[cursor].parent;
     }
     panelBody.replaceChildren();
+    if (d.source) panelBody.append(sourceLine(d.source));
     [...panelHead.children].forEach(child => { if (child.id !== 'close') child.remove(); });
     panelHead.append(el('h3', null, d.id + ' · ' + d.title));
     panelHead.append(el('div', 'meta', d.level + ' · ' + d.status + ' · updated ' + d.updated + (d.parent ? ' · parent ' + d.parent : '')));
@@ -717,9 +726,7 @@ HTML = """<!DOCTYPE html>
         const items = Array.isArray(links[kind]) ? links[kind] : [links[kind]];
         items.forEach(x => {
           const li = document.createElement('li');
-          const code = document.createElement('code');
-          code.textContent = x;
-          li.append(code);
+          li.append(referenceNode(x));
           ul.append(li);
         });
         panelBody.append(ul);
@@ -730,9 +737,7 @@ HTML = """<!DOCTYPE html>
       const ul = document.createElement('ul');
       d.evidence.forEach(x => {
         const li = document.createElement('li');
-        const code = document.createElement('code');
-        code.textContent = x;
-        li.append(code);
+        li.append(referenceNode(x));
         ul.append(li);
       });
       panelBody.append(ul);
@@ -891,6 +896,26 @@ HTML = """<!DOCTYPE html>
     dot.className = 'dot dot-' + detail.status;
     link.append(dot, document.createTextNode(targetId + ' · ' + detail.title));
     return link;
+  }
+
+  function referenceNode(value) {
+    if (REF_STATUS[value] === true) {
+      const link = document.createElement('a');
+      link.className = 'ref-link';
+      const clean = value.startsWith('./') ? value.slice(2) : value;
+      link.href = clean.startsWith('/') ? clean : '../../../' + encodeURI(clean);
+      link.textContent = value;
+      return link;
+    }
+    const code = document.createElement('code');
+    code.textContent = value;
+    return code;
+  }
+
+  function sourceLine(source) {
+    const line = el('div', 'source');
+    line.append(document.createTextNode('Source: '), referenceNode(source));
+    return line;
   }
 
   function relationRow(label, targets, emptyText = 'none') {
@@ -1110,7 +1135,7 @@ HTML = """<!DOCTYPE html>
 """
 
 
-def render_html(payload: dict, title: str) -> str:
+def render_html(payload: dict, title: str, repo_root: Path | None = None) -> str:
     roots = load_nodes(payload)
     placed, _, _ = layout_forest(roots, "down")
     projected: list[tuple[PlanNode, float, float, float]] = []
@@ -1176,14 +1201,30 @@ def render_html(payload: dict, title: str) -> str:
         entry["out"].sort(key=lambda item: (item["type"], item["target"]))
         entry["in"].sort(key=lambda item: (item["type"], item["target"]))
 
+    ref_status: dict[str, bool] = {}
+    if repo_root is not None:
+        root = Path(repo_root)
+        for detail in details.values():
+            values = [detail.get("source", "")]
+            for group in (detail.get("links") or {}).values():
+                values.extend(group if isinstance(group, list) else [group])
+            values.extend(detail.get("evidence") or [])
+            for value in values:
+                if not isinstance(value, str) or not value:
+                    continue
+                if value.startswith(("external:", "http://", "https://", "mailto:")):
+                    continue
+                ref_status[value] = (root / value).exists()
+
     counts: dict[str, int] = {}
     for node, _, _, _ in projected:
         counts[node.status] = counts.get(node.status, 0) + 1
     labels = {
-        "done": "done",
-        "in_progress": "in progress",
         "proposed": "proposed",
+        "ready": "ready",
+        "in_progress": "in progress",
         "blocked": "blocked",
+        "done": "done",
         "superseded": "superseded",
     }
     filter_html = "".join(
@@ -1193,7 +1234,7 @@ def render_html(payload: dict, title: str) -> str:
             f'border:1px solid {STATUS_STYLE[status][1]}"></span>'
             f'{labels[status]} <b>{counts[status]}</b></button>'
         )
-        for status in ("done", "in_progress", "proposed", "blocked", "superseded")
+        for status in ("proposed", "ready", "in_progress", "blocked", "done", "superseded")
         if counts.get(status)
     )
 
@@ -1206,4 +1247,5 @@ def render_html(payload: dict, title: str) -> str:
         .replace("{body}", body)
         .replace("{details}", json.dumps(details, ensure_ascii=False).replace("</", "<\\/"))
         .replace("{relations}", json.dumps(relations, ensure_ascii=False).replace("</", "<\\/"))
+        .replace("{ref_status}", json.dumps(ref_status, ensure_ascii=False).replace("</", "<\\/"))
     )

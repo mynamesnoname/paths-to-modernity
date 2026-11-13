@@ -32,7 +32,8 @@ checks together when changing the graph contract. Bump the schema version for
 breaking changes to fields, levels, identifiers, relationships, or lifecycle.
 Do not silently accept old source fields or overwrite local governance;
 consumers and the installer reject unsupported versions instead of migrating
-them.
+them. Bundle-only changes (viewer, docs) bump `BUNDLE_VERSION`, not the graph
+schema; the installer upgrades unmodified managed files using manifest hashes.
 
 Use `apply_patch` for hand edits. From this directory, regenerate the example
 and run the bundle regression:

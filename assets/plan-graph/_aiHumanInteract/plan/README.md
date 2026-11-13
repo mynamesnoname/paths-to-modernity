@@ -23,7 +23,9 @@ alternative comparisons. `graph.html` is a self-contained interactive reader
 with status filtering, a `Ctrl/Cmd+K` search surface, linked relations, and node details. Canvas is optional for reading; all
 views are generated together.
 
-`install-manifest.json` records additions owned by the installer. To remove
+`install-manifest.json` records additions owned by the installer. Rerun
+the installer to upgrade unmodified bundle files; locally edited files are
+refused. To remove
 them, locate the matching `paths-to-modernity` skill via the environment's
 skill catalog. Its root is the directory containing its `SKILL.md`; from
 there run `python3 -B scripts/install_plan_graph.py <repository> --uninstall --dry-run`,

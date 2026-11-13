@@ -405,7 +405,7 @@ def render_outputs(
         structure / "graph.canvas": graph_canvas(nodes),
         structure / "review.md": review_markdown(plan_root, nodes),
         structure / "graph.html": plan_view.render_html(
-            data, f"{plan_root.parents[1].name} plan graph"
+            data, "Plan graph", repo_root=plan_root.parents[1]
         ),
     }
 

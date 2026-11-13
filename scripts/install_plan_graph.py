@@ -15,6 +15,7 @@ from typing import Any, Sequence
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 BUNDLE_ROOT = SKILL_ROOT / "assets" / "plan-graph"
 SCHEMA_VERSION = "paths-to-modernity-plan-graph-v4"
+BUNDLE_VERSION = 2
 MANIFEST_VERSION = 1
 PLAN_RELATIVE = Path("_aiHumanInteract/plan")
 MANIFEST_RELATIVE = PLAN_RELATIVE / "install-manifest.json"
@@ -125,20 +126,42 @@ def _agent_block(text: str) -> str | None:
 def _installation_plan(
     repo: Path,
     update_agents: bool,
-) -> tuple[list[tuple[Path, Path]], list[Path], str]:
+    previous: dict[str, Any] | None,
+) -> tuple[
+    list[tuple[Path, Path]],
+    list[tuple[Path, Path]],
+    list[Path],
+    str,
+]:
     copies: list[tuple[Path, Path]] = []
+    replacements: list[tuple[Path, Path]] = []
+    managed = previous.get("managed_files", {}) if previous else {}
+    if not isinstance(managed, dict):
+        managed = {}
     for name in PLAN_FILES:
-        source = BUNDLE_ROOT / "_aiHumanInteract/plan" / name
-        target = repo / "_aiHumanInteract/plan" / name
-        if target.exists():
-            if not target.is_file() or _sha256_file(source) != _sha256_file(target):
-                raise InstallError(
-                    f"refusing to overwrite differing existing file: {target}"
-                )
-        else:
+        source = BUNDLE_ROOT / PLAN_RELATIVE / name
+        target = repo / PLAN_RELATIVE / name
+        relative = (PLAN_RELATIVE / name).as_posix()
+        if not target.exists():
             copies.append((source, target))
+            continue
+        if not target.is_file():
+            raise InstallError(f"managed path is not a regular file: {target}")
+        target_hash = _sha256_file(target)
+        source_hash = _sha256_file(source)
+        if target_hash == source_hash:
+            continue
+        if managed.get(relative) == target_hash:
+            replacements.append((source, target))
+            continue
+        raise InstallError(
+            f"refusing to overwrite differing existing file: {target}"
+        )
 
-    directories = [repo / "_aiHumanInteract/plan", *(repo / "_aiHumanInteract/plan" / name for name in PLAN_DIRS)]
+    directories = [
+        repo / PLAN_RELATIVE,
+        *(repo / PLAN_RELATIVE / name for name in PLAN_DIRS),
+    ]
     created_dirs = [path for path in directories if not path.exists()]
     for path in directories:
         if path.exists() and not path.is_dir():
@@ -153,17 +176,33 @@ def _installation_plan(
         installed_block = _agent_block(current)
         if installed_block is None:
             agents_action = "create" if not agents.exists() else "append"
-        elif installed_block.strip() != _fragment():
-            raise InstallError(
-                "AGENTS.md contains a different plan-graph block; migrate or "
-                "reconcile it manually"
+        elif installed_block.strip() == _fragment():
+            agents_action = "unchanged"
+        else:
+            record = previous.get("agents", {}) if previous else {}
+            recorded_hash = (
+                record.get("block_sha256") if isinstance(record, dict) else None
             )
-    return copies, created_dirs, agents_action
+            recorded_mode = (
+                record.get("mode", "unchanged") if isinstance(record, dict) else "unchanged"
+            )
+            if (
+                recorded_mode in {"created", "appended"}
+                and recorded_hash == _sha256_bytes(installed_block.encode("utf-8"))
+            ):
+                agents_action = "replace"
+            else:
+                raise InstallError(
+                    "AGENTS.md contains a different plan-graph block; migrate or "
+                    "reconcile it manually"
+                )
+    return copies, replacements, created_dirs, agents_action
 
 
 def _print_install_plan(
     repo: Path,
     copies: list[tuple[Path, Path]],
+    replacements: list[tuple[Path, Path]],
     created_dirs: list[Path],
     agents_action: str,
     *,
@@ -173,11 +212,18 @@ def _print_install_plan(
     print(f"{prefix} Plan Graph bundle {SCHEMA_VERSION} in {repo}")
     for path in created_dirs:
         print(f"  directory: {_relative(path, repo)}/")
+    for _, target in replacements:
+        print(f"  replace: {_relative(target, repo)}")
     for _, target in copies:
         print(f"  file: {_relative(target, repo)}")
     if agents_action != "unchanged":
         print(f"  AGENTS.md: {agents_action} marked governance block")
-    if not copies and not created_dirs and agents_action == "unchanged":
+    if (
+        not copies
+        and not replacements
+        and not created_dirs
+        and agents_action == "unchanged"
+    ):
         print("  no content changes")
     if dry_run:
         print("Dry run only; no files were changed.")
@@ -190,16 +236,23 @@ def install(repo: Path, update_agents: bool, *, dry_run: bool = False) -> None:
 
     _refuse_competing_trees(repo)
     previous = _read_manifest(repo)
-    copies, created_dirs, agents_action = _installation_plan(repo, update_agents)
+    copies, replacements, created_dirs, agents_action = _installation_plan(
+        repo, update_agents, previous
+    )
     _print_install_plan(
-        repo, copies, created_dirs, agents_action, dry_run=dry_run
+        repo,
+        copies,
+        replacements,
+        created_dirs,
+        agents_action,
+        dry_run=dry_run,
     )
     if dry_run:
         return
 
     for path in created_dirs:
         path.mkdir(parents=True, exist_ok=True)
-    for source, target in copies:
+    for source, target in copies + replacements:
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
 
@@ -209,27 +262,48 @@ def install(repo: Path, update_agents: bool, *, dry_run: bool = False) -> None:
     if agents_action != "unchanged":
         agents = repo / "AGENTS.md"
         current = agents.read_text(encoding="utf-8") if agents.exists() else ""
-        separator = "\n\n" if current.strip() else ""
-        agents.write_text(
-            current.rstrip() + separator + _fragment() + "\n",
-            encoding="utf-8",
-        )
-        agents_record = {
-            "mode": "created" if agents_action == "create" else "appended",
-            "block_sha256": _sha256_bytes(_fragment().encode("utf-8")),
-        }
+        if agents_action == "replace":
+            block = _agent_block(current)
+            assert block is not None
+            start = current.index(block)
+            agents.write_text(
+                current[:start] + _fragment() + current[start + len(block) :],
+                encoding="utf-8",
+            )
+            prior = previous.get("agents", {}) if previous else {}
+            agents_record = {
+                "mode": prior.get("mode", "appended")
+                if isinstance(prior, dict)
+                else "appended",
+                "block_sha256": _sha256_bytes(_fragment().encode("utf-8")),
+            }
+        else:
+            separator = "\n\n" if current.strip() else ""
+            agents.write_text(
+                current.rstrip() + separator + _fragment() + "\n",
+                encoding="utf-8",
+            )
+            agents_record = {
+                "mode": "created" if agents_action == "create" else "appended",
+                "block_sha256": _sha256_bytes(_fragment().encode("utf-8")),
+            }
 
     created_files = dict(previous.get("created_files", {})) if previous else {}
     for source, target in copies:
         created_files[_relative(target, repo)] = _sha256_file(source)
+    for source, target in replacements:
+        relative = _relative(target, repo)
+        if relative in created_files:
+            created_files[relative] = _sha256_file(source)
     created_dir_names = set(previous.get("created_dirs", [])) if previous else set()
     created_dir_names.update(_relative(path, repo) for path in created_dirs)
     managed_files = {
-        f"_aiHumanInteract/plan/{name}": _sha256_file(BUNDLE_ROOT / "_aiHumanInteract/plan" / name)
+        (PLAN_RELATIVE / name).as_posix(): _sha256_file(BUNDLE_ROOT / PLAN_RELATIVE / name)
         for name in PLAN_FILES
     }
     manifest = {
         "manifest_version": MANIFEST_VERSION,
+        "bundle_version": BUNDLE_VERSION,
         "schema_version": SCHEMA_VERSION,
         "managed_files": managed_files,
         "created_files": dict(sorted(created_files.items())),
@@ -245,6 +319,11 @@ def install(repo: Path, update_agents: bool, *, dry_run: bool = False) -> None:
         encoding="utf-8",
     )
     print(f"  manifest: {MANIFEST_RELATIVE.as_posix()}")
+    if replacements:
+        print(
+            "  next: rebuild views with "
+            "`python3 -B _aiHumanInteract/plan/build_graph.py`"
+        )
     print("Create real LT/MT/ST/WP source nodes, then validate and rebuild.")
 
 
