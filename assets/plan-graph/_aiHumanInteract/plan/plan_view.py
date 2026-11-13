@@ -272,6 +272,8 @@ CARD_MARK_STYLE = {
     "conflicts_with": ("✕", 48),
     "alternative_of": ("→", 48),
 }
+CARD_MARK_FILL = "#212529"
+CARD_MARK_OPACITY = 0.18
 
 
 def card_mark_markup(
@@ -293,13 +295,13 @@ def card_mark_markup(
         glyph, size = CARD_MARK_STYLE[relation]
         body = (
             f'<text x="{cx:.1f}" y="{cy:.1f}" text-anchor="middle" '
-            f'dominant-baseline="central" fill="#495057" fill-opacity="0.16" '
+            f'dominant-baseline="central" fill="{CARD_MARK_FILL}" fill-opacity="{CARD_MARK_OPACITY}" '
             f'font-size="{size}" font-weight="700">{glyph}</text>'
         )
         if relation == "alternative_of":
             body += (
                 f'<text x="{cx:.1f}" y="{cy + 30:.1f}" text-anchor="middle" '
-                f'fill="#495057" fill-opacity="0.16" font-size="10" '
+                f'fill="{CARD_MARK_FILL}" fill-opacity="{CARD_MARK_OPACITY}" font-size="10" '
                 f'font-weight="600">alt</text>'
             )
         parts.append(
