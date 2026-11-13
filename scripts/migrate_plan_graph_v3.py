@@ -38,6 +38,8 @@ import install_plan_graph as installer  # noqa: E402
 V3_SCHEMA = "paths-to-modernity-plan-graph-v3"
 V3_PLAN_RELATIVE = Path("_plan")
 TOOL_FILES = installer.PLAN_FILES
+# A real v3 installation predates plan_view.py; only these were recorded.
+V3_TOOL_FILES = ("README.md", "validate.py", "build_graph.py", "test_plan_graph.py")
 
 
 class MigrationError(Exception):
@@ -97,7 +99,7 @@ def _load_v3_manifest(legacy: Path) -> dict:
 def _check_tools(legacy: Path, manifest: dict) -> None:
     """Installer-owned tools are replaced; user edits there must be resolved first."""
     managed = manifest["managed_files"]
-    for name in TOOL_FILES:
+    for name in V3_TOOL_FILES:
         path = legacy / name
         if not path.is_file():
             raise MigrationError(f"missing installed tool: {path}")

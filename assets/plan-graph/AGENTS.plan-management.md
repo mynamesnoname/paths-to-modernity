@@ -102,7 +102,7 @@ python3 -B _aiHumanInteract/plan/build_graph.py --check
 python3 -B -m unittest discover -s _aiHumanInteract/plan -p 'test_*.py' -v
 ```
 
-Commit source nodes and generated `graph.json`, `graph.md`, `graph.canvas`, and
-`review.md` together. Keep runtime/domain evidence graphs in a separate
+Commit source nodes and generated `graph.json`, `graph.md`, `graph.canvas`,
+`graph.html`, and `review.md` together. Keep runtime/domain evidence graphs in a separate
 namespace and connect them only through links.
 <!-- paths-to-modernity:plan-graph:end -->

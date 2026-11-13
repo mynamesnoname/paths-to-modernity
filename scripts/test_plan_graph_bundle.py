@@ -16,7 +16,7 @@ from typing import Sequence
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 BUNDLE_ROOT = SKILL_ROOT / "assets" / "plan-graph"
 EXAMPLE_ROOT = BUNDLE_ROOT / "example"
-TOOL_NAMES = ("validate.py", "build_graph.py", "test_plan_graph.py")
+TOOL_NAMES = ("validate.py", "build_graph.py", "plan_view.py", "test_plan_graph.py")
 INSTALLER = SKILL_ROOT / "scripts" / "install_plan_graph.py"
 MIGRATOR = SKILL_ROOT / "scripts" / "migrate_plan_graph_v3.py"
 ADOPTER = SKILL_ROOT / "scripts" / "adopt_project.py"
@@ -450,6 +450,11 @@ def main() -> int:
         plan_dir = repository / "_aiHumanInteract/plan"
         run((python, "-B", "_aiHumanInteract/plan/validate.py"), repository)
         run((python, "-B", "_aiHumanInteract/plan/build_graph.py", "--check"), repository)
+        page = (repository / "_aiHumanInteract/plan/structure/graph.html").read_text(
+            encoding="utf-8"
+        )
+        if "LT-001" not in page or "WP-001" not in page:
+            raise RuntimeError("graph.html does not embed the plan nodes")
         run(
             (
                 python,

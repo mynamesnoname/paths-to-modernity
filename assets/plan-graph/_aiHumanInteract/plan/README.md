@@ -19,8 +19,9 @@ validator/graph builder enforce its machine-checkable subset. Use
 `structure/graph.json` for machine discovery, then follow each node's `source`
 field for its complete narrative and evidence. `review.md` is a generated
 human view of optional context, qualities, tradeoffs, perspectives, and
-alternative comparisons. Canvas is optional for reading; all views are
-generated together.
+alternative comparisons. `graph.html` is a self-contained interactive reader
+with status filtering and node details. Canvas is optional for reading; all
+views are generated together.
 
 `install-manifest.json` records additions owned by the installer. To remove
 them, locate the matching `paths-to-modernity` skill via the environment's

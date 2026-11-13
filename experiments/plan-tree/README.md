@@ -1,5 +1,10 @@
 # Plan tree 2.5D viewer (experiment)
 
+> **Frozen prototype.** The production renderer now lives in
+> `assets/plan-graph/_aiHumanInteract/plan/plan_view.py` and writes
+> `structure/graph.html` as a standard generated view. This folder is kept for
+> design reference; do not fix production behavior here.
+
 An experimental renderer for the Plan Graph. It is **not** part of the installed
 bundle, and `build_graph.py` does not call it. It exists so the layout can be
 reviewed and adjusted before deciding whether anything graduates into the

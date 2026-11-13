@@ -11,6 +11,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Mapping, Sequence
 
+import plan_view
 from validate import LEVELS, PLAN_ROOT, PlanGraphError, PlanNode, require_valid_graph
 
 
@@ -396,17 +397,16 @@ def render_outputs(
     nodes: Mapping[str, PlanNode],
 ) -> dict[Path, str]:
     structure = plan_root / "structure"
-    payload = json.dumps(
-        graph_payload(plan_root, nodes),
-        ensure_ascii=False,
-        indent=2,
-        sort_keys=True,
-    ) + "\n"
+    data = graph_payload(plan_root, nodes)
+    payload = json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     return {
         structure / "graph.json": payload,
         structure / "graph.md": graph_markdown(plan_root, nodes),
         structure / "graph.canvas": graph_canvas(nodes),
         structure / "review.md": review_markdown(plan_root, nodes),
+        structure / "graph.html": plan_view.render_html(
+            data, f"{plan_root.parents[1].name} plan graph"
+        ),
     }
 
 

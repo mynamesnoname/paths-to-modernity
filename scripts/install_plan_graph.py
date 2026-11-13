@@ -22,6 +22,7 @@ PLAN_FILES = (
     "README.md",
     "validate.py",
     "build_graph.py",
+    "plan_view.py",
     "test_plan_graph.py",
 )
 PLAN_DIRS = (

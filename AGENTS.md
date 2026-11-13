@@ -11,7 +11,9 @@ separate from the governance fragment installed into target projects.
 - `references/plan-graph.md` is the normative Plan Graph specification and
   owns the mapping from concepts to fields.
 - `assets/plan-graph/` is the installation bundle. Keep its tools and
-  installed guidance aligned with the specification.
+  installed guidance aligned with the specification. `plan_view.py` renders
+  the self-contained `structure/graph.html`; regenerate the example after
+  changing it.
 - `assets/protocol/` holds the project-level protocol block and the recovery
   skeleton that `scripts/adopt_project.py` injects into a target project. The
   block is generated output, not a second copy of the skill: keep it to
@@ -19,9 +21,9 @@ separate from the governance fragment installed into target projects.
 - `assets/plan-graph/example/_aiHumanInteract/plan/structure/` contains generated views;
   never edit them by hand.
 - `agents/openai.yaml` is UI metadata, not runtime instructions.
-- `experiments/plan-tree/` is an exploratory 2.5D renderer plus a frozen
-  FORMA input snapshot. It is not part of the installed bundle; do not wire
-  it into `build_graph.py` without an explicit decision.
+- `experiments/plan-tree/` is a frozen design demo and input snapshot. The
+  production renderer is `assets/plan-graph/_aiHumanInteract/plan/plan_view.py`;
+  do not fix production behavior in the demo.
 
 ## Change protocol
 

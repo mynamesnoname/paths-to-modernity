@@ -91,7 +91,14 @@ Markdown nodes are the editable source of truth. The builder generates:
 | `graph.json` | Machine discovery: version, normalized nodes, and typed edges |
 | `graph.md` | Markdown index and Mermaid relationship diagram |
 | `graph.canvas` | Navigation in compatible Canvas viewers such as Obsidian |
+| `graph.html` | Self-contained interactive reader: layout, status filter, and node detail |
 | `review.md` | Context, qualities, tradeoffs, perspectives, and alternatives when present |
+
+For a visual read, open `structure/graph.html`. It is one self-contained file
+with no network dependencies; selection, status filtering, and panel resizing
+are local to the page and write nothing back. It is a generated view, so
+regenerate and commit it with the source nodes; `--check` covers it like the
+other views.
 
 For machine discovery, check the version, locate a node by ID, then follow its
 `source` path relative to the repository root. Read the source for decisions
@@ -142,6 +149,7 @@ _aiHumanInteract/
     install-manifest.json
     validate.py
     build_graph.py
+    plan_view.py
     test_plan_graph.py
   knowledge-debt/       Knowledge-debt records, when the project keeps them
 ```

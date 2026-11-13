@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Prototype: layered plan graph as a tidy containment tree.
+"""Frozen prototype: layered plan graph as a tidy containment tree.
+
+The production renderer is plan_view.py in the installed Plan Graph bundle.
 
 Reads a Plan Graph ``graph.json`` and computes a deterministic tree layout in
 the spirit of Archify's tree renderer: one band per generation, every subtree
