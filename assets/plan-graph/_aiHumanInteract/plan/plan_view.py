@@ -473,6 +473,11 @@ HTML = """<!DOCTYPE html>
     0 0 18px rgba(80,120,184,.35); }}
   #search:focus {{ outline: none; box-shadow: 0 0 0 2px #fff, 0 0 22px rgba(80,120,184,.55); }}
   #search-help {{ color: #868e96; font-size: 10px; white-space: nowrap; }}
+  #search-pin {{ flex: none; border: 1px solid #ced4da; background: #fff;
+    border-radius: 6px; padding: 3px 6px; font-size: 13px; line-height: 1;
+    cursor: pointer; color: #495057; }}
+  #search-pin.active {{ border-color: #5078B8; background: #E8F0FB; }}
+  #search-pin:focus-visible {{ outline: 2px solid #5078B8; outline-offset: 1px; }}
   #panel {{ position: fixed; top: 0; right: 0; width: 380px; height: 100%;
     background: #fff; border-left: 1px solid #dee2e6; box-shadow: -4px 0 16px rgba(0,0,0,.08);
     display: flex; flex-direction: column; box-sizing: border-box;
@@ -572,6 +577,7 @@ HTML = """<!DOCTYPE html>
   <div id="search-results"></div>
   <div id="search-box">
     <input id="search" type="search" placeholder="搜索 plan 文本…" autocomplete="off"/>
+    <button id="search-pin" type="button" aria-label="固定搜索栏" aria-pressed="false" title="固定搜索栏">📌</button>
     <div id="search-help">↑↓ 选择 · Enter 打开 · Esc 关闭</div>
   </div>
 </div>
@@ -772,6 +778,12 @@ HTML = """<!DOCTYPE html>
   const searchResults = document.getElementById('search-results');
   const searchChip = document.getElementById('search-chip');
   const searchChipText = document.getElementById('search-chip-text');
+  const searchPin = document.getElementById('search-pin');
+  const searchHelp = document.getElementById('search-help');
+  let searchPinned = false;
+  try {{
+    searchPinned = localStorage.getItem('ptm-plan-search-pinned') === '1';
+  }} catch (error) {{}}
   let queryTokens = [];
   let searchMatches = [];
   let searchIndex = -1;
@@ -838,14 +850,36 @@ HTML = """<!DOCTYPE html>
     }
   }
 
-  function openSearch() {
-    searchSurface.hidden = false;
-    renderSearchResults();
-    searchInput.focus();
-    searchInput.select();
+  function syncPin() {
+    searchPin.classList.toggle('active', searchPinned);
+    searchPin.setAttribute('aria-pressed', String(searchPinned));
+    const label = searchPinned ? '取消固定搜索栏' : '固定搜索栏';
+    searchPin.title = label;
+    searchPin.setAttribute('aria-label', label);
+    searchHelp.textContent = searchPinned
+      ? '↑↓ 选择 · Enter 打开 · Esc 清空'
+      : '↑↓ 选择 · Enter 打开 · Esc 关闭';
   }
 
-  function closeSearch() {
+  function setPinned(value) {
+    searchPinned = value;
+    syncPin();
+    try {
+      localStorage.setItem('ptm-plan-search-pinned', value ? '1' : '0');
+    } catch (error) {}
+  }
+
+  function openSearch(focus = true) {
+    searchSurface.hidden = false;
+    renderSearchResults();
+    if (focus) {
+      searchInput.focus();
+      searchInput.select();
+    }
+  }
+
+  function closeSearch(force = false) {
+    if (searchPinned && !force) return;
     searchSurface.hidden = true;
   }
 
@@ -1033,6 +1067,13 @@ HTML = """<!DOCTYPE html>
   });
 
   document.getElementById('search-open').addEventListener('click', openSearch);
+  searchPin.addEventListener('click', () => {{
+    setPinned(!searchPinned);
+    if (searchPinned) {{
+      searchSurface.hidden = false;
+      searchInput.focus();
+    }}
+  }});
   document.getElementById('search-clear').addEventListener('click', () => {
     searchInput.value = '';
     queryTokens = [];
@@ -1064,6 +1105,7 @@ HTML = """<!DOCTYPE html>
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
       event.preventDefault();
       if (searchSurface.hidden) openSearch();
+      else if (searchPinned) searchInput.focus();
       else closeSearch();
       return;
     }
@@ -1132,6 +1174,8 @@ HTML = """<!DOCTYPE html>
   document.getElementById('reset').addEventListener('click', actualSize);
   document.getElementById('fit').addEventListener('click', fitWidth);
   document.getElementById('overview').addEventListener('click', overview);
+  syncPin();
+  if (searchPinned) openSearch(false);
   overview();
   svg.style.visibility = 'visible';
   const initial = decodeURIComponent(location.hash.slice(1));

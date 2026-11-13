@@ -102,7 +102,9 @@ supersession, conflict, and alternative relations. The panel lists the cross-cut
 as `see the graph`, since the canvas already shows them. Existing repository
 paths in Source, Links, and Evidence are relative links; external or missing
 references stay as text. The view opens in an
-overview fit; the HUD also offers 100%, fit-width, and overview. It is a generated view, so
+overview fit; the HUD also offers 100%, fit-width, and overview. The search
+surface can be pinned; a pinned surface stays open when selecting results and
+across reloads, and `Esc` clears its query instead of closing it. It is a generated view, so
 regenerate and commit it with the source nodes; `--check` covers it like the
 other views.
 
