@@ -453,7 +453,7 @@ def main() -> int:
         page = (repository / "_aiHumanInteract/plan/structure/graph.html").read_text(
             encoding="utf-8"
         )
-        if "LT-001" not in page or "WP-001" not in page or 'id="search-surface"' not in page or 'id="relation-layer"' not in page:
+        if "LT-001" not in page or "WP-001" not in page or 'id="search-surface"' not in page or 'RELATIONS' not in page:
             raise RuntimeError("graph.html does not embed the plan nodes and search")
         run(
             (
