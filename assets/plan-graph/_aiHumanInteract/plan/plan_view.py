@@ -890,12 +890,12 @@ HTML = """<!DOCTYPE html>
     return link;
   }
 
-  function relationRow(label, targets) {
+  function relationRow(label, targets, emptyText = 'none') {
     const row = el('div', 'rel-row');
     const name = el('span', 'rel-label', label);
     const values = el('span', 'rel-values');
     if (!targets.length) {
-      values.append(el('span', 'rel-empty', 'none'));
+      values.append(el('span', 'rel-empty', emptyText));
     } else {
       targets.forEach(target => values.append(relationLink(target)));
     }
@@ -909,8 +909,7 @@ HTML = """<!DOCTYPE html>
     block.append(el('h4', null, 'Relations'));
     const outgoing = type => (rel.out || []).filter(item => item.type === type).map(item => item.target);
     const incoming = type => (rel.in || []).filter(item => item.type === type).map(item => item.target);
-    block.append(relationRow('Parent', rel.parent ? [rel.parent] : []));
-    block.append(relationRow('Children', rel.children || []));
+    block.append(relationRow('Parent/children', [], 'see the graph'));
     block.append(relationRow('Depends on', incoming('prerequisite_for')));
     block.append(relationRow('Required by', outgoing('prerequisite_for')));
     block.append(relationRow('Enables', outgoing('enables')));
