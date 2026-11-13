@@ -28,11 +28,11 @@
     color: #495057; cursor: pointer; }
   .filter b { font-weight: 600; color: #212529; }
   .filter.active { border-color: #5078B8; background: #E8F0FB; }
-  #search-open { margin-top: 7px; border: 1px solid #ced4da; background: #fff;
+  #search-open { border: 1px solid #ced4da; background: #fff;
     border-radius: 6px; padding: 3px 8px; font: inherit; font-size: 11px;
     color: #495057; cursor: pointer; }
   #search-open kbd { font: inherit; font-size: 10px; color: #868e96; }
-  #search-chip { display: flex; align-items: center; gap: 6px; margin-top: 7px;
+  #search-chip { display: flex; align-items: center; gap: 6px;
     padding: 3px 8px; border-radius: 6px; background: #E8F0FB; color: #31577D;
     font-size: 11px; }
   #search-chip[hidden] { display: none; }
@@ -68,7 +68,6 @@
     0 0 18px rgba(80,120,184,.35); }
   #search:focus { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 22px rgba(80,120,184,.55); }
   #search-help { color: #868e96; font-size: 10px; white-space: nowrap; }
-  #hud .hint { color: #868e96; margin-top: 6px; }
   #panel { position: fixed; top: 0; right: 0; width: 380px; height: 100%;
     background: #fff; border-left: 1px solid #dee2e6; box-shadow: -4px 0 16px rgba(0,0,0,.08);
     display: flex; flex-direction: column; box-sizing: border-box;
@@ -135,7 +134,13 @@
   .node.selected .card-outline { display: none; }
   .node.selected .card-select { display: inline; stroke: #5078B8; stroke-width: 2.5;
     filter: drop-shadow(0 0 4px rgba(80,120,184,.35)); }
-  #reset, #fit, #overview { margin-top: 6px; border: 1px solid #ced4da;
+  #controls { position: fixed; left: 16px; bottom: 16px; z-index: 26;
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    max-width: calc(100vw - 32px); background: rgba(255,255,255,.94);
+    border: 1px solid #dee2e6; border-radius: 10px; padding: 6px 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06); box-sizing: border-box; }
+  .controls-sep { width: 1px; height: 18px; background: #dee2e6; margin: 0 2px; }
+  #reset, #fit, #overview { border: 1px solid #ced4da;
     background: #fff; border-radius: 6px; padding: 3px 8px; font-size: 11px;
     cursor: pointer; }
 </style>
@@ -149,9 +154,11 @@
 <div id="hud">
   <b>Plan graph</b>
   <div id="filters"><button class="filter" data-status="proposed" title="filter proposed"><span class="swatch" style="background:#EFF5FC;border:1px solid #B3C9E2"></span>proposed <b>1</b></button><button class="filter" data-status="ready" title="filter ready"><span class="swatch" style="background:#EAF7F5;border:1px solid #9CCFC7"></span>ready <b>4</b></button><button id="filter-all" class="filter filter-all">全选</button></div>
+</div>
+<div id="controls">
   <button id="search-open" type="button">搜索 <kbd>Ctrl/⌘K</kbd></button>
   <div id="search-chip" hidden><span id="search-chip-text"></span><button id="search-clear" aria-label="clear search">×</button></div>
-  <div class="hint">点击节点查看详情 · Ctrl/⌘K 搜索 · 点状态筛选 · 滚轮缩放 · 拖拽平移</div>
+  <span class="controls-sep"></span>
   <button id="reset">100%</button>
   <button id="fit">适应宽度</button>
   <button id="overview">全览</button>
