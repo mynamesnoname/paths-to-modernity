@@ -412,7 +412,8 @@ HTML = """<!DOCTYPE html>
   html, body {{ margin: 0; height: 100%; background: #F6F6F4;
     font-family: "WenQuanYi Micro Hei", "Noto Sans CJK SC", "Segoe UI", sans-serif; }}
   #canvas {{ width: 100%; height: 100%; display: block; cursor: grab;
-    user-select: none; -webkit-user-select: none; touch-action: none; }}
+    user-select: none; -webkit-user-select: none; touch-action: none;
+    visibility: hidden; }}
   #canvas text {{ user-select: none; -webkit-user-select: none; }}
   #canvas.dragging {{ cursor: grabbing; }}
   .id {{ font-size: 11px; font-weight: 500; letter-spacing: .02em; }}
@@ -1100,6 +1101,7 @@ HTML = """<!DOCTYPE html>
   document.getElementById('fit').addEventListener('click', fitWidth);
   document.getElementById('overview').addEventListener('click', overview);
   overview();
+  svg.style.visibility = 'visible';
   const initial = decodeURIComponent(location.hash.slice(1));
   if (initial && DETAILS[initial]) show(initial);
 </script>
