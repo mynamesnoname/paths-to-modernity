@@ -95,8 +95,8 @@ Markdown nodes are the editable source of truth. The builder generates:
 | `review.md` | Context, qualities, tradeoffs, perspectives, and alternatives when present |
 
 For a visual read, open `structure/graph.html`. It is one self-contained file
-with no network dependencies; selection, status filtering, keyword search,
-and panel resizing are local to the page and write nothing back. It is a generated view, so
+with no network dependencies; selection, status filtering, a `Ctrl/Cmd+K`
+search surface, and panel resizing are local to the page and write nothing back. It is a generated view, so
 regenerate and commit it with the source nodes; `--check` covers it like the
 other views.
 
