@@ -99,7 +99,8 @@ with no network dependencies; selection, status filtering, a `Ctrl/Cmd+K`
 search surface, and panel resizing are local to the page and write nothing back.
 Selecting a node also stamps a large watermark on the referenced card for
 supersession, conflict, and alternative relations. The panel lists the cross-cutting relations with links and marks parent/children
-as `see the graph`, since the canvas already shows them. It is a generated view, so
+as `see the graph`, since the canvas already shows them. The view opens in an
+overview fit; the HUD also offers 100%, fit-width, and overview. It is a generated view, so
 regenerate and commit it with the source nodes; `--check` covers it like the
 other views.
 

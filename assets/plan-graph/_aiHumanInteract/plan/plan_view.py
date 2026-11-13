@@ -532,8 +532,9 @@ HTML = """<!DOCTYPE html>
   .node.selected .card-outline {{ display: none; }}
   .node.selected .card-select {{ display: inline; stroke: #5078B8; stroke-width: 2.5;
     filter: drop-shadow(0 0 4px rgba(80,120,184,.35)); }}
-  #reset {{ margin-top: 6px; border: 1px solid #ced4da; background: #fff; border-radius: 6px;
-    padding: 3px 8px; font-size: 11px; cursor: pointer; }}
+  #reset, #fit, #overview {{ margin-top: 6px; border: 1px solid #ced4da;
+    background: #fff; border-radius: 6px; padding: 3px 8px; font-size: 11px;
+    cursor: pointer; }}
 </style>
 </head>
 <body>
@@ -550,6 +551,7 @@ HTML = """<!DOCTYPE html>
   <div class="hint">点击节点查看详情 · Ctrl/⌘K 搜索 · 点状态筛选 · 滚轮缩放 · 拖拽平移</div>
   <button id="reset">100%</button>
   <button id="fit">适应宽度</button>
+  <button id="overview">全览</button>
 </div>
 <div id="search-surface" hidden>
   <div id="search-results"></div>
@@ -1061,6 +1063,13 @@ HTML = """<!DOCTYPE html>
     ty = 20;
     apply();
   }}
+  function overview() {{
+    const r = svg.getBoundingClientRect();
+    k = Math.min(1, (r.width - 40) / W, (r.height - 40) / H);
+    tx = (r.width - W * k) / 2;
+    ty = Math.max(20, (r.height - H * k) / 2);
+    apply();
+  }}
   svg.addEventListener('wheel', (event) => {{
     event.preventDefault();
     const r = svg.getBoundingClientRect();
@@ -1086,10 +1095,11 @@ HTML = """<!DOCTYPE html>
   }});
   svg.addEventListener('pointerup', () => {{ dragging = false; svg.classList.remove('dragging'); }});
   svg.addEventListener('pointercancel', () => {{ dragging = false; svg.classList.remove('dragging'); }});
-  svg.addEventListener('dblclick', fitWidth);
+  svg.addEventListener('dblclick', overview);
   document.getElementById('reset').addEventListener('click', actualSize);
   document.getElementById('fit').addEventListener('click', fitWidth);
-  actualSize();
+  document.getElementById('overview').addEventListener('click', overview);
+  overview();
   const initial = decodeURIComponent(location.hash.slice(1));
   if (initial && DETAILS[initial]) show(initial);
 </script>
