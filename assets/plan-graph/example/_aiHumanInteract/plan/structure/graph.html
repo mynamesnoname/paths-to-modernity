@@ -27,7 +27,7 @@
     background: #fff; border-radius: 999px; padding: 2px 8px; font: inherit; font-size: 11px;
     color: #495057; cursor: pointer; }
   .filter b { font-weight: 600; color: #212529; }
-  .filter.active { border-color: #5078B8; background: #E8F0FB; }
+  .filter.active { border-color: #7C5CBF; background: #F1ECFB; }
   #search-open { border: 1px solid #ced4da; background: #fff;
     border-radius: 6px; padding: 3px 8px; font: inherit; font-size: 11px;
     color: #495057; cursor: pointer; }
@@ -158,7 +158,7 @@
 </svg>
 <div id="hud">
   <b>Plan graph</b>
-  <div id="filters"><button class="filter" data-status="proposed" title="filter proposed"><span class="swatch" style="background:#EFF5FC;border:1px solid #B3C9E2"></span>proposed <b>1</b></button><button class="filter" data-status="ready" title="filter ready"><span class="swatch" style="background:#EAF7F5;border:1px solid #9CCFC7"></span>ready <b>4</b></button><button id="filter-all" class="filter filter-all">全选</button></div>
+  <div id="filters"><button class="filter active" data-status="proposed" title="filter proposed"><span class="swatch" style="background:#EFF5FC;border:1px solid #B3C9E2"></span>proposed <b>1</b></button><button class="filter active" data-status="ready" title="filter ready"><span class="swatch" style="background:#EAF7F5;border:1px solid #9CCFC7"></span>ready <b>4</b></button><button id="filter-all" class="filter filter-all">全选</button></div>
 </div>
 <div id="controls">
   <button id="search-open" type="button">搜索 <kbd>Ctrl/⌘K</kbd></button>
@@ -367,7 +367,9 @@
     history.replaceState(null, '', location.pathname + location.search);
   }
   const filterButtons = [...document.querySelectorAll('.filter[data-status]')];
-  const activeStatuses = new Set();
+  const allStatuses = filterButtons.map(button => button.dataset.status);
+  const enabledStatuses = new Set(allStatuses);
+  filterButtons.forEach(button => button.classList.add('active'));
   const searchInput = document.getElementById('search');
   const searchSurface = document.getElementById('search-surface');
   const searchResults = document.getElementById('search-results');
@@ -379,6 +381,7 @@
   try {
     searchPinned = localStorage.getItem('ptm-plan-search-pinned') === '1';
   } catch (error) {}
+  let preSearchStatuses = null;
   let queryTokens = [];
   let searchMatches = [];
   let searchIndex = -1;
@@ -397,7 +400,7 @@
   function nodeMatches(id) {
     const detail = DETAILS[id];
     if (!detail) return false;
-    if (activeStatuses.size > 0 && !activeStatuses.has(detail.status)) return false;
+    if (!enabledStatuses.has(detail.status)) return false;
     if (queryTokens.length > 0) {
       const haystack = searchText.get(id) || '';
       if (!queryTokens.every(token => haystack.includes(token))) return false;
@@ -465,6 +468,7 @@
   }
 
   function openSearch(focus = true) {
+    if (searchSurface.hidden) preSearchStatuses = new Set(enabledStatuses);
     searchSurface.hidden = false;
     renderSearchResults();
     if (focus) {
@@ -478,7 +482,21 @@
     searchSurface.hidden = true;
   }
 
+  function restoreSearchBaseline() {
+    if (preSearchStatuses) {
+      enabledStatuses.clear();
+      preSearchStatuses.forEach(status => enabledStatuses.add(status));
+    }
+    filterButtons.forEach(button => {
+      button.classList.toggle('active', enabledStatuses.has(button.dataset.status));
+    });
+    searchInput.value = '';
+    queryTokens = [];
+    applyFilter(false);
+  }
+
   function openResult(id) {
+    restoreSearchBaseline();
     closeSearch();
     show(id);
   }
@@ -590,8 +608,11 @@
   }
 
   function navigateTo(id) {
-    activeStatuses.clear();
-    filterButtons.forEach(button => button.classList.remove('active'));
+    enabledStatuses.clear();
+    filterButtons.forEach(button => {
+      enabledStatuses.add(button.dataset.status);
+      button.classList.add('active');
+    });
     searchInput.value = '';
     queryTokens = [];
     applyFilter(false);
@@ -608,7 +629,7 @@
   function applyFilter(pulse = true) {
     const wasFiltering = shade.classList.contains('on');
     clearTop();
-    const filtering = activeStatuses.size > 0 || queryTokens.length > 0;
+    const filtering = enabledStatuses.size < filterButtons.length || queryTokens.length > 0;
     shade.classList.toggle('on', filtering);
     if (filtering && wasFiltering && pulse) {
       shade.animate(
@@ -630,9 +651,9 @@
   filterButtons.forEach(button => {
     button.addEventListener('click', () => {
       const status = button.dataset.status;
-      if (activeStatuses.has(status)) activeStatuses.delete(status);
-      else activeStatuses.add(status);
-      button.classList.toggle('active', activeStatuses.has(status));
+      if (enabledStatuses.has(status)) enabledStatuses.delete(status);
+      else enabledStatuses.add(status);
+      button.classList.toggle('active', enabledStatuses.has(status));
       applyFilter();
     });
   });
@@ -677,8 +698,11 @@
   });
 
   document.getElementById('filter-all').addEventListener('click', () => {
-    activeStatuses.clear();
-    filterButtons.forEach(button => button.classList.remove('active'));
+    enabledStatuses.clear();
+    filterButtons.forEach(button => {
+      enabledStatuses.add(button.dataset.status);
+      button.classList.add('active');
+    });
     searchInput.value = '';
     queryTokens = [];
     applyFilter();

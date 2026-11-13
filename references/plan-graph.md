@@ -104,7 +104,10 @@ paths in Source, Links, and Evidence are relative links; external or missing
 references stay as text. The view opens in an
 overview fit; the HUD also offers 100%, fit-width, and overview. The search
 surface can be pinned; a pinned surface stays open when selecting results and
-across reloads, and `Esc` clears its query instead of closing it. It is a generated view, so
+across reloads, and `Esc` clears its query instead of closing it. All status
+filters start enabled; turn a status off to mask it. Selecting a search result
+restores the filter state captured when the search surface opened and clears
+the query, so an all-enabled view returns unmasked. It is a generated view, so
 regenerate and commit it with the source nodes; `--check` covers it like the
 other views.
 

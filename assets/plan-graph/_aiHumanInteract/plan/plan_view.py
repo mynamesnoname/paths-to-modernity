@@ -432,7 +432,7 @@ HTML = """<!DOCTYPE html>
     background: #fff; border-radius: 999px; padding: 2px 8px; font: inherit; font-size: 11px;
     color: #495057; cursor: pointer; }}
   .filter b {{ font-weight: 600; color: #212529; }}
-  .filter.active {{ border-color: #5078B8; background: #E8F0FB; }}
+  .filter.active {{ border-color: #7C5CBF; background: #F1ECFB; }}
   #search-open {{ border: 1px solid #ced4da; background: #fff;
     border-radius: 6px; padding: 3px 8px; font: inherit; font-size: 11px;
     color: #495057; cursor: pointer; }}
@@ -772,7 +772,9 @@ HTML = """<!DOCTYPE html>
     history.replaceState(null, '', location.pathname + location.search);
   }
   const filterButtons = [...document.querySelectorAll('.filter[data-status]')];
-  const activeStatuses = new Set();
+  const allStatuses = filterButtons.map(button => button.dataset.status);
+  const enabledStatuses = new Set(allStatuses);
+  filterButtons.forEach(button => button.classList.add('active'));
   const searchInput = document.getElementById('search');
   const searchSurface = document.getElementById('search-surface');
   const searchResults = document.getElementById('search-results');
@@ -784,6 +786,7 @@ HTML = """<!DOCTYPE html>
   try {{
     searchPinned = localStorage.getItem('ptm-plan-search-pinned') === '1';
   }} catch (error) {{}}
+  let preSearchStatuses = null;
   let queryTokens = [];
   let searchMatches = [];
   let searchIndex = -1;
@@ -802,7 +805,7 @@ HTML = """<!DOCTYPE html>
   function nodeMatches(id) {
     const detail = DETAILS[id];
     if (!detail) return false;
-    if (activeStatuses.size > 0 && !activeStatuses.has(detail.status)) return false;
+    if (!enabledStatuses.has(detail.status)) return false;
     if (queryTokens.length > 0) {
       const haystack = searchText.get(id) || '';
       if (!queryTokens.every(token => haystack.includes(token))) return false;
@@ -870,6 +873,7 @@ HTML = """<!DOCTYPE html>
   }
 
   function openSearch(focus = true) {
+    if (searchSurface.hidden) preSearchStatuses = new Set(enabledStatuses);
     searchSurface.hidden = false;
     renderSearchResults();
     if (focus) {
@@ -883,7 +887,21 @@ HTML = """<!DOCTYPE html>
     searchSurface.hidden = true;
   }
 
+  function restoreSearchBaseline() {
+    if (preSearchStatuses) {
+      enabledStatuses.clear();
+      preSearchStatuses.forEach(status => enabledStatuses.add(status));
+    }
+    filterButtons.forEach(button => {
+      button.classList.toggle('active', enabledStatuses.has(button.dataset.status));
+    });
+    searchInput.value = '';
+    queryTokens = [];
+    applyFilter(false);
+  }
+
   function openResult(id) {
+    restoreSearchBaseline();
     closeSearch();
     show(id);
   }
@@ -995,8 +1013,11 @@ HTML = """<!DOCTYPE html>
   }
 
   function navigateTo(id) {
-    activeStatuses.clear();
-    filterButtons.forEach(button => button.classList.remove('active'));
+    enabledStatuses.clear();
+    filterButtons.forEach(button => {
+      enabledStatuses.add(button.dataset.status);
+      button.classList.add('active');
+    });
     searchInput.value = '';
     queryTokens = [];
     applyFilter(false);
@@ -1013,7 +1034,7 @@ HTML = """<!DOCTYPE html>
   function applyFilter(pulse = true) {
     const wasFiltering = shade.classList.contains('on');
     clearTop();
-    const filtering = activeStatuses.size > 0 || queryTokens.length > 0;
+    const filtering = enabledStatuses.size < filterButtons.length || queryTokens.length > 0;
     shade.classList.toggle('on', filtering);
     if (filtering && wasFiltering && pulse) {
       shade.animate(
@@ -1035,9 +1056,9 @@ HTML = """<!DOCTYPE html>
   filterButtons.forEach(button => {
     button.addEventListener('click', () => {
       const status = button.dataset.status;
-      if (activeStatuses.has(status)) activeStatuses.delete(status);
-      else activeStatuses.add(status);
-      button.classList.toggle('active', activeStatuses.has(status));
+      if (enabledStatuses.has(status)) enabledStatuses.delete(status);
+      else enabledStatuses.add(status);
+      button.classList.toggle('active', enabledStatuses.has(status));
       applyFilter();
     });
   });
@@ -1082,8 +1103,11 @@ HTML = """<!DOCTYPE html>
   });
 
   document.getElementById('filter-all').addEventListener('click', () => {
-    activeStatuses.clear();
-    filterButtons.forEach(button => button.classList.remove('active'));
+    enabledStatuses.clear();
+    filterButtons.forEach(button => {
+      enabledStatuses.add(button.dataset.status);
+      button.classList.add('active');
+    });
     searchInput.value = '';
     queryTokens = [];
     applyFilter();
@@ -1280,7 +1304,7 @@ def render_html(payload: dict, title: str, repo_root: Path | None = None) -> str
     }
     filter_html = "".join(
         (
-            f'<button class="filter" data-status="{status}" title="filter {labels[status]}">'
+            f'<button class="filter active" data-status="{status}" title="filter {labels[status]}">'
             f'<span class="swatch" style="background:{STATUS_STYLE[status][0]};'
             f'border:1px solid {STATUS_STYLE[status][1]}"></span>'
             f'{labels[status]} <b>{counts[status]}</b></button>'

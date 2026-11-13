@@ -554,7 +554,7 @@ def main() -> int:
         page_b = (root / "repo-b/_aiHumanInteract/plan/structure/graph.html").read_bytes()
         if page_a != page_b:
             raise RuntimeError("graph.html depends on the checkout directory name")
-        if "LT-001" not in page or "WP-001" not in page or 'id="search-surface"' not in page or 'id="search-pin"' not in page or 'RELATIONS' not in page or 'id="card-mark-layer"' not in page or 'id="overview"' not in page or 'data-status="ready"' not in page or 'REF_STATUS' not in page:
+        if "LT-001" not in page or "WP-001" not in page or 'id="search-surface"' not in page or 'id="search-pin"' not in page or 'class="filter active"' not in page or 'RELATIONS' not in page or 'id="card-mark-layer"' not in page or 'id="overview"' not in page or 'data-status="ready"' not in page or 'REF_STATUS' not in page:
             raise RuntimeError("graph.html does not embed the plan nodes and search")
         run(
             (
