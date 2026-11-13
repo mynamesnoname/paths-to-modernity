@@ -386,6 +386,10 @@ HTML = """<!DOCTYPE html>
     color: #495057; cursor: pointer; }}
   .filter b {{ font-weight: 600; color: #212529; }}
   .filter.active {{ border-color: #5078B8; background: #E8F0FB; }}
+  #search {{ width: 100%; box-sizing: border-box; margin-top: 7px; padding: 5px 8px;
+    border: 1px solid #ced4da; border-radius: 6px; font: inherit; font-size: 11px;
+    color: #27313B; background: #fff; }}
+  #search:focus {{ outline: 2px solid #B8D0F0; border-color: #5078B8; }}
   #hud .hint {{ color: #868e96; margin-top: 6px; }}
   #panel {{ position: fixed; top: 0; right: 0; width: 380px; height: 100%;
     background: #fff; border-left: 1px solid #dee2e6; box-shadow: -4px 0 16px rgba(0,0,0,.08);
@@ -449,7 +453,8 @@ HTML = """<!DOCTYPE html>
 <div id="hud">
   <b>{title}</b>
   <div id="filters">{filters}<button id="filter-all" class="filter filter-all">全选</button></div>
-  <div class="hint">点击节点查看详情 · 点状态筛选 · 滚轮缩放 · 拖拽平移</div>
+  <input id="search" type="search" placeholder="搜索 plan 文本…" autocomplete="off"/>
+  <div class="hint">点击节点查看详情 · 搜索/状态筛选 · 滚轮缩放 · 拖拽平移</div>
   <button id="reset">100%</button>
   <button id="fit">适应宽度</button>
 </div>
@@ -640,9 +645,29 @@ HTML = """<!DOCTYPE html>
   }
   const filterButtons = [...document.querySelectorAll('.filter[data-status]')];
   const activeStatuses = new Set();
+  const searchInput = document.getElementById('search');
+  let queryTokens = [];
+  const searchText = new Map(Object.entries(DETAILS).map(([id, detail]) => {
+    const links = Object.values(detail.links || {}).flatMap(value =>
+      Array.isArray(value) ? value : [value]
+    );
+    return [id, [
+      detail.id, detail.title, detail.level, detail.status, detail.updated,
+      detail.parent, detail.source, detail.objective,
+      ...(detail.deliverables || []), ...(detail.acceptance || []),
+      ...(detail.evidence || []), ...links,
+    ].join(' ').toLowerCase()];
+  }));
 
-  function nodeVisible(id) {
-    return activeStatuses.size === 0 || activeStatuses.has(DETAILS[id].status);
+  function nodeMatches(id) {
+    const detail = DETAILS[id];
+    if (!detail) return false;
+    if (activeStatuses.size > 0 && !activeStatuses.has(detail.status)) return false;
+    if (queryTokens.length > 0) {
+      const haystack = searchText.get(id) || '';
+      if (!queryTokens.every(token => haystack.includes(token))) return false;
+    }
+    return true;
   }
 
   function clearTop() {
@@ -651,24 +676,24 @@ HTML = """<!DOCTYPE html>
     topLayer.querySelectorAll('.side').forEach(el => groundLayer.appendChild(el));
   }
 
-  function applyFilter() {
+  function applyFilter(pulse = true) {
     const wasFiltering = shade.classList.contains('on');
     clearTop();
-    const filtering = activeStatuses.size > 0;
+    const filtering = activeStatuses.size > 0 || queryTokens.length > 0;
     shade.classList.toggle('on', filtering);
-    if (filtering && wasFiltering) {
+    if (filtering && wasFiltering && pulse) {
       shade.animate(
         [{ opacity: 0.32 }, { opacity: 0.45 }],
         { duration: 300, easing: 'ease-out' }
       );
     }
     if (filtering) {
-      const halos = [...document.querySelectorAll('.halo')].filter(el => nodeVisible(el.dataset.id));
-      const nodes = [...document.querySelectorAll('.node')].filter(el => nodeVisible(el.dataset.id));
+      const halos = [...document.querySelectorAll('.halo')].filter(el => nodeMatches(el.dataset.id));
+      const nodes = [...document.querySelectorAll('.node')].filter(el => nodeMatches(el.dataset.id));
       halos.forEach(el => topLayer.appendChild(el));
       nodes.forEach(el => topLayer.appendChild(el));
     }
-    if (selectedId && !nodeVisible(selectedId)) hidePanel();
+    if (selectedId && !nodeMatches(selectedId)) hidePanel();
   }
 
   filterButtons.forEach(button => {
@@ -681,9 +706,23 @@ HTML = """<!DOCTYPE html>
     });
   });
 
+  searchInput.addEventListener('input', () => {
+    queryTokens = searchInput.value.toLowerCase().split(/\\s+/).filter(Boolean);
+    applyFilter(false);
+  });
+  searchInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      searchInput.value = '';
+      queryTokens = [];
+      applyFilter(false);
+    }
+  });
+
   document.getElementById('filter-all').addEventListener('click', () => {
     activeStatuses.clear();
     filterButtons.forEach(button => button.classList.remove('active'));
+    searchInput.value = '';
+    queryTokens = [];
     applyFilter();
   });
 
