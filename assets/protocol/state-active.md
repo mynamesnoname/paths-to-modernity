@@ -1,9 +1,10 @@
 # Active work state
 
-A pointer file, not a record. Update it at key events — a decision landed, a
-work package changed state, an authorization was granted or expired — not on
-every message. Keep pointers and small facts here; keep decisions, plans, and
-evidence in their own authoritative files.
+A pointer file, not a record. Update it at key events — an intent clarified, a
+work package changed state, a knowledge-debt bookmark triaged or resolved, an
+authorization granted or expired — not on every message. Keep pointers and small
+facts here; keep intents, plans, bookmarks, and evidence in their own
+authoritative files.
 
 ## Current objective
 
@@ -11,9 +12,10 @@ evidence in their own authoritative files.
 
 ## Governing records
 
-- Decision:
+- Intent:
 - Plan:
-- Knowledge gap:
+- Knowledge debt:
+- Scripts focus:
 
 ## Verified progress
 
@@ -39,7 +41,8 @@ nothing by itself.)
 
 ## Resume
 
-Read the linked authoritative records and the applicable `AGENTS.md`. Recheck
-the current request and the authorization before continuing. If a governing
-record has changed or a stated boundary no longer holds, reopen that part
-instead of resuming on stale assumptions.
+Read the Project Portrait in `AGENTS.md` (if present), the linked authoritative
+records, and the applicable `AGENTS.md`. Recheck the current request and the
+authorization before continuing. If a governing record has changed or a stated
+boundary no longer holds, reopen that part instead of resuming on stale
+assumptions.

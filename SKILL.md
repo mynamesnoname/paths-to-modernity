@@ -1,112 +1,115 @@
 ---
 name: paths-to-modernity
-description: Clarify materially ambiguous requirements with the decision owner, define scope and outcomes, structure complex plans, and compare consequential alternatives. Use for roadmaps, architecture decomposition, plan review, or repository-local plan graphs. Do not use for routine one-step tasks, status reports, or execution of an already-governed plan unless replanning is needed.
+description: Human-agent interaction, state, and execution infrastructure for project design (web/full-stack engineering, scientific tools, large creative works). Decompose dialogue into intents and concepts, use epistemic actions and prototypes to clarify variants and alternatives, triage technical disclosures with knowledge-debt bookmarks, maintain federated Intent / Plan / Knowledge-Debt / Scripts graphs with Hebbian associative retrieval, and recover context via subagent portraits. Do not use for routine one-step edits that need no planning or state governance.
 ---
 
 # Paths to Modernity
 
-Turn uncertain intent into clear, traceable plans. Work with people to define
-what matters, preserve meaningful qualities, review different perspectives,
-and compare alternatives against shared outcomes.
+Serve complex project design — web and full-stack systems, scientific workbenches,
+and large creative works — as a **human–agent interaction, state, and execution
+infrastructure**. Turn uncertain intent into clear, traceable structures without
+drowning the person in uninformative technical approvals.
 
-The user participates in forming the plan. The agent investigates facts,
-proposes interpretations, and explains consequences. Choices about values,
-responsibility, and acceptable consequences belong to the authorized person
-or role, called the **decision owner**. The current user may be that owner or
-identify another one.
+Following Kirsh & Maglio (1994), separate two kinds of work:
+
+- **Epistemic actions (认知性行动)** improve human–agent understanding by
+  reducing memory load, mental simulation steps, and misinterpretation risk:
+  splitting dialogue into **intents** and **concepts**, surfacing different
+  readings, building quick visual/interactive **epistemic prototypes** ("physical
+  rotation" instead of costly mental rotation), and curating externalized graphs.
+- **Pragmatic actions (实践性行动)** directly advance the deliverable (writing
+  code, wiring modules, running tests). Once intent boundaries and technical
+  disclosures are settled, pragmatic execution belongs primarily to the agent and
+  deterministic software.
+
+Choices about values, experience, responsibility, and acceptable consequences
+belong to the authorized **decision owner**, who has the right to know which
+technologies pragmatic work adopts without having to evaluate every mechanism
+ahead of practice.
 
 ## Establish context
 
-The **target project** is the repository, product, organization, or planning
-system to which the plan applies. Read its applicable instructions, existing
-plans, and decision history. Use an existing coherent structure and terminology.
-The four-level Plan Graph described below is one optional implementation.
+The **target project** is the repository, product, creative work, or system to
+which the design applies. Read its applicable `AGENTS.md` (including any
+recovery portrait and `_aiHumanInteract/state/active.md`), existing graphs, and
+decision history. Follow an existing coherent local contract rather than
+overwriting it.
 
-The **skill root** is the directory containing this loaded `SKILL.md`.
-Resolve the links below relative to it, regardless of where the skill is
-installed. The **repository root** is the target project's top-level directory;
-it may be different from the skill root.
-
-Planning alone does not authorize implementation. Deliver the planning or
-review artifact requested by the user.
+The **skill root** is the directory containing this loaded `SKILL.md`. Resolve
+the links below relative to it. Planning alone does not authorize pragmatic
+implementation.
 
 ## Read the needed detail
 
 | Resource | Read when |
 |---|---|
-| [Inquiry](references/inquiry.md) | Two reasonable interpretations could change the outcome, responsibility, acceptance, meaningful risk, or an irreversible commitment |
+| [Intent Graph & epistemic inquiry](references/intent-graph.md) | Splitting dialogue turns into intents (`INT-###`) and concepts, choosing between verbal questions vs. epistemic prototypes (SVG/UI demos), or maintaining `_aiHumanInteract/intent/` |
+| [Inquiry](references/inquiry.md) | Two reasonable readings could change the outcome, responsibility, acceptance, meaningful risk, or an irreversible commitment |
 | [Planning model](references/model.md) | Defining a plan's objective, context, decomposition, qualities, or review perspectives |
-| [Alternatives](references/alternatives.md) | Consequential alternatives need comparison under a shared outcome and evaluation baseline |
-| [Plan Graph](references/plan-graph.md) | The project uses a plan graph — look for `_aiHumanInteract/plan/structure/graph.json` with a `schema_version` field — or the user asks to establish repository-local planning infrastructure |
-| [Knowledge debt](references/knowledge-debt.md) | A person cannot evaluate a technical recommendation that affects their work, or asks for the gap to be recorded |
-| [Worked example](assets/plan-graph/example/README.md) | First learning how the Plan Graph's source plans and generated views fit together |
+| [Alternatives](references/alternatives.md) | Consequential implementation alternatives need comparison under a shared outcome and evaluation baseline |
+| [Knowledge debt & technical triage](references/knowledge-debt.md) | Declaring technical choices before pragmatic execution (3-way triage), recording `KD-###` bookmarks, or reorganizing graphs when a bookmark is resolved |
+| [Plan Graph](references/plan-graph.md) | Working with `_aiHumanInteract/plan/structure/graph.json` (`paths-to-modernity-plan-graph-v4`) or installing/upgrading pragmatic plan infrastructure |
+| [Scripts Graph](references/scripts-graph.md) | Extracting AST/import/call codebase dependencies and plan coverage under `_aiHumanInteract/scripts/` |
+| [Associative memory & portraits](references/hebbian-memory.md) | Running on-device embeddings + Hebbian spreading retrieval (`_aiHumanInteract/hebbian/`) or refreshing the subagent recovery portrait in `AGENTS.md` |
+| [Worked example](assets/plan-graph/example/README.md) | Learning how source records and generated views fit together |
 
-## Planning workflow
+## Interaction, state, and execution workflow
 
-Use the depth needed for the next decision; omit steps that add no value.
+Use the depth needed for the next commitment; omit ceremony on small tasks.
 
-1. Preserve the raw requirement or a faithful link so later summaries cannot
-   silently change intent.
-2. Inspect evidence before asking questions. Ambiguity is material when two
-   reasonable readings change the outcome, responsibility, acceptance,
-   meaningful risk, or an irreversible commitment;
-   [inquiry](references/inquiry.md) owns this threshold and its treatment.
-   Investigate factual gaps;
-   bring unresolved human choices to the decision owner. Otherwise continue
-   on a visible, reversible assumption.
-3. Establish scope, responsibility, and affected interfaces. Record what is
-   inside, outside, unknown, reversible, and deliberately left open, together
-   with the decisions and their owners.
-4. Write a concise plan brief: the desired outcome plus the problem,
-   invariants, constraints, non-goals, and success signals that matter. Keep
-   solution preferences separate from the problem being solved.
-5. Decompose by coherent outcomes and capabilities. Specify interfaces,
-   prerequisites, deliverables, acceptance, and expected evidence. Hierarchy
-   describes what work belongs to; dependencies describe what must precede it.
-6. Preserve desired qualities when acceptable implementations can differ in
-   character. Keep them separate from acceptance tests; use a metric only
-   when it meaningfully represents the quality.
-7. Review perspectives that could change the plan. Incorporate findings into
-   its source record. Compare alternatives only when a consequential choice
-   remains, with a shared baseline, budget, and stopping condition.
-8. Hand off a plan with traceable decisions, implementation or activity
-   targets, acceptance criteria, and completion-evidence expectations.
+1. **Extract intents and preserve raw wording.** Split multi-intent turns into
+   coherent intents (`INT-###`) while keeping the verbatim request (`raw_utterance`)
+   so later summaries cannot silently drift.
+2. **Decompose concepts and run epistemic inquiry.** Identify key concepts inside
+   each intent. Inspect code and facts yourself first. When a concept admits
+   multiple goal-changing readings, contrast them; remember that interpretations
+   implying different goals are not implementation alternatives to score on one
+   baseline. When verbal imagination is high-friction, build a quick reversible
+   **epistemic prototype** (SVG, interactive HTML demo, or sample output) so the
+   user can compare by seeing rather than guessing.
+3. **Compare consequential alternatives and protect qualities.** Once the outcome
+   is shared, compare meaningful implementation or experiential alternatives
+   against a shared baseline, keeping desired qualities distinct from functional
+   acceptance tests.
+4. **Declare consequential techniques and run three-way triage.** Before starting
+   a new pragmatic implementation scope, state the 1–5 consequential technologies,
+   architectures, or algorithms (and their cost if wrong) for the user to sort:
+   - *Understood and agreed* → informed acceptance;
+   - *Not understood, proceed with reversible prototype* → provisional acceptance
+     plus a linked `KD-###` bookmark in `_aiHumanInteract/knowledge-debt/`;
+   - *Disagreed, propose counter-view* → revise the plan before executing.
+5. **Execute pragmatic plans and maintain federated graphs.** Decompose approved
+   intents into pragmatic Plan Graph nodes (`LT/MT/ST/WP`), execute code changes,
+   and let deterministic CLI tooling (`scripts/ptm.py`) validate links, scan the
+   Scripts Graph, update Hebbian co-activation weights, and render the multi-graph
+   Studio (`_aiHumanInteract/studio/index.html`).
+6. **Revisit bookmarks and reorganize when understanding matures.** When practice
+   clarifies an open `KD-###` bookmark, resolve it as `affirmed` (closing the
+   gap) or `rejected` (computing impact across linked Plan and Intent nodes to
+   supersede and reorganize affected branches).
+7. **Refresh recovery state and subagent portrait.** On key milestones, update
+   `_aiHumanInteract/state/active.md` and invoke the subagent portrait summarizer
+   (`ptm portrait`) to keep `AGENTS.md` ready for instant recovery after context
+   compaction or session switches.
 
-The steps describe what a complete plan accounts for, not a pass to execute
-once. Decomposition, comparison, and review can show that the scope or the
-outcome was misread; revise it rather than defend the first reading.
-Interpretations that imply different goals are not alternatives to compare:
-agree on the outcome before comparing ways to reach it.
+## Repository-local infrastructure
 
-## Repository-local Plan Graph
-
-Inspect applicable `AGENTS.md` files and existing planning tools. Follow a
-compatible local contract and its validation commands. Do not impose this
-skill's schema on other planning systems.
-
-When the user asks to establish or upgrade planning infrastructure, follow the
-[installation procedure](references/plan-graph.md#installation-and-removal).
-Include the governance fragment (`assets/plan-graph/AGENTS.plan-management.md`,
-added by the installer's `--update-agents` option) when that request includes
-adopting project planning rules and no equivalent local contract exists.
-Existing authorization continues to apply; do not ask again for routine steps
-within that scope. The installer supports preview, conflict checks, and
-ownership-based removal.
+Inspect applicable `AGENTS.md` files first. Use `scripts/adopt_project.py` to
+adopt the protocol and entry routing block, `scripts/install_plan_graph.py` for
+the strict Plan Graph v4 bundle, and `scripts/ptm.py` for unified four-graph
+indexing, AST script scanning, Knowledge Debt impact tracing, Hebbian Dual-Path
+retrieval, Studio visualization, and portrait generation.
 
 ## Working principles
 
-- Keep one editable source for each decision; generate indexes and views.
-- Ask for judgments the person can make, not for endorsement of technical
-  reasoning they cannot assess. Decide reversible technical choices yourself,
-  record why, and report what they rest on.
-- Ask questions only when the answer can change the plan, and ask the most
-  consequential one first, naming what you are deferring; batch only choices
-  that cannot be judged apart. Use whatever channel the environment offers.
-  When interactive prompts are disabled, ask in plain conversational text and
-  pause for the answer. Readiness is relative to the next commitment, so a
-  bounded discovery task can proceed before the larger design is settled.
-- Preserve constraints, provenance, and people's choices when shortening prose.
-- Add context, qualities, perspectives, or alternatives independently when
-  useful; do not fill fields merely to complete a template.
-- Keep influential rejected alternatives and the reasons for resolving them.
-  End comparison when further exploration cannot change the decision.
+- **One editable source per decision; views are generated.** Never hand-edit
+  `graph.json`, `graph.canvas`, `graph.html`, or `studio/index.html` as authority.
+- **Authorization, understanding, and evidence are orthogonal.** Silence never
+  grants permission; a Knowledge Debt bookmark never substitutes for a test or
+  widens scope.
+- **Physical rotation beats mental rotation.** Prefer a fast, reversible visual
+  or runnable prototype over forcing a person to imagine abstract specifications.
+- **Separate edge provenance.** Keep `Declared` (authored), `Observed` (AST/static),
+  and `Associative` (Hebbian + embedding) connections explicitly typed.
+- **Readiness is relative to the next commitment.** A bounded discovery task or
+  epistemic prototype can proceed while broader architecture stays provisional.

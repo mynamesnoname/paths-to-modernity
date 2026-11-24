@@ -1,0 +1,514 @@
+{
+  "edge_count": 14,
+  "edges": [
+    {
+      "declared_on": "WP-003",
+      "from": "WP-003",
+      "relationship": "alternative_of",
+      "source_field": "alternative_of",
+      "to": "WP-002"
+    },
+    {
+      "declared_on": "MT-001",
+      "from": "LT-001",
+      "relationship": "decomposes_to",
+      "source_field": "parent",
+      "to": "MT-001"
+    },
+    {
+      "declared_on": "MT-002",
+      "from": "LT-001",
+      "relationship": "decomposes_to",
+      "source_field": "parent",
+      "to": "MT-002"
+    },
+    {
+      "declared_on": "ST-001",
+      "from": "MT-001",
+      "relationship": "decomposes_to",
+      "source_field": "parent",
+      "to": "ST-001"
+    },
+    {
+      "declared_on": "ST-002",
+      "from": "MT-002",
+      "relationship": "decomposes_to",
+      "source_field": "parent",
+      "to": "ST-002"
+    },
+    {
+      "declared_on": "WP-001",
+      "from": "ST-001",
+      "relationship": "decomposes_to",
+      "source_field": "parent",
+      "to": "WP-001"
+    },
+    {
+      "declared_on": "WP-002",
+      "from": "ST-001",
+      "relationship": "decomposes_to",
+      "source_field": "parent",
+      "to": "WP-002"
+    },
+    {
+      "declared_on": "WP-003",
+      "from": "ST-001",
+      "relationship": "decomposes_to",
+      "source_field": "parent",
+      "to": "WP-003"
+    },
+    {
+      "declared_on": "WP-004",
+      "from": "ST-002",
+      "relationship": "decomposes_to",
+      "source_field": "parent",
+      "to": "WP-004"
+    },
+    {
+      "declared_on": "WP-005",
+      "from": "ST-002",
+      "relationship": "decomposes_to",
+      "source_field": "parent",
+      "to": "WP-005"
+    },
+    {
+      "declared_on": "MT-001",
+      "from": "MT-001",
+      "relationship": "enables",
+      "source_field": "enables",
+      "to": "MT-002"
+    },
+    {
+      "declared_on": "WP-002",
+      "from": "WP-001",
+      "relationship": "prerequisite_for",
+      "source_field": "depends_on",
+      "to": "WP-002"
+    },
+    {
+      "declared_on": "WP-005",
+      "from": "WP-004",
+      "relationship": "prerequisite_for",
+      "source_field": "depends_on",
+      "to": "WP-005"
+    },
+    {
+      "declared_on": "WP-002",
+      "from": "WP-002",
+      "relationship": "supersedes",
+      "source_field": "supersedes",
+      "to": "WP-003"
+    }
+  ],
+  "levels": [
+    "long-term",
+    "mid-term",
+    "short-term",
+    "work-package"
+  ],
+  "node_count": 10,
+  "nodes": [
+    {
+      "acceptance": [
+        "核心谱峰交互零模态审批弹窗阻塞",
+        "所有未确认技术选型均可追溯至 KD 书签"
+      ],
+      "conflicts_with": [],
+      "context": {
+        "invariants": [
+          "不把沉默或顺从当作执行授权",
+          "单一决策真源，视图自动生成"
+        ],
+        "non_goals": [
+          "首期不接入外部商业云数据库"
+        ],
+        "problem": "传统对话式 Agent 每步抛出技术审批导致严重思维摩擦与伪同意。"
+      },
+      "deliverables": [
+        "直接操作光谱画布与后端会话接口",
+        "三态技术声明与知识债追踪闭环"
+      ],
+      "depends_on": [],
+      "enables": [],
+      "evidence": [],
+      "id": "LT-001",
+      "level": "long-term",
+      "links": {
+        "code": [
+          "src/workbench_api.py"
+        ],
+        "intent": [
+          "_aiHumanInteract/intent/nodes/INT-001.md"
+        ],
+        "plan": [
+          "_aiHumanInteract/plan/long-term/LT-001.md"
+        ]
+      },
+      "objective": "让科研人员通过直接画布交互与可回溯知识债机制高效完成光谱特征探索。",
+      "parent": null,
+      "qualities": [
+        "像拨动实体仪器一样直接连贯，不退化为管理弹窗"
+      ],
+      "source": "_aiHumanInteract/plan/long-term/LT-001.md",
+      "source_requirement": "_aiHumanInteract/intent/nodes/INT-001.md",
+      "status": "in_progress",
+      "supersedes": [],
+      "title": "交付低摩擦、可追溯的科学光谱协同工作台",
+      "updated": "2026-11-24",
+      "validates": []
+    },
+    {
+      "acceptance": [
+        "谱峰点击直接更新选中态",
+        "三态分拣准确识别需挂入 KD 的条目"
+      ],
+      "conflicts_with": [],
+      "deliverables": [
+        "前端直接选择画布组件",
+        "后端三态技术分拣闸门"
+      ],
+      "depends_on": [],
+      "enables": [
+        "MT-002"
+      ],
+      "evidence": [],
+      "id": "MT-001",
+      "level": "mid-term",
+      "links": {
+        "code": [
+          "web/SpectralCanvas.ts",
+          "src/triage_gate.py"
+        ],
+        "intent": [
+          "_aiHumanInteract/intent/nodes/INT-002.md"
+        ],
+        "plan": [
+          "_aiHumanInteract/plan/mid-term/MT-001.md"
+        ]
+      },
+      "objective": "实现无模态打断的谱峰选择画布与三态技术声明分拣模块。",
+      "parent": "LT-001",
+      "source": "_aiHumanInteract/plan/mid-term/MT-001.md",
+      "status": "in_progress",
+      "supersedes": [],
+      "title": "建立直接画布交互与认知分拣闸门",
+      "updated": "2026-11-24",
+      "validates": []
+    },
+    {
+      "acceptance": [
+        "重启会话后相同 `PK-###` 仍可由画布与 Agent 共同引用"
+      ],
+      "conflicts_with": [],
+      "deliverables": [
+        "轻量谱峰特征存储模块",
+        "按需启用的事件回放审计模块"
+      ],
+      "depends_on": [],
+      "enables": [],
+      "evidence": [],
+      "id": "MT-002",
+      "level": "mid-term",
+      "links": {
+        "code": [
+          "src/spectral_store.py",
+          "src/event_replay_audit.py"
+        ],
+        "intent": [
+          "_aiHumanInteract/intent/nodes/INT-003.md"
+        ],
+        "plan": [
+          "_aiHumanInteract/plan/mid-term/MT-002.md"
+        ]
+      },
+      "objective": "保证谱峰 ID 在会话切换与压缩恢复后稳定可寻址。",
+      "parent": "LT-001",
+      "source": "_aiHumanInteract/plan/mid-term/MT-002.md",
+      "status": "proposed",
+      "supersedes": [],
+      "title": "实现跨会话谱峰持久存储与可选审计回放",
+      "updated": "2026-11-24",
+      "validates": []
+    },
+    {
+      "acceptance": [
+        "单元测试验证三态分拣书签触发逻辑通过"
+      ],
+      "conflicts_with": [],
+      "deliverables": [
+        "`web/SpectralCanvas.ts`",
+        "`src/triage_gate.py`"
+      ],
+      "depends_on": [],
+      "enables": [],
+      "evidence": [],
+      "id": "ST-001",
+      "level": "short-term",
+      "links": {
+        "code": [
+          "web/SpectralCanvas.ts",
+          "src/triage_gate.py"
+        ],
+        "plan": [
+          "_aiHumanInteract/plan/short-term/ST-001.md"
+        ]
+      },
+      "objective": "完成画布组件与三态分拣受控方案比选落地。",
+      "parent": "MT-001",
+      "source": "_aiHumanInteract/plan/short-term/ST-001.md",
+      "status": "in_progress",
+      "supersedes": [],
+      "title": "落地直接操作画布与三态技术分拣核心",
+      "updated": "2026-11-24",
+      "validates": []
+    },
+    {
+      "acceptance": [
+        "基础谱峰读写通过测试，重型事件溯源在 KD-002 确认前不强行耦合"
+      ],
+      "conflicts_with": [],
+      "deliverables": [
+        "`src/spectral_store.py`",
+        "规划中的 `src/event_replay_audit.py`"
+      ],
+      "depends_on": [],
+      "enables": [],
+      "evidence": [],
+      "id": "ST-002",
+      "level": "short-term",
+      "links": {
+        "code": [
+          "src/spectral_store.py",
+          "src/event_replay_audit.py"
+        ],
+        "plan": [
+          "_aiHumanInteract/plan/short-term/ST-002.md"
+        ]
+      },
+      "objective": "先交付可逆键值谱峰存储，并将事件回放模块保持在待重审边界后。",
+      "parent": "MT-002",
+      "source": "_aiHumanInteract/plan/short-term/ST-002.md",
+      "status": "ready",
+      "supersedes": [],
+      "title": "构建谱峰存储与审计扩展点",
+      "updated": "2026-11-24",
+      "validates": []
+    },
+    {
+      "acceptance": [
+        "调用 `inspect_and_tag` 可一次完成谱峰记录与分拣状态返回"
+      ],
+      "conflicts_with": [],
+      "deliverables": [
+        "`web/SpectralCanvas.ts` 直接选中函数",
+        "`src/workbench_api.py` 会话入口"
+      ],
+      "depends_on": [],
+      "enables": [],
+      "evidence": [
+        "src/workbench_api.py",
+        "tests/test_workbench.py"
+      ],
+      "id": "WP-001",
+      "level": "work-package",
+      "links": {
+        "code": [
+          "web/SpectralCanvas.ts",
+          "src/workbench_api.py"
+        ],
+        "intent": [
+          "_aiHumanInteract/intent/nodes/INT-001.md"
+        ],
+        "plan": [
+          "_aiHumanInteract/plan/work-package/WP-001.md"
+        ],
+        "prototype": [
+          "_aiHumanInteract/intent/prototypes/direct-canvas.svg"
+        ],
+        "tests": [
+          "tests/test_workbench.py"
+        ]
+      },
+      "objective": "提供零模态弹窗阻塞的谱峰直接选中句柄与后端会话编排入口。",
+      "parent": "ST-001",
+      "source": "_aiHumanInteract/plan/work-package/WP-001.md",
+      "source_requirement": "_aiHumanInteract/intent/nodes/INT-001.md",
+      "status": "done",
+      "supersedes": [],
+      "title": "实现光谱谱峰直接选中画布与工作台会话入口",
+      "updated": "2026-11-24",
+      "validates": []
+    },
+    {
+      "acceptance": [
+        "选择 `not_understood_prototype` 时准确标记 `bookmark=True`"
+      ],
+      "approach": "显式三态分类（理解同意 / 暂存KD先做原型 / 否决提新观点）并联动赫布关联索引",
+      "conflicts_with": [],
+      "context": {
+        "invariants": [
+          "不把沉默或顺从当作执行授权"
+        ]
+      },
+      "deliverables": [
+        "`src/triage_gate.py` 三态分拣器"
+      ],
+      "depends_on": [
+        "WP-001"
+      ],
+      "enables": [],
+      "evidence": [],
+      "id": "WP-002",
+      "level": "work-package",
+      "links": {
+        "code": [
+          "src/triage_gate.py"
+        ],
+        "evaluation": [
+          "_aiHumanInteract/plan/evaluations/EVAL-001.md"
+        ],
+        "intent": [
+          "_aiHumanInteract/intent/nodes/INT-002.md"
+        ],
+        "knowledge_debt": [
+          "_aiHumanInteract/knowledge-debt/nodes/KD-001.md"
+        ],
+        "plan": [
+          "_aiHumanInteract/plan/work-package/WP-002.md"
+        ]
+      },
+      "objective": "在不强迫非完全技术能力责任人盲目点 Agree 的前提下维护技术知情权。",
+      "parent": "ST-001",
+      "source": "_aiHumanInteract/plan/work-package/WP-002.md",
+      "source_requirement": "_aiHumanInteract/intent/nodes/INT-002.md",
+      "status": "in_progress",
+      "supersedes": [
+        "WP-003"
+      ],
+      "title": "采用显式三态技术分拣闸门连接知识债书签",
+      "updated": "2026-11-24",
+      "validates": []
+    },
+    {
+      "acceptance": [
+        "对照评估明确其对用户技术知情权的影响"
+      ],
+      "alternative_of": "WP-002",
+      "approach": "模型内部估算风险分，低于阈值时完全隐藏技术栈声明",
+      "conflicts_with": [],
+      "context": {
+        "invariants": [
+          "不把沉默或顺从当作执行授权"
+        ]
+      },
+      "deliverables": [
+        "启发式静默过滤规则评估记录"
+      ],
+      "depends_on": [],
+      "enables": [],
+      "evidence": [
+        "_aiHumanInteract/plan/evaluations/EVAL-001.md"
+      ],
+      "id": "WP-003",
+      "level": "work-package",
+      "links": {
+        "evaluation": [
+          "_aiHumanInteract/plan/evaluations/EVAL-001.md"
+        ],
+        "intent": [
+          "_aiHumanInteract/intent/nodes/INT-002.md"
+        ],
+        "plan": [
+          "_aiHumanInteract/plan/work-package/WP-003.md"
+        ]
+      },
+      "objective": "在不强迫非完全技术能力责任人盲目点 Agree 的前提下维护技术知情权。",
+      "parent": "ST-001",
+      "source": "_aiHumanInteract/plan/work-package/WP-003.md",
+      "source_requirement": "_aiHumanInteract/intent/nodes/INT-002.md",
+      "status": "superseded",
+      "supersedes": [],
+      "title": "备选方案：基于启发式风险分静默跳过技术声明",
+      "updated": "2026-11-24",
+      "validates": []
+    },
+    {
+      "acceptance": [
+        "支持按稳定 `feature_id` 写入与读取谱峰记录"
+      ],
+      "conflicts_with": [],
+      "deliverables": [
+        "`src/spectral_store.py`"
+      ],
+      "depends_on": [],
+      "enables": [],
+      "evidence": [
+        "src/spectral_store.py",
+        "tests/test_workbench.py"
+      ],
+      "id": "WP-004",
+      "level": "work-package",
+      "links": {
+        "code": [
+          "src/spectral_store.py"
+        ],
+        "plan": [
+          "_aiHumanInteract/plan/work-package/WP-004.md"
+        ],
+        "tests": [
+          "tests/test_workbench.py"
+        ]
+      },
+      "objective": "用最小可逆结构持久化 `PK-###` 波长与备注信息。",
+      "parent": "ST-002",
+      "source": "_aiHumanInteract/plan/work-package/WP-004.md",
+      "status": "done",
+      "supersedes": [],
+      "title": "落地轻量键值谱峰特征持久存储",
+      "updated": "2026-11-24",
+      "validates": []
+    },
+    {
+      "acceptance": [
+        "支持按时间戳重放任意历史谱峰状态"
+      ],
+      "conflicts_with": [],
+      "deliverables": [
+        "`src/event_replay_audit.py`"
+      ],
+      "depends_on": [
+        "WP-004"
+      ],
+      "enables": [],
+      "evidence": [],
+      "id": "WP-005",
+      "level": "work-package",
+      "links": {
+        "code": [
+          "src/event_replay_audit.py"
+        ],
+        "knowledge_debt": [
+          "_aiHumanInteract/knowledge-debt/nodes/KD-002.md"
+        ],
+        "plan": [
+          "_aiHumanInteract/plan/work-package/WP-005.md"
+        ]
+      },
+      "objective": "在确有跨版本严格回放需求时提供谱峰变更事件日志重放。",
+      "parent": "ST-002",
+      "source": "_aiHumanInteract/plan/work-package/WP-005.md",
+      "status": "proposed",
+      "supersedes": [],
+      "title": "构建追加式事件溯源回放审计器（受 KD-002 书签约束）",
+      "updated": "2026-11-24",
+      "validates": []
+    }
+  ],
+  "schema_version": "paths-to-modernity-plan-graph-v4",
+  "source_of_truth": [
+    "_aiHumanInteract/plan/long-term/*.md",
+    "_aiHumanInteract/plan/mid-term/*.md",
+    "_aiHumanInteract/plan/short-term/*.md",
+    "_aiHumanInteract/plan/work-package/*.md"
+  ]
+}

@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Plan tree — Plan graph</title>
+<style>
+  :root { color-scheme: light; }
+  html, body { margin: 0; height: 100%; background: #F6F6F4;
+    font-family: "WenQuanYi Micro Hei", "Noto Sans CJK SC", "Segoe UI", sans-serif; }
+  #canvas { width: 100%; height: 100%; display: block; cursor: grab;
+    user-select: none; -webkit-user-select: none; touch-action: none;
+    visibility: hidden; }
+  #canvas text { user-select: none; -webkit-user-select: none; }
+  #canvas.dragging { cursor: grabbing; }
+  .id { font-size: 11px; font-weight: 500; letter-spacing: .02em; }
+  .title { font-size: 13px; font-weight: 600; }
+  .tag { font-size: 10px; font-weight: 600; letter-spacing: .08em; opacity: .8; }
+  .node:hover .card { filter: brightness(.97); }
+  #hud { position: fixed; left: 16px; top: 16px; background: rgba(255,255,255,.94);
+    border: 1px solid #dee2e6; border-radius: 10px; padding: 12px 14px;
+    font-size: 12px; line-height: 1.6; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  #hud b { font-size: 13px; }
+  #hud .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
+  #filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 7px 0 2px; max-width: 340px; }
+  .filter { display: inline-flex; align-items: center; gap: 5px; border: 1px solid #dee2e6;
+    background: #fff; border-radius: 999px; padding: 2px 8px; font: inherit; font-size: 11px;
+    color: #495057; cursor: pointer; }
+  .filter b { font-weight: 600; color: #212529; }
+  .filter.active { border-color: #7C5CBF; background: #F1ECFB; }
+  #search-open { border: 1px solid #ced4da; background: #fff;
+    border-radius: 6px; padding: 3px 8px; font: inherit; font-size: 11px;
+    color: #495057; cursor: pointer; }
+  #search-open kbd { font: inherit; font-size: 10px; color: #868e96; }
+  #search-chip { display: flex; align-items: center; gap: 6px;
+    padding: 3px 8px; border-radius: 6px; background: #E8F0FB; color: #31577D;
+    font-size: 11px; }
+  #search-chip[hidden] { display: none; }
+  #search-clear { border: 0; background: none; color: #31577D; cursor: pointer;
+    font-size: 14px; line-height: 1; padding: 0 2px; }
+  #search-surface { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+    width: min(760px, calc(100vw - 48px)); z-index: 40; border-radius: 16px;
+    background: rgba(255,255,255,.82); backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px); box-shadow: 0 18px 50px rgba(0,0,0,.18);
+    border: 1px solid rgba(255,255,255,.75); padding: 8px; box-sizing: border-box; }
+  #search-surface[hidden] { display: none; }
+  #search-results { max-height: min(44vh, 420px); overflow-y: auto; padding: 2px; }
+  .search-result { display: flex; gap: 8px; align-items: baseline; padding: 7px 10px;
+    border-radius: 8px; cursor: pointer; font-size: 12px; }
+  .search-result:hover, .search-result.active { background: rgba(80,120,184,.12); }
+  .search-result .rid { font-weight: 600; color: #495057; }
+  .search-result .rtitle { color: #27313B; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; }
+  .search-result .rstatus { margin-left: auto; color: #868e96; font-size: 10px;
+    white-space: nowrap; }
+  .search-empty { padding: 12px 10px; color: #868e96; font-size: 11px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .dot-done { background: #A7CEB4; }
+  .dot-ready { background: #9CCFC7; }
+  .dot-in_progress { background: #E7BA91; }
+  .dot-proposed { background: #B3C9E2; }
+  .dot-blocked { background: #E0ACAC; }
+  .dot-superseded { background: #C9CDD2; }
+  #search-box { display: flex; gap: 10px; align-items: center; margin-top: 6px; }
+  #search { flex: 1; box-sizing: border-box; padding: 7px 10px; border-radius: 8px;
+    border: 1px solid #fff; background: #fff; font: inherit; font-size: 12px;
+    color: #27313B; box-shadow: 0 0 0 2px rgba(255,255,255,.9),
+    0 0 18px rgba(80,120,184,.35); }
+  #search:focus { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 22px rgba(80,120,184,.55); }
+  #search-help { color: #868e96; font-size: 10px; white-space: nowrap; }
+  #search-pin { flex: none; border: 1px solid #ced4da; background: #fff;
+    border-radius: 6px; padding: 3px 6px; font-size: 13px; line-height: 1;
+    cursor: pointer; color: #495057; }
+  #search-pin.active { border-color: #5078B8; background: #E8F0FB; }
+  #search-pin:focus-visible { outline: 2px solid #5078B8; outline-offset: 1px; }
+  #panel { position: fixed; top: 0; right: 0; width: 380px; height: 100%;
+    background: #fff; border-left: 1px solid #dee2e6; box-shadow: -4px 0 16px rgba(0,0,0,.08);
+    display: flex; flex-direction: column; box-sizing: border-box;
+    font-size: 12px; line-height: 1.65; }
+  #panel[hidden] { display: none; }
+  #panel-head { flex: none; position: relative; padding: 16px 18px 10px;
+    border-bottom: 1px solid #e9ecef; }
+  #panel-head.status-done { background: #EDF7F0; border-bottom-color: #A7CEB4; }
+  #panel-head.status-in_progress { background: #FFF4E8; border-bottom-color: #E7BA91; }
+  #panel-head.status-proposed { background: #EFF5FC; border-bottom-color: #B3C9E2; }
+  #panel-head.status-blocked { background: #FCEEEE; border-bottom-color: #E0ACAC; }
+  #panel-head.status-superseded { background: #F1F2F4; border-bottom-color: #C9CDD2; }
+  #panel-head.status-done h3 { color: #234B36; }
+  #panel-head.status-in_progress h3 { color: #80512A; }
+  #panel-head.status-proposed h3 { color: #31577D; }
+  #panel-head.status-blocked h3 { color: #873F3F; }
+  #panel-head.status-superseded h3 { color: #777D85; }
+  #panel-resizer { position: absolute; left: -7px; top: 0; bottom: 0; width: 14px;
+    cursor: col-resize; z-index: 2; }
+  #panel-resizer::after { content: ""; position: absolute; left: 6px; top: 50%;
+    width: 2px; height: 56px; margin-top: -28px; border-radius: 1px; background: #CED4DA; }
+  #panel-resizer:hover { background: rgba(80,120,184,.08); }
+  #panel-resizer:hover::after, #panel-resizer.dragging::after { background: #5078B8; }
+  body.resizing { user-select: none; cursor: col-resize; }
+  #shade { opacity: 0; pointer-events: none; transition: opacity .3s ease; }
+  #shade.on { opacity: .45; pointer-events: auto; }
+  #panel-body { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 18px 20px; }
+  #panel h3 { margin: 0 26px 4px 0; font-size: 14px; line-height: 1.4; }
+  #panel .meta { color: #868e96; margin-bottom: 6px; }
+  #panel h4 { margin: 16px 0 4px; font-size: 10px; text-transform: uppercase;
+    letter-spacing: .08em; color: #868e96; }
+  #panel ul { margin: 0; padding-left: 16px; }
+  #panel li { margin: 2px 0; }
+  #panel code { background: #f1f3f5; padding: 1px 4px; border-radius: 3px;
+    font-size: 11px; word-break: break-all; }
+  #panel .kind { color: #495057; margin-top: 6px; font-size: 11px; }
+  #panel .source { margin: 2px 0 0; font-size: 11px; color: #495057; }
+  #panel a.ref-link { color: #31577D; text-decoration: none;
+    word-break: break-all; }
+  #panel a.ref-link:hover { text-decoration: underline; }
+  #panel .rel-summary { margin-top: 6px; font-size: 10px; color: #495057;
+    display: flex; flex-wrap: wrap; gap: 4px 10px; }
+  #panel .rel-summary b { font-weight: 600; }
+  #panel .rel-block { margin-top: 4px; }
+  #panel .rel-row { display: flex; gap: 8px; margin: 3px 0; font-size: 11px;
+    line-height: 1.5; }
+  #panel .rel-label { flex: none; width: 84px; color: #868e96; }
+  #panel .rel-values { flex: 1; min-width: 0; }
+  #panel .rel-link { display: inline-flex; align-items: baseline; gap: 5px;
+    color: #31577D; text-decoration: none; margin: 0 8px 2px 0; }
+  #panel .rel-link:hover { text-decoration: underline; }
+  #panel .rel-empty { color: #adb5bd; }
+  #close { position: absolute; right: 12px; top: 10px; border: 0; background: none;
+    font-size: 20px; line-height: 1; cursor: pointer; color: #868e96; }
+  .edge { fill: none; stroke: #B8C0C9; stroke-width: 1.2; stroke-linejoin: round;
+    stroke-linecap: round; transition: stroke .12s ease, stroke-width .12s ease; }
+  .edge.hot { stroke: #5078B8; stroke-width: 2.2; }
+  .card-mark { pointer-events: none; }
+  .halo { fill: transparent; pointer-events: none; }
+  .halo.on { fill: #DCEBFA; filter: blur(4px); }
+  .node { cursor: pointer; }
+  .card-outline, .card-select { pointer-events: none; }
+  .card-select { display: none; }
+  .node.selected .card-outline { display: none; }
+  .node.selected .card-select { display: inline; stroke: #5078B8; stroke-width: 2.5;
+    filter: drop-shadow(0 0 4px rgba(80,120,184,.35)); }
+  #controls { position: fixed; left: 16px; bottom: 16px; z-index: 26;
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    max-width: calc(100vw - 32px); background: rgba(255,255,255,.94);
+    border: 1px solid #dee2e6; border-radius: 10px; padding: 6px 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06); box-sizing: border-box; }
+  .controls-sep { width: 1px; height: 18px; background: #dee2e6; margin: 0 2px; }
+  #reset, #fit, #overview { border: 1px solid #ced4da;
+    background: #fff; border-radius: 6px; padding: 3px 8px; font-size: 11px;
+    cursor: pointer; }
+</style>
+</head>
+<body>
+<svg id="canvas" xmlns="http://www.w3.org/2000/svg">
+  <g id="scene"><g id="ground-layer"><ellipse class="shadow" data-id="WP-001" cx="154.0" cy="546.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><ellipse class="shadow" data-id="WP-002" cx="154.0" cy="630.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><ellipse class="shadow" data-id="WP-003" cx="154.0" cy="714.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><ellipse class="shadow" data-id="ST-001" cx="154.0" cy="414.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><ellipse class="shadow" data-id="MT-001" cx="154.0" cy="282.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><ellipse class="shadow" data-id="WP-004" cx="450.0" cy="546.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><ellipse class="shadow" data-id="WP-005" cx="746.0" cy="546.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><ellipse class="shadow" data-id="ST-002" cx="598.0" cy="414.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><ellipse class="shadow" data-id="MT-002" cx="598.0" cy="282.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><ellipse class="shadow" data-id="LT-001" cx="376.0" cy="150.0" rx="118.0" ry="5" fill="#000" opacity="0.05"/><path class="side" data-id="ST-001" d="M 39.6 398.0 L 279.6 398.0 L 274.0 414.0 L 34.0 414.0 Z" fill="#E1E5E8" stroke="#D5DADF" stroke-width="0.8"/><path class="side" data-id="MT-001" d="M 45.2 250.0 L 285.2 250.0 L 274.0 282.0 L 34.0 282.0 Z" fill="#E1E5E8" stroke="#D5DADF" stroke-width="0.8"/><path class="side" data-id="ST-002" d="M 483.6 398.0 L 723.6 398.0 L 718.0 414.0 L 478.0 414.0 Z" fill="#E1E5E8" stroke="#D5DADF" stroke-width="0.8"/><path class="side" data-id="MT-002" d="M 489.2 250.0 L 729.2 250.0 L 718.0 282.0 L 478.0 282.0 Z" fill="#E1E5E8" stroke="#D5DADF" stroke-width="0.8"/><path class="side" data-id="LT-001" d="M 272.8 102.0 L 512.8 102.0 L 496.0 150.0 L 256.0 150.0 Z" fill="#E1E5E8" stroke="#D5DADF" stroke-width="0.8"/></g><g id="halo-layer"><rect class="halo" data-id="WP-001" x="24.0" y="468.0" width="260" height="88" rx="14"/><rect class="halo" data-id="WP-002" x="24.0" y="552.0" width="260" height="88" rx="14"/><rect class="halo" data-id="WP-003" x="24.0" y="636.0" width="260" height="88" rx="14"/><rect class="halo" data-id="ST-001" x="29.6" y="320.0" width="260" height="88" rx="14"/><rect class="halo" data-id="MT-001" x="35.2" y="172.0" width="260" height="88" rx="14"/><rect class="halo" data-id="WP-004" x="320.0" y="468.0" width="260" height="88" rx="14"/><rect class="halo" data-id="WP-005" x="616.0" y="468.0" width="260" height="88" rx="14"/><rect class="halo" data-id="ST-002" x="473.6" y="320.0" width="260" height="88" rx="14"/><rect class="halo" data-id="MT-002" x="479.2" y="172.0" width="260" height="88" rx="14"/><rect class="halo" data-id="LT-001" x="262.8" y="24.0" width="260" height="88" rx="14"/></g><g id="edge-layer"><path class="edge" data-to="WP-001" data-from="ST-001" d="M 159.6 398.0 V 430.0 H 20.0 V 512.0 H 34.0"/><path class="edge" data-to="WP-002" data-from="ST-001" d="M 159.6 398.0 V 430.0 H 20.0 V 596.0 H 34.0"/><path class="edge" data-to="WP-003" data-from="ST-001" d="M 159.6 398.0 V 430.0 H 20.0 V 680.0 H 34.0"/><path class="edge" data-to="ST-001" data-from="MT-001" d="M 165.2 250.0 V 282.0 H 159.6 V 330.0"/><path class="edge" data-to="MT-001" data-from="LT-001" d="M 392.8 102.0 V 134.0 H 165.2 V 182.0"/><path class="edge" data-to="MT-002" data-from="LT-001" d="M 392.8 102.0 V 134.0 H 609.2 V 182.0"/><path class="edge" data-to="WP-004" data-from="ST-002" d="M 603.6 398.0 V 430.0 H 450.0 V 478.0"/><path class="edge" data-to="WP-005" data-from="ST-002" d="M 603.6 398.0 V 430.0 H 746.0 V 478.0"/><path class="edge" data-to="ST-002" data-from="MT-002" d="M 609.2 250.0 V 282.0 H 603.6 V 330.0"/></g><g id="node-layer"><g class="node" data-id="WP-001"><title>实现光谱谱峰直接选中画布与工作台会话入口</title><path class="card" d="M 34.0 478.0 H 269.0 Q 274.0 478.0 274.0 483.0 V 541.0 Q 274.0 546.0 269.0 546.0 H 34.0 Z" fill="#EDF7F0"/><rect class="accent" x="34.0" y="477.2" width="7" height="69.5" fill="#A4ADB7"/><path class="card-outline" d="M 41.0 478.0 H 269.0 Q 274.0 478.0 274.0 483.0 V 541.0 Q 274.0 546.0 269.0 546.0 H 41.0" fill="none" stroke="#A7CEB4" stroke-width="1.5"/><path class="card-select" d="M 34.0 478.0 H 269.0 Q 274.0 478.0 274.0 483.0 V 541.0 Q 274.0 546.0 269.0 546.0 H 34.0 Z" fill="none"/><text x="48.0" y="498.0" class="id" fill="#78838D">WP-001</text><text x="264.0" y="498.0" class="tag" text-anchor="end" fill="#A4ADB7">WP</text><text x="48.0" y="519.0" class="title" fill="#234B36">实现光谱谱峰直接选中画布与工作台</text><text x="48.0" y="536.0" class="title" fill="#234B36">会话入口</text></g><g class="node" data-id="WP-002"><title>采用显式三态技术分拣闸门连接知识债书签</title><path class="card" d="M 34.0 562.0 H 269.0 Q 274.0 562.0 274.0 567.0 V 625.0 Q 274.0 630.0 269.0 630.0 H 34.0 Z" fill="#FFF4E8"/><rect class="accent" x="34.0" y="561.2" width="7" height="69.5" fill="#A4ADB7"/><path class="card-outline" d="M 41.0 562.0 H 269.0 Q 274.0 562.0 274.0 567.0 V 625.0 Q 274.0 630.0 269.0 630.0 H 41.0" fill="none" stroke="#E7BA91" stroke-width="1.5"/><path class="card-select" d="M 34.0 562.0 H 269.0 Q 274.0 562.0 274.0 567.0 V 625.0 Q 274.0 630.0 269.0 630.0 H 34.0 Z" fill="none"/><text x="48.0" y="582.0" class="id" fill="#78838D">WP-002</text><text x="264.0" y="582.0" class="tag" text-anchor="end" fill="#A4ADB7">WP</text><text x="48.0" y="603.0" class="title" fill="#80512A">采用显式三态技术分拣闸门连接知识</text><text x="48.0" y="620.0" class="title" fill="#80512A">债书签</text></g><g class="node" data-id="WP-003"><title>备选方案：基于启发式风险分静默跳过技术声明</title><path class="card" d="M 34.0 646.0 H 269.0 Q 274.0 646.0 274.0 651.0 V 709.0 Q 274.0 714.0 269.0 714.0 H 34.0 Z" fill="#F1F2F4"/><rect class="accent" x="34.0" y="645.2" width="7" height="69.5" fill="#A4ADB7"/><path class="card-outline" d="M 41.0 646.0 H 269.0 Q 274.0 646.0 274.0 651.0 V 709.0 Q 274.0 714.0 269.0 714.0 H 41.0" fill="none" stroke="#C9CDD2" stroke-width="1.5" stroke-dasharray="5 3"/><path class="card-select" d="M 34.0 646.0 H 269.0 Q 274.0 646.0 274.0 651.0 V 709.0 Q 274.0 714.0 269.0 714.0 H 34.0 Z" fill="none"/><text x="48.0" y="666.0" class="id" fill="#78838D">WP-003</text><text x="264.0" y="666.0" class="tag" text-anchor="end" fill="#A4ADB7">WP</text><text x="48.0" y="687.0" class="title" fill="#777D85">备选方案：基于启发式风险分静默跳</text><text x="48.0" y="704.0" class="title" fill="#777D85">过技术声明</text></g><g class="node" data-id="ST-001"><title>落地直接操作画布与三态技术分拣核心</title><path class="card" d="M 39.6 330.0 H 274.6 Q 279.6 330.0 279.6 335.0 V 393.0 Q 279.6 398.0 274.6 398.0 H 39.6 Z" fill="#FFF4E8"/><rect class="accent" x="39.6" y="329.2" width="7" height="69.5" fill="#6F9DA2"/><path class="card-outline" d="M 46.6 330.0 H 274.6 Q 279.6 330.0 279.6 335.0 V 393.0 Q 279.6 398.0 274.6 398.0 H 46.6" fill="none" stroke="#E7BA91" stroke-width="1.5"/><path class="card-select" d="M 39.6 330.0 H 274.6 Q 279.6 330.0 279.6 335.0 V 393.0 Q 279.6 398.0 274.6 398.0 H 39.6 Z" fill="none"/><text x="53.6" y="350.0" class="id" fill="#78838D">ST-001</text><text x="269.6" y="350.0" class="tag" text-anchor="end" fill="#6F9DA2">ST</text><text x="53.6" y="371.0" class="title" fill="#80512A">落地直接操作画布与三态技术分拣核</text><text x="53.6" y="388.0" class="title" fill="#80512A">心</text></g><g class="node" data-id="MT-001"><title>建立直接画布交互与认知分拣闸门</title><path class="card" d="M 45.2 182.0 H 280.2 Q 285.2 182.0 285.2 187.0 V 245.0 Q 285.2 250.0 280.2 250.0 H 45.2 Z" fill="#FFF4E8"/><rect class="accent" x="45.2" y="181.2" width="7" height="69.5" fill="#6487AD"/><path class="card-outline" d="M 52.2 182.0 H 280.2 Q 285.2 182.0 285.2 187.0 V 245.0 Q 285.2 250.0 280.2 250.0 H 52.2" fill="none" stroke="#E7BA91" stroke-width="1.5"/><path class="card-select" d="M 45.2 182.0 H 280.2 Q 285.2 182.0 285.2 187.0 V 245.0 Q 285.2 250.0 280.2 250.0 H 45.2 Z" fill="none"/><text x="59.2" y="202.0" class="id" fill="#78838D">MT-001</text><text x="275.2" y="202.0" class="tag" text-anchor="end" fill="#6487AD">MT</text><text x="59.2" y="223.0" class="title" fill="#80512A">建立直接画布交互与认知分拣闸门</text></g><g class="node" data-id="WP-004"><title>落地轻量键值谱峰特征持久存储</title><path class="card" d="M 330.0 478.0 H 565.0 Q 570.0 478.0 570.0 483.0 V 541.0 Q 570.0 546.0 565.0 546.0 H 330.0 Z" fill="#EDF7F0"/><rect class="accent" x="330.0" y="477.2" width="7" height="69.5" fill="#A4ADB7"/><path class="card-outline" d="M 337.0 478.0 H 565.0 Q 570.0 478.0 570.0 483.0 V 541.0 Q 570.0 546.0 565.0 546.0 H 337.0" fill="none" stroke="#A7CEB4" stroke-width="1.5"/><path class="card-select" d="M 330.0 478.0 H 565.0 Q 570.0 478.0 570.0 483.0 V 541.0 Q 570.0 546.0 565.0 546.0 H 330.0 Z" fill="none"/><text x="344.0" y="498.0" class="id" fill="#78838D">WP-004</text><text x="560.0" y="498.0" class="tag" text-anchor="end" fill="#A4ADB7">WP</text><text x="344.0" y="519.0" class="title" fill="#234B36">落地轻量键值谱峰特征持久存储</text></g><g class="node" data-id="WP-005"><title>构建追加式事件溯源回放审计器（受 KD-002 书签约束）</title><path class="card" d="M 626.0 478.0 H 861.0 Q 866.0 478.0 866.0 483.0 V 541.0 Q 866.0 546.0 861.0 546.0 H 626.0 Z" fill="#EFF5FC"/><rect class="accent" x="626.0" y="477.2" width="7" height="69.5" fill="#A4ADB7"/><path class="card-outline" d="M 633.0 478.0 H 861.0 Q 866.0 478.0 866.0 483.0 V 541.0 Q 866.0 546.0 861.0 546.0 H 633.0" fill="none" stroke="#B3C9E2" stroke-width="1.5"/><path class="card-select" d="M 626.0 478.0 H 861.0 Q 866.0 478.0 866.0 483.0 V 541.0 Q 866.0 546.0 861.0 546.0 H 626.0 Z" fill="none"/><text x="640.0" y="498.0" class="id" fill="#78838D">WP-005</text><text x="856.0" y="498.0" class="tag" text-anchor="end" fill="#A4ADB7">WP</text><text x="640.0" y="519.0" class="title" fill="#31577D">构建追加式事件溯源回放审计器（受</text><text x="640.0" y="536.0" class="title" fill="#31577D">KD-002 书签约束）</text></g><g class="node" data-id="ST-002"><title>构建谱峰存储与审计扩展点</title><path class="card" d="M 483.6 330.0 H 718.6 Q 723.6 330.0 723.6 335.0 V 393.0 Q 723.6 398.0 718.6 398.0 H 483.6 Z" fill="#EAF7F5"/><rect class="accent" x="483.6" y="329.2" width="7" height="69.5" fill="#6F9DA2"/><path class="card-outline" d="M 490.6 330.0 H 718.6 Q 723.6 330.0 723.6 335.0 V 393.0 Q 723.6 398.0 718.6 398.0 H 490.6" fill="none" stroke="#9CCFC7" stroke-width="1.5"/><path class="card-select" d="M 483.6 330.0 H 718.6 Q 723.6 330.0 723.6 335.0 V 393.0 Q 723.6 398.0 718.6 398.0 H 483.6 Z" fill="none"/><text x="497.6" y="350.0" class="id" fill="#78838D">ST-002</text><text x="713.6" y="350.0" class="tag" text-anchor="end" fill="#6F9DA2">ST</text><text x="497.6" y="371.0" class="title" fill="#1F5A52">构建谱峰存储与审计扩展点</text></g><g class="node" data-id="MT-002"><title>实现跨会话谱峰持久存储与可选审计回放</title><path class="card" d="M 489.2 182.0 H 724.2 Q 729.2 182.0 729.2 187.0 V 245.0 Q 729.2 250.0 724.2 250.0 H 489.2 Z" fill="#EFF5FC"/><rect class="accent" x="489.2" y="181.2" width="7" height="69.5" fill="#6487AD"/><path class="card-outline" d="M 496.2 182.0 H 724.2 Q 729.2 182.0 729.2 187.0 V 245.0 Q 729.2 250.0 724.2 250.0 H 496.2" fill="none" stroke="#B3C9E2" stroke-width="1.5"/><path class="card-select" d="M 489.2 182.0 H 724.2 Q 729.2 182.0 729.2 187.0 V 245.0 Q 729.2 250.0 724.2 250.0 H 489.2 Z" fill="none"/><text x="503.2" y="202.0" class="id" fill="#78838D">MT-002</text><text x="719.2" y="202.0" class="tag" text-anchor="end" fill="#6487AD">MT</text><text x="503.2" y="223.0" class="title" fill="#31577D">实现跨会话谱峰持久存储与可选审计</text><text x="503.2" y="240.0" class="title" fill="#31577D">回放</text></g><g class="node" data-id="LT-001"><title>交付低摩擦、可追溯的科学光谱协同工作台</title><path class="card" d="M 272.8 34.0 H 507.8 Q 512.8 34.0 512.8 39.0 V 97.0 Q 512.8 102.0 507.8 102.0 H 272.8 Z" fill="#FFF4E8"/><rect class="accent" x="272.8" y="33.2" width="7" height="69.5" fill="#7766A6"/><path class="card-outline" d="M 279.8 34.0 H 507.8 Q 512.8 34.0 512.8 39.0 V 97.0 Q 512.8 102.0 507.8 102.0 H 279.8" fill="none" stroke="#E7BA91" stroke-width="1.5"/><path class="card-select" d="M 272.8 34.0 H 507.8 Q 512.8 34.0 512.8 39.0 V 97.0 Q 512.8 102.0 507.8 102.0 H 272.8 Z" fill="none"/><text x="286.8" y="54.0" class="id" fill="#78838D">LT-001</text><text x="502.8" y="54.0" class="tag" text-anchor="end" fill="#7766A6">LT</text><text x="286.8" y="75.0" class="title" fill="#80512A">交付低摩擦、可追溯的科学光谱协同</text><text x="286.8" y="92.0" class="title" fill="#80512A">工作台</text></g></g><g id="card-mark-layer"><g class="card-mark" data-owner="WP-003" data-target="WP-002" data-relation="alternative_of" style="display:none"><text x="154.0" y="596.0" text-anchor="middle" dominant-baseline="central" fill="#212529" fill-opacity="0.18" font-size="48" font-weight="700">→</text><text x="154.0" y="626.0" text-anchor="middle" fill="#212529" fill-opacity="0.18" font-size="10" font-weight="600">alt</text></g><g class="card-mark" data-owner="WP-002" data-target="WP-003" data-relation="supersedes" style="display:none"><text x="154.0" y="680.0" text-anchor="middle" dominant-baseline="central" fill="#212529" fill-opacity="0.18" font-size="56" font-weight="700">↓</text></g></g><g id="hot-layer"></g></g>
+  <rect id="shade" width="100%" height="100%" fill="#1B1B1B"/>
+  <g id="top-layer"></g>
+</svg>
+<div id="hud">
+  <b>Plan graph</b>
+  <div id="filters"><button class="filter active" data-status="proposed" title="filter proposed"><span class="swatch" style="background:#EFF5FC;border:1px solid #B3C9E2"></span>proposed <b>2</b></button><button class="filter active" data-status="ready" title="filter ready"><span class="swatch" style="background:#EAF7F5;border:1px solid #9CCFC7"></span>ready <b>1</b></button><button class="filter active" data-status="in_progress" title="filter in progress"><span class="swatch" style="background:#FFF4E8;border:1px solid #E7BA91"></span>in progress <b>4</b></button><button class="filter active" data-status="done" title="filter done"><span class="swatch" style="background:#EDF7F0;border:1px solid #A7CEB4"></span>done <b>2</b></button><button class="filter active" data-status="superseded" title="filter superseded"><span class="swatch" style="background:#F1F2F4;border:1px solid #C9CDD2"></span>superseded <b>1</b></button><button id="filter-all" class="filter filter-all">全选</button></div>
+</div>
+<div id="controls">
+  <button id="search-open" type="button">搜索 <kbd>Ctrl/⌘K</kbd></button>
+  <div id="search-chip" hidden><span id="search-chip-text"></span><button id="search-clear" aria-label="clear search">×</button></div>
+  <span class="controls-sep"></span>
+  <button id="reset">100%</button>
+  <button id="fit">适应宽度</button>
+  <button id="overview">全览</button>
+</div>
+<div id="search-surface" hidden>
+  <div id="search-results"></div>
+  <div id="search-box">
+    <input id="search" type="search" placeholder="搜索 plan 文本…" autocomplete="off"/>
+    <button id="search-pin" type="button" aria-label="固定搜索栏" aria-pressed="false" title="固定搜索栏">📌</button>
+    <div id="search-help">↑↓ 选择 · Enter 打开 · Esc 关闭</div>
+  </div>
+</div>
+<aside id="panel" hidden>
+  <div id="panel-resizer" role="separator" aria-orientation="vertical"
+       aria-label="resize detail panel" tabindex="0"></div>
+  <div id="panel-head">
+    <button id="close" aria-label="close">×</button>
+  </div>
+  <div id="panel-body"></div>
+</aside>
+<script>
+  const DETAILS = {"WP-001": {"id": "WP-001", "title": "实现光谱谱峰直接选中画布与工作台会话入口", "level": "work-package", "status": "done", "updated": "2026-11-24", "parent": "ST-001", "source": "_aiHumanInteract/plan/work-package/WP-001.md", "objective": "提供零模态弹窗阻塞的谱峰直接选中句柄与后端会话编排入口。", "deliverables": ["`web/SpectralCanvas.ts` 直接选中函数", "`src/workbench_api.py` 会话入口"], "acceptance": ["调用 `inspect_and_tag` 可一次完成谱峰记录与分拣状态返回"], "links": {"plan": ["_aiHumanInteract/plan/work-package/WP-001.md"], "intent": ["_aiHumanInteract/intent/nodes/INT-001.md"], "prototype": ["_aiHumanInteract/intent/prototypes/direct-canvas.svg"], "code": ["web/SpectralCanvas.ts", "src/workbench_api.py"], "tests": ["tests/test_workbench.py"]}, "evidence": ["src/workbench_api.py", "tests/test_workbench.py"]}, "WP-002": {"id": "WP-002", "title": "采用显式三态技术分拣闸门连接知识债书签", "level": "work-package", "status": "in_progress", "updated": "2026-11-24", "parent": "ST-001", "source": "_aiHumanInteract/plan/work-package/WP-002.md", "objective": "在不强迫非完全技术能力责任人盲目点 Agree 的前提下维护技术知情权。", "deliverables": ["`src/triage_gate.py` 三态分拣器"], "acceptance": ["选择 `not_understood_prototype` 时准确标记 `bookmark=True`"], "links": {"plan": ["_aiHumanInteract/plan/work-package/WP-002.md"], "intent": ["_aiHumanInteract/intent/nodes/INT-002.md"], "knowledge_debt": ["_aiHumanInteract/knowledge-debt/nodes/KD-001.md"], "evaluation": ["_aiHumanInteract/plan/evaluations/EVAL-001.md"], "code": ["src/triage_gate.py"]}, "evidence": []}, "WP-003": {"id": "WP-003", "title": "备选方案：基于启发式风险分静默跳过技术声明", "level": "work-package", "status": "superseded", "updated": "2026-11-24", "parent": "ST-001", "source": "_aiHumanInteract/plan/work-package/WP-003.md", "objective": "在不强迫非完全技术能力责任人盲目点 Agree 的前提下维护技术知情权。", "deliverables": ["启发式静默过滤规则评估记录"], "acceptance": ["对照评估明确其对用户技术知情权的影响"], "links": {"plan": ["_aiHumanInteract/plan/work-package/WP-003.md"], "intent": ["_aiHumanInteract/intent/nodes/INT-002.md"], "evaluation": ["_aiHumanInteract/plan/evaluations/EVAL-001.md"]}, "evidence": ["_aiHumanInteract/plan/evaluations/EVAL-001.md"]}, "ST-001": {"id": "ST-001", "title": "落地直接操作画布与三态技术分拣核心", "level": "short-term", "status": "in_progress", "updated": "2026-11-24", "parent": "MT-001", "source": "_aiHumanInteract/plan/short-term/ST-001.md", "objective": "完成画布组件与三态分拣受控方案比选落地。", "deliverables": ["`web/SpectralCanvas.ts`", "`src/triage_gate.py`"], "acceptance": ["单元测试验证三态分拣书签触发逻辑通过"], "links": {"plan": ["_aiHumanInteract/plan/short-term/ST-001.md"], "code": ["web/SpectralCanvas.ts", "src/triage_gate.py"]}, "evidence": []}, "MT-001": {"id": "MT-001", "title": "建立直接画布交互与认知分拣闸门", "level": "mid-term", "status": "in_progress", "updated": "2026-11-24", "parent": "LT-001", "source": "_aiHumanInteract/plan/mid-term/MT-001.md", "objective": "实现无模态打断的谱峰选择画布与三态技术声明分拣模块。", "deliverables": ["前端直接选择画布组件", "后端三态技术分拣闸门"], "acceptance": ["谱峰点击直接更新选中态", "三态分拣准确识别需挂入 KD 的条目"], "links": {"plan": ["_aiHumanInteract/plan/mid-term/MT-001.md"], "intent": ["_aiHumanInteract/intent/nodes/INT-002.md"], "code": ["web/SpectralCanvas.ts", "src/triage_gate.py"]}, "evidence": []}, "WP-004": {"id": "WP-004", "title": "落地轻量键值谱峰特征持久存储", "level": "work-package", "status": "done", "updated": "2026-11-24", "parent": "ST-002", "source": "_aiHumanInteract/plan/work-package/WP-004.md", "objective": "用最小可逆结构持久化 `PK-###` 波长与备注信息。", "deliverables": ["`src/spectral_store.py`"], "acceptance": ["支持按稳定 `feature_id` 写入与读取谱峰记录"], "links": {"plan": ["_aiHumanInteract/plan/work-package/WP-004.md"], "code": ["src/spectral_store.py"], "tests": ["tests/test_workbench.py"]}, "evidence": ["src/spectral_store.py", "tests/test_workbench.py"]}, "WP-005": {"id": "WP-005", "title": "构建追加式事件溯源回放审计器（受 KD-002 书签约束）", "level": "work-package", "status": "proposed", "updated": "2026-11-24", "parent": "ST-002", "source": "_aiHumanInteract/plan/work-package/WP-005.md", "objective": "在确有跨版本严格回放需求时提供谱峰变更事件日志重放。", "deliverables": ["`src/event_replay_audit.py`"], "acceptance": ["支持按时间戳重放任意历史谱峰状态"], "links": {"plan": ["_aiHumanInteract/plan/work-package/WP-005.md"], "knowledge_debt": ["_aiHumanInteract/knowledge-debt/nodes/KD-002.md"], "code": ["src/event_replay_audit.py"]}, "evidence": []}, "ST-002": {"id": "ST-002", "title": "构建谱峰存储与审计扩展点", "level": "short-term", "status": "ready", "updated": "2026-11-24", "parent": "MT-002", "source": "_aiHumanInteract/plan/short-term/ST-002.md", "objective": "先交付可逆键值谱峰存储，并将事件回放模块保持在待重审边界后。", "deliverables": ["`src/spectral_store.py`", "规划中的 `src/event_replay_audit.py`"], "acceptance": ["基础谱峰读写通过测试，重型事件溯源在 KD-002 确认前不强行耦合"], "links": {"plan": ["_aiHumanInteract/plan/short-term/ST-002.md"], "code": ["src/spectral_store.py", "src/event_replay_audit.py"]}, "evidence": []}, "MT-002": {"id": "MT-002", "title": "实现跨会话谱峰持久存储与可选审计回放", "level": "mid-term", "status": "proposed", "updated": "2026-11-24", "parent": "LT-001", "source": "_aiHumanInteract/plan/mid-term/MT-002.md", "objective": "保证谱峰 ID 在会话切换与压缩恢复后稳定可寻址。", "deliverables": ["轻量谱峰特征存储模块", "按需启用的事件回放审计模块"], "acceptance": ["重启会话后相同 `PK-###` 仍可由画布与 Agent 共同引用"], "links": {"plan": ["_aiHumanInteract/plan/mid-term/MT-002.md"], "intent": ["_aiHumanInteract/intent/nodes/INT-003.md"], "code": ["src/spectral_store.py", "src/event_replay_audit.py"]}, "evidence": []}, "LT-001": {"id": "LT-001", "title": "交付低摩擦、可追溯的科学光谱协同工作台", "level": "long-term", "status": "in_progress", "updated": "2026-11-24", "parent": null, "source": "_aiHumanInteract/plan/long-term/LT-001.md", "objective": "让科研人员通过直接画布交互与可回溯知识债机制高效完成光谱特征探索。", "deliverables": ["直接操作光谱画布与后端会话接口", "三态技术声明与知识债追踪闭环"], "acceptance": ["核心谱峰交互零模态审批弹窗阻塞", "所有未确认技术选型均可追溯至 KD 书签"], "links": {"plan": ["_aiHumanInteract/plan/long-term/LT-001.md"], "intent": ["_aiHumanInteract/intent/nodes/INT-001.md"], "code": ["src/workbench_api.py"]}, "evidence": []}};
+  const RELATIONS = {"WP-001": {"parent": "ST-001", "children": [], "out": [{"type": "prerequisite_for", "target": "WP-002"}], "in": []}, "WP-002": {"parent": "ST-001", "children": [], "out": [{"type": "supersedes", "target": "WP-003"}], "in": [{"type": "alternative_of", "target": "WP-003"}, {"type": "prerequisite_for", "target": "WP-001"}]}, "WP-003": {"parent": "ST-001", "children": [], "out": [{"type": "alternative_of", "target": "WP-002"}], "in": [{"type": "supersedes", "target": "WP-002"}]}, "ST-001": {"parent": "MT-001", "children": ["WP-001", "WP-002", "WP-003"], "out": [], "in": []}, "MT-001": {"parent": "LT-001", "children": ["ST-001"], "out": [{"type": "enables", "target": "MT-002"}], "in": []}, "WP-004": {"parent": "ST-002", "children": [], "out": [{"type": "prerequisite_for", "target": "WP-005"}], "in": []}, "WP-005": {"parent": "ST-002", "children": [], "out": [], "in": [{"type": "prerequisite_for", "target": "WP-004"}]}, "ST-002": {"parent": "MT-002", "children": ["WP-004", "WP-005"], "out": [], "in": []}, "MT-002": {"parent": "LT-001", "children": ["ST-002"], "out": [], "in": [{"type": "enables", "target": "MT-001"}]}, "LT-001": {"parent": null, "children": ["MT-001", "MT-002"], "out": [], "in": []}};
+  const REF_STATUS = {"_aiHumanInteract/plan/work-package/WP-001.md": true, "_aiHumanInteract/intent/nodes/INT-001.md": true, "_aiHumanInteract/intent/prototypes/direct-canvas.svg": true, "web/SpectralCanvas.ts": true, "src/workbench_api.py": true, "tests/test_workbench.py": true, "_aiHumanInteract/plan/work-package/WP-002.md": true, "_aiHumanInteract/intent/nodes/INT-002.md": true, "_aiHumanInteract/knowledge-debt/nodes/KD-001.md": true, "_aiHumanInteract/plan/evaluations/EVAL-001.md": true, "src/triage_gate.py": true, "_aiHumanInteract/plan/work-package/WP-003.md": true, "_aiHumanInteract/plan/short-term/ST-001.md": true, "_aiHumanInteract/plan/mid-term/MT-001.md": true, "_aiHumanInteract/plan/work-package/WP-004.md": true, "src/spectral_store.py": true, "_aiHumanInteract/plan/work-package/WP-005.md": true, "_aiHumanInteract/knowledge-debt/nodes/KD-002.md": true, "src/event_replay_audit.py": false, "_aiHumanInteract/plan/short-term/ST-002.md": true, "_aiHumanInteract/plan/mid-term/MT-002.md": true, "_aiHumanInteract/intent/nodes/INT-003.md": true, "_aiHumanInteract/plan/long-term/LT-001.md": true};
+  const svg = document.getElementById('canvas');
+  const scene = document.getElementById('scene');
+  const topLayer = document.getElementById('top-layer');
+  const shade = document.getElementById('shade');
+  const nodeLayer = document.getElementById('node-layer');
+  const haloLayer = document.getElementById('halo-layer');
+  const groundLayer = document.getElementById('ground-layer');
+  const W = 900, H = 738;
+  let k = 1, tx = 0, ty = 0, dragging = false, lastX = 0, lastY = 0, moved = false;
+  const panel = document.getElementById('panel');
+  const panelHead = document.getElementById('panel-head');
+  const panelBody = document.getElementById('panel-body');
+  const resizer = document.getElementById('panel-resizer');
+  const PANEL_MIN = 300, PANEL_MAX = 900, PANEL_DEFAULT = 380;
+  let resizingPanel = false;
+  let selectedId = null;
+
+  function setPanelWidth(width) {
+    const max = Math.max(PANEL_MIN, Math.min(PANEL_MAX, window.innerWidth - 240));
+    const clamped = Math.max(PANEL_MIN, Math.min(width, max));
+    panel.style.width = clamped + 'px';
+    try { localStorage.setItem('ptm-plan-panel-width', String(clamped)); } catch (error) {}
+  }
+
+  function endResize() {
+    if (!resizingPanel) return;
+    resizingPanel = false;
+    resizer.classList.remove('dragging');
+    document.body.classList.remove('resizing');
+  }
+
+  resizer.addEventListener('pointerdown', (event) => {
+    resizingPanel = true;
+    resizer.classList.add('dragging');
+    document.body.classList.add('resizing');
+    resizer.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  });
+  resizer.addEventListener('pointermove', (event) => {
+    if (!resizingPanel) return;
+    setPanelWidth(window.innerWidth - event.clientX);
+  });
+  resizer.addEventListener('pointerup', endResize);
+  resizer.addEventListener('pointercancel', endResize);
+  resizer.addEventListener('dblclick', () => setPanelWidth(PANEL_DEFAULT));
+  resizer.addEventListener('keydown', (event) => {
+    const current = panel.getBoundingClientRect().width;
+    if (event.key === 'ArrowLeft') { setPanelWidth(current + 24); event.preventDefault(); }
+    if (event.key === 'ArrowRight') { setPanelWidth(current - 24); event.preventDefault(); }
+  });
+  try {
+    const saved = Number(localStorage.getItem('ptm-plan-panel-width'));
+    if (saved) setPanelWidth(saved);
+  } catch (error) {}
+  window.addEventListener('resize', () => {
+    if (!panel.hidden) setPanelWidth(panel.getBoundingClientRect().width);
+  });
+  const nodeById = new Map([...document.querySelectorAll('.node')].map(g => [g.dataset.id, g]));
+  const haloById = new Map([...document.querySelectorAll('.halo')].map(h => [h.dataset.id, h]));
+  const edgeLayer = document.getElementById('edge-layer');
+  const hotLayer = document.getElementById('hot-layer');
+  function clearHot() {
+    hotLayer.querySelectorAll('.edge').forEach(path => {
+      path.classList.remove('hot');
+      edgeLayer.appendChild(path);
+    });
+  }
+
+  function el(tag, cls, text) {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function revealPanel() {
+    if (reduceMotion) return;
+    const items = [
+      ...panelHead.querySelectorAll('h3, .meta'),
+      ...panelBody.children,
+    ];
+    items.forEach((item, index) => {
+      item.animate(
+        [
+          { opacity: 0, transform: 'translateY(-6px)' },
+          { opacity: 1, transform: 'translateY(0)' },
+        ],
+        {
+          duration: 320,
+          delay: Math.min(index * 28, 280),
+          easing: 'cubic-bezier(.2, .7, .3, 1)',
+          fill: 'both',
+        }
+      );
+    });
+  }
+
+  function show(id) {
+    const d = DETAILS[id];
+    if (!d) return;
+    selectedId = id;
+    panelHead.className = 'status-' + d.status;
+    document.querySelectorAll('.node.selected').forEach(n => n.classList.remove('selected'));
+    nodeById.get(id)?.classList.add('selected');
+    clearHot();
+    document.querySelectorAll('.halo.on').forEach(h => h.classList.remove('on'));
+    haloById.get(id)?.classList.add('on');
+    let cursor = id;
+    while (cursor && DETAILS[cursor]) {
+      edgeLayer.querySelectorAll('.edge[data-to="' + cursor + '"]').forEach(p => {
+        p.classList.add('hot');
+        hotLayer.appendChild(p);
+      });
+      cursor = DETAILS[cursor].parent;
+    }
+    panelBody.replaceChildren();
+    if (d.source) panelBody.append(sourceLine(d.source));
+    [...panelHead.children].forEach(child => { if (child.id !== 'close') child.remove(); });
+    panelHead.append(el('h3', null, d.id + ' · ' + d.title));
+    panelHead.append(el('div', 'meta', d.level + ' · ' + d.status + ' · updated ' + d.updated + (d.parent ? ' · parent ' + d.parent : '')));
+    panelHead.append(renderRelationSummary(id));
+    panelBody.append(renderRelations(id));
+    panelBody.scrollTop = 0;
+    if (d.objective) {
+      panelBody.append(el('h4', null, 'Objective'));
+      panelBody.append(el('p', null, d.objective));
+    }
+    for (const [label, key] of [['Deliverables', 'deliverables'], ['Acceptance', 'acceptance']]) {
+      if (Array.isArray(d[key]) && d[key].length) {
+        panelBody.append(el('h4', null, label));
+        const ul = document.createElement('ul');
+        d[key].forEach(x => ul.append(el('li', null, x)));
+        panelBody.append(ul);
+      }
+    }
+    const links = d.links || {};
+    const kinds = Object.keys(links);
+    if (kinds.length) {
+      panelBody.append(el('h4', null, 'Links'));
+      for (const kind of kinds) {
+        panelBody.append(el('div', 'kind', kind));
+        const ul = document.createElement('ul');
+        const items = Array.isArray(links[kind]) ? links[kind] : [links[kind]];
+        items.forEach(x => {
+          const li = document.createElement('li');
+          li.append(referenceNode(x));
+          ul.append(li);
+        });
+        panelBody.append(ul);
+      }
+    }
+    if (Array.isArray(d.evidence) && d.evidence.length) {
+      panelBody.append(el('h4', null, 'Evidence'));
+      const ul = document.createElement('ul');
+      d.evidence.forEach(x => {
+        const li = document.createElement('li');
+        li.append(referenceNode(x));
+        ul.append(li);
+      });
+      panelBody.append(ul);
+    }
+    document.querySelectorAll('.card-mark').forEach(mark => {
+      mark.style.display = mark.dataset.owner === id ? '' : 'none';
+    });
+    panel.hidden = false;
+    revealPanel();
+    history.replaceState(null, '', '#' + encodeURIComponent(id));
+  }
+  function hidePanel() {
+    selectedId = null;
+    panel.hidden = true;
+    document.querySelectorAll('.node.selected').forEach(n => n.classList.remove('selected'));
+    document.querySelectorAll('.halo.on').forEach(h => h.classList.remove('on'));
+    clearHot();
+    document.querySelectorAll('.card-mark').forEach(mark => { mark.style.display = 'none'; });
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+  const filterButtons = [...document.querySelectorAll('.filter[data-status]')];
+  const allStatuses = filterButtons.map(button => button.dataset.status);
+  const enabledStatuses = new Set(allStatuses);
+  filterButtons.forEach(button => button.classList.add('active'));
+  const searchInput = document.getElementById('search');
+  const searchSurface = document.getElementById('search-surface');
+  const searchResults = document.getElementById('search-results');
+  const searchChip = document.getElementById('search-chip');
+  const searchChipText = document.getElementById('search-chip-text');
+  const searchPin = document.getElementById('search-pin');
+  const searchHelp = document.getElementById('search-help');
+  let searchPinned = false;
+  try {
+    searchPinned = localStorage.getItem('ptm-plan-search-pinned') === '1';
+  } catch (error) {}
+  let preSearchStatuses = null;
+  let queryTokens = [];
+  let searchMatches = [];
+  let searchIndex = -1;
+  const searchText = new Map(Object.entries(DETAILS).map(([id, detail]) => {
+    const links = Object.values(detail.links || {}).flatMap(value =>
+      Array.isArray(value) ? value : [value]
+    );
+    return [id, [
+      detail.id, detail.title, detail.level, detail.status, detail.updated,
+      detail.parent, detail.source, detail.objective,
+      ...(detail.deliverables || []), ...(detail.acceptance || []),
+      ...(detail.evidence || []), ...links,
+    ].join(' ').toLowerCase()];
+  }));
+
+  function nodeMatches(id) {
+    const detail = DETAILS[id];
+    if (!detail) return false;
+    if (!enabledStatuses.has(detail.status)) return false;
+    if (queryTokens.length > 0) {
+      const haystack = searchText.get(id) || '';
+      if (!queryTokens.every(token => haystack.includes(token))) return false;
+    }
+    return true;
+  }
+
+  function renderSearchResults() {
+    searchMatches = Object.keys(DETAILS).filter(nodeMatches).sort().slice(0, 50);
+    searchIndex = -1;
+    searchResults.replaceChildren();
+    if (queryTokens.length === 0) {
+      const hint = document.createElement('div');
+      hint.className = 'search-empty';
+      hint.textContent = '输入关键词，匹配 id、标题、objective、deliverables、acceptance、links…';
+      searchResults.append(hint);
+      return;
+    }
+    if (searchMatches.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'search-empty';
+      empty.textContent = '没有匹配的 plan';
+      searchResults.append(empty);
+      return;
+    }
+    for (const id of searchMatches) {
+      const detail = DETAILS[id];
+      const row = document.createElement('div');
+      row.className = 'search-result';
+      row.dataset.id = id;
+      const dot = document.createElement('span');
+      dot.className = 'dot dot-' + detail.status;
+      const rid = document.createElement('span');
+      rid.className = 'rid';
+      rid.textContent = id;
+      const title = document.createElement('span');
+      title.className = 'rtitle';
+      title.textContent = detail.title;
+      const status = document.createElement('span');
+      status.className = 'rstatus';
+      status.textContent = detail.status + ' · ' + detail.level;
+      row.append(dot, rid, title, status);
+      row.addEventListener('click', () => openResult(id));
+      searchResults.append(row);
+    }
+  }
+
+  function syncPin() {
+    searchPin.classList.toggle('active', searchPinned);
+    searchPin.setAttribute('aria-pressed', String(searchPinned));
+    const label = searchPinned ? '取消固定搜索栏' : '固定搜索栏';
+    searchPin.title = label;
+    searchPin.setAttribute('aria-label', label);
+    searchHelp.textContent = searchPinned
+      ? '↑↓ 选择 · Enter 打开 · Esc 清空'
+      : '↑↓ 选择 · Enter 打开 · Esc 关闭';
+  }
+
+  function setPinned(value) {
+    searchPinned = value;
+    syncPin();
+    try {
+      localStorage.setItem('ptm-plan-search-pinned', value ? '1' : '0');
+    } catch (error) {}
+  }
+
+  function openSearch(focus = true) {
+    if (searchSurface.hidden) preSearchStatuses = new Set(enabledStatuses);
+    searchSurface.hidden = false;
+    renderSearchResults();
+    if (focus) {
+      searchInput.focus();
+      searchInput.select();
+    }
+  }
+
+  function closeSearch(force = false) {
+    if (searchPinned && !force) return;
+    searchSurface.hidden = true;
+  }
+
+  function restoreSearchBaseline() {
+    if (preSearchStatuses) {
+      enabledStatuses.clear();
+      preSearchStatuses.forEach(status => enabledStatuses.add(status));
+    }
+    filterButtons.forEach(button => {
+      button.classList.toggle('active', enabledStatuses.has(button.dataset.status));
+    });
+    searchInput.value = '';
+    queryTokens = [];
+    applyFilter(false);
+  }
+
+  function openResult(id) {
+    restoreSearchBaseline();
+    closeSearch();
+    show(id);
+  }
+
+  function updateSearchChrome() {
+    const value = searchInput.value.trim();
+    searchChip.hidden = !value;
+    searchChipText.textContent = value ? '搜索：' + value : '';
+  }
+
+  function relationCounts(rel) {
+    const count = (list, type) => (list || []).filter(item => item.type === type).length;
+    return {
+      parent: (rel.parent ? 1 : 0) + (rel.children || []).length,
+      depends: count(rel.in, 'prerequisite_for') + count(rel.out, 'prerequisite_for'),
+      enables: count(rel.in, 'enables') + count(rel.out, 'enables'),
+      validates: count(rel.in, 'validates') + count(rel.out, 'validates'),
+      supersedes: count(rel.in, 'supersedes') + count(rel.out, 'supersedes'),
+      conflicts: count(rel.in, 'conflicts_with') + count(rel.out, 'conflicts_with'),
+      alternative: count(rel.in, 'alternative_of') + count(rel.out, 'alternative_of'),
+    };
+  }
+
+  function renderRelationSummary(id) {
+    const counts = relationCounts(RELATIONS[id] || {});
+    const labels = {
+      parent: 'parent', depends: 'depends', enables: 'enables',
+      validates: 'validates', supersedes: 'supersedes',
+      conflicts: 'conflicts', alternative: 'alternative',
+    };
+    const summary = el('div', 'rel-summary');
+    let any = false;
+    for (const [key, label] of Object.entries(labels)) {
+      if (!counts[key]) continue;
+      any = true;
+      const item = el('span', null, label + ' ');
+      item.append(el('b', null, String(counts[key])));
+      summary.append(item);
+    }
+    if (!any) summary.textContent = 'no relations';
+    return summary;
+  }
+
+  function relationLink(targetId) {
+    const detail = DETAILS[targetId] || { status: 'superseded', title: targetId };
+    const link = document.createElement('a');
+    link.className = 'rel-link';
+    link.href = '#' + encodeURIComponent(targetId);
+    link.dataset.id = targetId;
+    const dot = document.createElement('span');
+    dot.className = 'dot dot-' + detail.status;
+    link.append(dot, document.createTextNode(targetId + ' · ' + detail.title));
+    return link;
+  }
+
+  function referenceNode(value) {
+    if (REF_STATUS[value] === true) {
+      const link = document.createElement('a');
+      link.className = 'ref-link';
+      const clean = value.startsWith('./') ? value.slice(2) : value;
+      link.href = clean.startsWith('/') ? clean : '../../../' + encodeURI(clean);
+      link.textContent = value;
+      return link;
+    }
+    const code = document.createElement('code');
+    code.textContent = value;
+    return code;
+  }
+
+  function sourceLine(source) {
+    const line = el('div', 'source');
+    line.append(document.createTextNode('Source: '), referenceNode(source));
+    return line;
+  }
+
+  function relationRow(label, targets, emptyText = 'none') {
+    const row = el('div', 'rel-row');
+    const name = el('span', 'rel-label', label);
+    const values = el('span', 'rel-values');
+    if (!targets.length) {
+      values.append(el('span', 'rel-empty', emptyText));
+    } else {
+      targets.forEach(target => values.append(relationLink(target)));
+    }
+    row.append(name, values);
+    return row;
+  }
+
+  function renderRelations(id) {
+    const rel = RELATIONS[id] || {};
+    const block = el('div', 'rel-block');
+    block.append(el('h4', null, 'Relations'));
+    const outgoing = type => (rel.out || []).filter(item => item.type === type).map(item => item.target);
+    const incoming = type => (rel.in || []).filter(item => item.type === type).map(item => item.target);
+    block.append(relationRow('Parent/children', [], 'see the graph'));
+    block.append(relationRow('Depends on', incoming('prerequisite_for')));
+    block.append(relationRow('Required by', outgoing('prerequisite_for')));
+    block.append(relationRow('Enables', outgoing('enables')));
+    block.append(relationRow('Enabled by', incoming('enables')));
+    block.append(relationRow('Validates', outgoing('validates')));
+    block.append(relationRow('Validated by', incoming('validates')));
+    block.append(relationRow('Supersedes', outgoing('supersedes')));
+    block.append(relationRow('Superseded by', incoming('supersedes')));
+    const conflicts = [...new Set([...outgoing('conflicts_with'), ...incoming('conflicts_with')])];
+    block.append(relationRow('Conflicts with', conflicts));
+    block.append(relationRow('Alternative of', outgoing('alternative_of')));
+    block.append(relationRow('Has alternative', incoming('alternative_of')));
+    return block;
+  }
+
+  function navigateTo(id) {
+    enabledStatuses.clear();
+    filterButtons.forEach(button => {
+      enabledStatuses.add(button.dataset.status);
+      button.classList.add('active');
+    });
+    searchInput.value = '';
+    queryTokens = [];
+    applyFilter(false);
+    closeSearch();
+    show(id);
+  }
+
+  function clearTop() {
+    topLayer.querySelectorAll('.node').forEach(el => nodeLayer.appendChild(el));
+    topLayer.querySelectorAll('.halo').forEach(el => haloLayer.appendChild(el));
+    topLayer.querySelectorAll('.side').forEach(el => groundLayer.appendChild(el));
+  }
+
+  function applyFilter(pulse = true) {
+    const wasFiltering = shade.classList.contains('on');
+    clearTop();
+    const filtering = enabledStatuses.size < filterButtons.length || queryTokens.length > 0;
+    shade.classList.toggle('on', filtering);
+    if (filtering && wasFiltering && pulse) {
+      shade.animate(
+        [{ opacity: 0.32 }, { opacity: 0.45 }],
+        { duration: 300, easing: 'ease-out' }
+      );
+    }
+    if (filtering) {
+      const halos = [...document.querySelectorAll('.halo')].filter(el => nodeMatches(el.dataset.id));
+      const nodes = [...document.querySelectorAll('.node')].filter(el => nodeMatches(el.dataset.id));
+      halos.forEach(el => topLayer.appendChild(el));
+      nodes.forEach(el => topLayer.appendChild(el));
+    }
+    if (selectedId && !nodeMatches(selectedId)) hidePanel();
+    if (!searchSurface.hidden) renderSearchResults();
+    updateSearchChrome();
+  }
+
+  filterButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const status = button.dataset.status;
+      if (enabledStatuses.has(status)) enabledStatuses.delete(status);
+      else enabledStatuses.add(status);
+      button.classList.toggle('active', enabledStatuses.has(status));
+      applyFilter();
+    });
+  });
+
+  searchInput.addEventListener('input', () => {
+    queryTokens = searchInput.value.toLowerCase().split(/\s+/).filter(Boolean);
+    applyFilter(false);
+  });
+  searchInput.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      if (searchMatches.length === 0) return;
+      event.preventDefault();
+      const delta = event.key === 'ArrowDown' ? 1 : -1;
+      searchIndex = (searchIndex + delta + searchMatches.length) % searchMatches.length;
+      [...searchResults.querySelectorAll('.search-result')].forEach((row, index) => {
+        row.classList.toggle('active', index === searchIndex);
+      });
+      const active = searchResults.querySelector('.search-result.active');
+      if (active) active.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const target = searchIndex >= 0 ? searchMatches[searchIndex] : searchMatches[0];
+      if (target) openResult(target);
+    }
+  });
+
+  document.getElementById('search-open').addEventListener('click', openSearch);
+  searchPin.addEventListener('click', () => {
+    setPinned(!searchPinned);
+    if (searchPinned) {
+      searchSurface.hidden = false;
+      searchInput.focus();
+    }
+  });
+  document.getElementById('search-clear').addEventListener('click', () => {
+    searchInput.value = '';
+    queryTokens = [];
+    applyFilter(false);
+    searchInput.focus();
+  });
+
+  document.getElementById('filter-all').addEventListener('click', () => {
+    enabledStatuses.clear();
+    filterButtons.forEach(button => {
+      enabledStatuses.add(button.dataset.status);
+      button.classList.add('active');
+    });
+    searchInput.value = '';
+    queryTokens = [];
+    applyFilter();
+  });
+
+  svg.addEventListener('click', (event) => {
+    if (moved) { moved = false; return; }
+    const g = event.target.closest('.node');
+    if (g) show(g.dataset.id);
+  });
+  document.getElementById('close').addEventListener('click', hidePanel);
+  panelBody.addEventListener('click', (event) => {
+    const link = event.target.closest('a.rel-link');
+    if (!link) return;
+    event.preventDefault();
+    navigateTo(link.dataset.id);
+  });
+  document.addEventListener('keydown', (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      if (searchSurface.hidden) openSearch();
+      else if (searchPinned) searchInput.focus();
+      else closeSearch();
+      return;
+    }
+    if (event.key === 'Escape') {
+      if (!searchSurface.hidden) {
+        closeSearch();
+        event.preventDefault();
+        return;
+      }
+      hidePanel();
+    }
+  });
+
+  function apply() {
+    const transform = `translate(${tx} ${ty}) scale(${k})`;
+    scene.setAttribute('transform', transform);
+    topLayer.setAttribute('transform', transform);
+  }
+  function fitWidth() {
+    const r = svg.getBoundingClientRect();
+    k = Math.min(1, (r.width - 40) / W);
+    tx = (r.width - W * k) / 2;
+    ty = 20;
+    apply();
+  }
+  function actualSize() {
+    const r = svg.getBoundingClientRect();
+    k = 1;
+    tx = Math.max(20, (r.width - W) / 2);
+    ty = 20;
+    apply();
+  }
+  function overview() {
+    const r = svg.getBoundingClientRect();
+    k = Math.min(1, (r.width - 40) / W, (r.height - 40) / H);
+    tx = (r.width - W * k) / 2;
+    ty = Math.max(20, (r.height - H * k) / 2);
+    apply();
+  }
+  svg.addEventListener('wheel', (event) => {
+    event.preventDefault();
+    const r = svg.getBoundingClientRect();
+    const mx = event.clientX - r.left, my = event.clientY - r.top;
+    const next = Math.min(3, Math.max(0.12, k * Math.exp(-event.deltaY * 0.0015)));
+    tx = mx - (mx - tx) * (next / k);
+    ty = my - (my - ty) * (next / k);
+    k = next;
+    apply();
+  }, { passive: false });
+  svg.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    const selection = window.getSelection();
+    if (selection) selection.removeAllRanges();
+    dragging = true; moved = false; lastX = event.clientX; lastY = event.clientY;
+    svg.classList.add('dragging');
+  });
+  svg.addEventListener('pointermove', (event) => {
+    if (!dragging) return;
+    if (Math.abs(event.clientX - lastX) + Math.abs(event.clientY - lastY) > 3) moved = true;
+    tx += event.clientX - lastX; ty += event.clientY - lastY;
+    lastX = event.clientX; lastY = event.clientY; apply();
+  });
+  svg.addEventListener('pointerup', () => { dragging = false; svg.classList.remove('dragging'); });
+  svg.addEventListener('pointercancel', () => { dragging = false; svg.classList.remove('dragging'); });
+  svg.addEventListener('dblclick', overview);
+  document.getElementById('reset').addEventListener('click', actualSize);
+  document.getElementById('fit').addEventListener('click', fitWidth);
+  document.getElementById('overview').addEventListener('click', overview);
+  syncPin();
+  if (searchPinned) openSearch(false);
+  overview();
+  svg.style.visibility = 'visible';
+  const initial = decodeURIComponent(location.hash.slice(1));
+  if (initial && DETAILS[initial]) show(initial);
+</script>
+</body>
+</html>

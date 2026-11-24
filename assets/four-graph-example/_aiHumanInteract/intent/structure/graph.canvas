@@ -1,0 +1,84 @@
+{
+  "nodes": [
+    {
+      "id": "intent-INT-001",
+      "type": "text",
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 240,
+      "color": "6",
+      "text": "## [[_aiHumanInteract/intent/nodes/INT-001.md|INT-001 · 让科学光谱 Agent 交互更快且具备直接操作感]]\n\n> 我想让这个科学光谱 Agent 更快，像在实验台上直接拨动旋钮看谱线一样顺手。\n\n- **科学光谱 Agent** (`anchored`)\n- **更快** (`resolved`)"
+    },
+    {
+      "id": "intent-INT-002",
+      "type": "text",
+      "x": 460,
+      "y": 0,
+      "width": 400,
+      "height": 240,
+      "color": "6",
+      "text": "## [[_aiHumanInteract/intent/nodes/INT-002.md|INT-002 · 对未理解技术采用三态分拣与可回溯知识债书签]]\n\n> 遇到我不懂的底层算法别让我一直盲目点 Agree，先记下来把原型跑通，等我看到效果再决定留不留。\n\n- **非完全技术能力责任人** (`resolved`)\n- **先记下来跑通原型** (`resolved`)"
+    },
+    {
+      "id": "intent-INT-003",
+      "type": "text",
+      "x": 920,
+      "y": 0,
+      "width": 400,
+      "height": 240,
+      "color": "3",
+      "text": "## [[_aiHumanInteract/intent/nodes/INT-003.md|INT-003 · 跨会话保持谱峰特征可寻址与历史审计]]\n\n> 下周回来继续看同一组光谱时，不管是键盘快捷键还是 Agent 都要能直接指到同一个谱峰特征。\n\n- **同一谱峰可寻址身份** (`resolved`)\n- **历史状态回放粒度** (`ambiguous`)"
+    }
+  ],
+  "edges": [
+    {
+      "id": "int-edge-0",
+      "fromNode": "intent-INT-001",
+      "fromSide": "right",
+      "toNode": "intent-INT-002",
+      "toSide": "left",
+      "label": "decomposes_intent"
+    },
+    {
+      "id": "int-edge-1",
+      "fromNode": "intent-INT-002",
+      "fromSide": "right",
+      "toNode": "intent-INT-001",
+      "toSide": "left",
+      "label": "refines"
+    },
+    {
+      "id": "int-edge-2",
+      "fromNode": "intent-INT-001",
+      "fromSide": "right",
+      "toNode": "intent-INT-003",
+      "toSide": "left",
+      "label": "decomposes_intent"
+    },
+    {
+      "id": "int-edge-3",
+      "fromNode": "intent-INT-003",
+      "fromSide": "right",
+      "toNode": "intent-INT-001",
+      "toSide": "left",
+      "label": "refines"
+    },
+    {
+      "id": "int-edge-4",
+      "fromNode": "intent-INT-003",
+      "fromSide": "right",
+      "toNode": "intent-INT-002",
+      "toSide": "left",
+      "label": "branches_from"
+    },
+    {
+      "id": "int-edge-5",
+      "fromNode": "intent-INT-003",
+      "fromSide": "right",
+      "toNode": "intent-INT-002",
+      "toSide": "left",
+      "label": "constrains"
+    }
+  ]
+}

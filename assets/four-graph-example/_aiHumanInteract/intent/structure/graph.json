@@ -1,0 +1,231 @@
+{
+  "schema_version": "paths-to-modernity-intent-graph-v1",
+  "node_count": 3,
+  "edge_count": 6,
+  "source_of_truth": [
+    "_aiHumanInteract/intent/nodes/*.md"
+  ],
+  "nodes": [
+    {
+      "id": "INT-001",
+      "title": "让科学光谱 Agent 交互更快且具备直接操作感",
+      "status": "crystallized",
+      "updated": "2026-11-24",
+      "raw_utterance": "我想让这个科学光谱 Agent 更快，像在实验台上直接拨动旋钮看谱线一样顺手。",
+      "parent": null,
+      "refines": [],
+      "branches_from": [],
+      "constrains": [],
+      "supersedes": [],
+      "concepts": [
+        {
+          "name": "科学光谱 Agent",
+          "role": "subject",
+          "status": "anchored",
+          "definition": "面向科研人员的光谱特征识别、标注与跨会话对比工作台"
+        },
+        {
+          "name": "更快",
+          "role": "outcome",
+          "status": "resolved",
+          "selected_variant": "IV-3",
+          "interpretive_variants": [
+            {
+              "id": "IV-1",
+              "meaning": "降低单次推理端到端毫秒级延迟"
+            },
+            {
+              "id": "IV-2",
+              "meaning": "扩大后台批量光谱算力吞吐"
+            },
+            {
+              "id": "IV-3",
+              "meaning": "消除低信息量的人工审批弹窗，缩短从想法到可见反馈的认知回路"
+            },
+            {
+              "id": "IV-4",
+              "meaning": "纯底层数值计算代码加速"
+            }
+          ]
+        }
+      ],
+      "implementation_alternatives": [
+        {
+          "id": "IA-1",
+          "approach": "直接画布选中谱峰 + 侧栏非阻塞三态技术声明条",
+          "selected": true,
+          "prototype": "_aiHumanInteract/intent/prototypes/direct-canvas.svg"
+        },
+        {
+          "id": "IA-2",
+          "approach": "传统分步模态弹窗逐项点击 Agree 审批",
+          "selected": false,
+          "prototype": "_aiHumanInteract/intent/prototypes/modal-queue.svg"
+        }
+      ],
+      "plan_refs": [
+        "LT-001",
+        "WP-001"
+      ],
+      "knowledge_debt_refs": [
+        "KD-003"
+      ],
+      "qualities": [
+        "操作科学对象应像拨动实体仪器一样直接连贯，不退化为管理弹窗"
+      ],
+      "source": "_aiHumanInteract/intent/nodes/INT-001.md",
+      "utterance_ref": "_aiHumanInteract/intent/utterances/UTT-001.md"
+    },
+    {
+      "id": "INT-002",
+      "title": "对未理解技术采用三态分拣与可回溯知识债书签",
+      "status": "clarified",
+      "updated": "2026-11-24",
+      "raw_utterance": "遇到我不懂的底层算法别让我一直盲目点 Agree，先记下来把原型跑通，等我看到效果再决定留不留。",
+      "parent": "INT-001",
+      "refines": [
+        "INT-001"
+      ],
+      "branches_from": [],
+      "constrains": [],
+      "supersedes": [],
+      "concepts": [
+        {
+          "name": "非完全技术能力责任人",
+          "role": "authority",
+          "status": "resolved",
+          "definition": "拥有目标与体验最终裁决权及技术知情权，但无需在原型前独立精通每项底层机制"
+        },
+        {
+          "name": "先记下来跑通原型",
+          "role": "mechanism",
+          "status": "resolved",
+          "selected_variant": "IV-1",
+          "interpretive_variants": [
+            {
+              "id": "IV-1",
+              "meaning": "创建带重审触发条件与图谱回链的 Knowledge Debt 书签，以后可肯定或否决重组"
+            },
+            {
+              "id": "IV-2",
+              "meaning": "生成待学习的课后技术教程清单"
+            }
+          ]
+        }
+      ],
+      "implementation_alternatives": [
+        {
+          "id": "IA-1",
+          "approach": "三态质询选择（理解同意 / 暂不理解先做原型记入KD / 不同意并提新观点）",
+          "selected": true
+        }
+      ],
+      "plan_refs": [
+        "MT-001",
+        "WP-002",
+        "WP-003"
+      ],
+      "knowledge_debt_refs": [
+        "KD-001"
+      ],
+      "qualities": [
+        "诚实记录未知，绝不把沉默或顺从伪装成技术背书"
+      ],
+      "source": "_aiHumanInteract/intent/nodes/INT-002.md",
+      "utterance_ref": "_aiHumanInteract/intent/utterances/UTT-001.md"
+    },
+    {
+      "id": "INT-003",
+      "title": "跨会话保持谱峰特征可寻址与历史审计",
+      "status": "exploring",
+      "updated": "2026-11-24",
+      "raw_utterance": "下周回来继续看同一组光谱时，不管是键盘快捷键还是 Agent 都要能直接指到同一个谱峰特征。",
+      "parent": "INT-001",
+      "refines": [
+        "INT-001"
+      ],
+      "branches_from": [
+        "INT-002"
+      ],
+      "constrains": [
+        "INT-002"
+      ],
+      "supersedes": [],
+      "concepts": [
+        {
+          "name": "同一谱峰可寻址身份",
+          "role": "invariant",
+          "status": "resolved",
+          "definition": "跨会话稳定的 `PK-###` 标识，供 UI 画布与 Agent 对话共同引用"
+        },
+        {
+          "name": "历史状态回放粒度",
+          "role": "constraint",
+          "status": "ambiguous",
+          "selected_variant": "IV-1",
+          "interpretive_variants": [
+            {
+              "id": "IV-1",
+              "meaning": "仅需保存当前最新标注与决策快照"
+            },
+            {
+              "id": "IV-2",
+              "meaning": "需要任意时刻逐事件严格重放（Event Sourcing）"
+            }
+          ]
+        }
+      ],
+      "implementation_alternatives": [],
+      "plan_refs": [
+        "MT-002",
+        "WP-004",
+        "WP-005"
+      ],
+      "knowledge_debt_refs": [
+        "KD-002"
+      ],
+      "qualities": [
+        "恢复上下文轻快透明，不引入笨重的运维负担"
+      ],
+      "source": "_aiHumanInteract/intent/nodes/INT-003.md"
+    }
+  ],
+  "edges": [
+    {
+      "from": "INT-001",
+      "to": "INT-002",
+      "relationship": "decomposes_intent",
+      "provenance": "declared"
+    },
+    {
+      "from": "INT-002",
+      "to": "INT-001",
+      "relationship": "refines",
+      "provenance": "declared"
+    },
+    {
+      "from": "INT-001",
+      "to": "INT-003",
+      "relationship": "decomposes_intent",
+      "provenance": "declared"
+    },
+    {
+      "from": "INT-003",
+      "to": "INT-001",
+      "relationship": "refines",
+      "provenance": "declared"
+    },
+    {
+      "from": "INT-003",
+      "to": "INT-002",
+      "relationship": "branches_from",
+      "provenance": "declared"
+    },
+    {
+      "from": "INT-003",
+      "to": "INT-002",
+      "relationship": "constrains",
+      "provenance": "declared"
+    }
+  ]
+}

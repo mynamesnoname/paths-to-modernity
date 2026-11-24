@@ -1,144 +1,126 @@
-# Knowledge debt
+# Knowledge debt and technical disclosure triage
 
-Read this reference when a person cannot independently evaluate a technical
-recommendation that affects their work, or asks for a gap to be recorded.
+Read this reference when a project introduces unfamiliar technical choices to a
+bounded-technical decision owner, when recording or revisiting a `KD-###`
+bookmark, or when a resolved knowledge debt triggers Intent / Plan reorganization.
 
-## What a knowledge debt is
+## Bounded-technical decision owners and the right to know
 
-A technical concept, rationale, premise, or doubt influences a real choice; the
-person cannot verify it yet; and they do not want to learn it before reversible
-work continues. Record the gap, the decision it touches, the evidence behind it,
-and what would make it matter again.
+In most creative and engineering projects, the decision owner holds authority
+over outcomes, user experience, values, and acceptable risk, and has **the right
+to know** what architecture, frameworks, data structures, or algorithms pragmatic
+execution will rely on — without necessarily having deeper technical expertise
+than the agent on every mechanism.
 
-This is not a claim that the recommendation is untrustworthy, and not a
-deficiency in the person. It is permission to defer understanding without
-manufacturing the appearance of shared understanding.
+Asking such an owner *"Should we use X? (Recommended: Yes)"* produces the
+**Agree Problem**: uninformative assent that transfers anxiety without adding
+control. Conversely, hiding technical choices erodes agency and prevents later
+course correction when understanding matures in practice.
 
-## What it is not
+## Pre-execution technical declaration & three-way triage
 
-- **Not a substitute for evidence.** A missing test is a verification task.
-  Noting the gap does not discharge it.
-- **Not an authorization.** A recorded gap never widens the scope of what may be
-  done, and never upgrades provisional work to production.
-- **Not a glossary.** Do not create a file per unfamiliar term, and do not turn
-  an admission of not-knowing into a curriculum.
-- **Not a gate.** Nothing requires the debt to be settled before reversible work
-  continues.
+Before entering a new pragmatic implementation scope, declare the consequential
+technical choices (cap at 1–5 items whose rejection would actually change the
+implementation, architecture, lock-in, or user-observable behavior). Describe
+each item in terms of **what it does, what it costs if wrong, and whether it is
+reversible**.
 
-## Four things that must not be confused
+Have the user classify each item into one of **three explicit choices** (via the
+harness's structured choice UI when available, or concise structured text):
 
-| Kind | Question it asks |
+1. **`understood_agreed` — Understood and agreed (Informed acceptance)**
+   The user understands the technical trade-off and explicitly endorses using it.
+2. **`not_understood_prototype` — Not understood yet, proceed with prototype (Provisional acceptance + Knowledge Debt bookmark)**
+   The user chooses not to spend cognitive friction learning the mechanism right
+   now, authorizes proceeding within a bounded, reversible prototype, and
+   bookmarks the item in `_aiHumanInteract/knowledge-debt/` linked to the
+   relevant Intent and Plan nodes.
+3. **`disagreed_counterproposal` — Disagreed, propose own technical view (Rejection & plan revision)**
+   The user rejects the proposed mechanism and supplies an alternative technical
+   constraint or preference; the agent revises the Plan (and re-examines Intent
+   if needed) before executing.
+
+### Orthogonal invariants
+
+- **Silence is never authorization.** No pragmatic execution begins until the
+  scope is explicitly authorized.
+- **Already-authorized prototype scopes do not re-block every turn.** Within a
+  granted reversible prototype scope, routine internal details proceed without
+  repeated triage; trigger a new declaration only when introducing a choice with
+  lasting architectural or external consequences.
+- **Not a substitute for evidence.** Recording a Knowledge Debt bookmark never
+  discharges a required test, benchmark, or safety check.
+- **Not a curriculum.** Do not create unrequested encyclopedia entries for minor
+  terms or require the user to study before building a reversible prototype.
+
+## Four kinds of gaps that must not be confused
+
+| Kind | Core question |
 |---|---|
-| Concept | What is this thing? |
-| Reasoning gap | Why does this approach serve the goal better? |
-| Comparison gap | Why this one rather than that one? |
-| Evidence gap | Has anyone actually shown that it works? |
+| `concept` | What does this technical or domain term mean in our project? |
+| `reasoning_gap` | Why does this architecture/algorithm fit our goal? |
+| `comparison_gap` | Why approach A rather than approach B? |
+| `intuitive_doubt` | "This feels over-engineered or fragile, though I cannot prove why yet." |
+| `evidence_gap` | Has this claim been verified by a test or measurement? *(Requires verification, not just explanation.)* |
 
-One concept underlies several decisions, and one decision rests on several
-concepts. A gap does not invalidate a decision, and missing evidence is not
-repaired by recording it.
+## Bookmark lifecycle and graph reorganization
 
-## Capture on request, revisit on trigger
-
-Capture when the person says they do not understand something that matters, or
-asks for it to be written down. Do not infer ignorance, and do not build a term
-inventory unasked.
-
-One exception: a choice that constrains the future may be recorded without being
-asked about, when the person has not claimed to understand it. Record those, and
-no others.
-
-Reopen the record when the person asks, when the concept becomes a major premise
-again, when new evidence contradicts the earlier judgement, when the scope or
-risk grows, or when reversible work is about to become a production commitment.
-
-## Acceptance has three modes
-
-- **Informed acceptance** — the trade-offs were understood and accepted.
-- **Provisional acceptance** — the consequences were partly understood; the
-  person authorized reversible progress inside a stated scope and is relying on
-  the agent's reasoning for the rest.
-- **Unsupported assent** — agreement given without the information needed to
-  judge it. Record it as such; never present it as reviewed.
-
-Absence of objection is none of these. Authorization must be given, not inferred
-from silence. It can be given once for a defined scope, which is how reversible
-work proceeds without asking at every step; what silence cannot do is extend
-that scope.
-
-## Reporting technical choices
-
-Two different situations arise when a round of work introduces unfamiliar
-technology, and they carry opposite defaults.
-
-**Inside an authorization already granted** — continue and report. Do not ask
-for the same permission twice. State what the work rests on:
-
-- the technical choices that shape the result, and what each costs if it turns
-  out wrong;
-- the boundary the authorization covers — reversible, local, no external
-  effect, no production data;
-- what falls outside that boundary, and would need a separate grant.
-
-**Opening a new scope** — ask once, explicitly. Silence is not a grant.
-
-### List the choices, then sort comprehension
-
-When a round introduces technology the person will have to live with, list it
-before continuing, and ask them to sort it rather than approve it:
-
-1. **Understood and agreed** — informed acceptance.
-2. **Understood and disagreed** — say why; the approach changes.
-3. **Not understood, proceed anyway** — provisional acceptance, plus a
-   knowledge debt.
-
-Offer all three per item, one line each. These two questions may share a round:
-what the person understands, and whether to begin. Neither reframes the other.
-
-Cap the list at three to five items, and choose them by one test: would the
-approach change if the person disagreed? Report consequences, not mechanisms —
-lock-in, migration cost, operating burden. A long list of unfamiliar techniques
-is not information; it is a decision the person was never equipped to make, and
-a list nobody reads makes every recorded acceptance meaningless.
-
-Comprehension may default downward; authorization never defaults upward. After
-the person says to begin, anything left unsorted is recorded as not claimed as
-understood and treated as provisional. Before they say so, nothing proceeds and
-nothing is recorded as accepted.
-
-Ask once per batch, not per item, whether any of it should be written down.
-Offer; do not diagnose, and do not turn the batch into a curriculum.
-
-## Recording
-
-Prefer the project's existing glossary, ADRs, or decision records. Create a
-directory only when none exists and the person agrees. Name it for the debt,
-not for knowledge: these records hold gaps, and a `knowledge/` directory invites
-the glossary this rule exists to prevent.
+Understanding develops through concrete practice (as shown in *DesignerlyLoop*):
+seeing a working prototype often clarifies whether an abstract technical choice
+was right or wrong. Each Knowledge Debt node (`_aiHumanInteract/knowledge-debt/nodes/KD-###.md`)
+follows a three-state lifecycle:
 
 ```text
-_aiHumanInteract/
-  knowledge-debt/
-    <topic>.md
+open (bookmarked during prototype)
+  ├──► affirmed  (user now understands & endorses the choice → plan stands as informed acceptance)
+  └──► rejected  (user now understands, rejects the choice & states new view → triggers reorganization)
 ```
 
-Keep each record short, and link it from the governing decision record so the
-path runs both ways: from a choice to the gap behind it, and from a gap to the
-choice that depended on it. The decision record remains the single authoritative
-source for the decision; the knowledge record explains what is not yet understood
-about it.
+### Reorganizing Intent and Plan Graphs on `rejected`
 
-```markdown
-# <topic>
+When a user cancels an `open` Knowledge Debt with `rejected` and states a new
+technical or experiential view:
 
-**Understanding gap:** what is not understood, in the person's own words.
-**Agent explanation:** a summary of the reasoning. Not independent verification.
-**Related decision:** a link to the decision record that depends on it.
-**Current treatment:** what is being done while the gap stays open.
-**Scope:** what this covers, and what it explicitly does not.
-**Revisit when:** the trigger that would make this matter again.
-**Evidence needed:** the test or reference that would settle it.
+1. Record the resolution (`status: "rejected"`, `resolution_note`, `resolved_at`)
+   on `KD-###.md`.
+2. Run impact analysis (`ptm kd resolve` / `ptm kd impact KD-###`) to trace:
+   - **Direct Plan targets (`plan_refs`)** and their downstream `prerequisite_for`
+     dependents → transition superseded `WP-###` nodes to `superseded` and create
+     successor work packages reflecting the user's new technical direction;
+   - **Linked Intent nodes (`intent_refs`)** → if the rejection reveals that the
+     underlying concept or desired quality was misread (not merely its technical
+     mechanism), transition `INT-###` to `reopened`, update the chosen variant or
+     constraint, and propagate to the Plan Graph.
+
+## Source contract (`_aiHumanInteract/knowledge-debt/nodes/KD-###.md`)
+
+When using the structured multi-graph bundle, store bookmarks with single-line
+JSON front matter:
+
+```yaml
+---
+id: "KD-001"
+term: "Hebbian Spreading Activation (Base + Flip)"
+kind: "reasoning_gap"
+status: "open"
+triage_mode: "not_understood_prototype"
+updated: "2026-11-24"
+intent_refs: ["INT-002"]
+plan_refs: ["WP-002"]
+script_refs: ["scripts/ptm_hebbian.py"]
+revisit_when: "原型检索出现不相关的联想节点干扰，或准备固化长期记忆权重参数时"
+resolution_note: null
+---
 ```
 
-Do not copy the decision's rationale into the knowledge record; a second copy
-will drift. Link instead.
+Body sections:
+
+- `## Understanding Gap` — what remains unfamiliar or uncertain, in plain words;
+- `## Technical Declaration & Cost if Wrong` — concise plain-language mechanism,
+  lock-in/failure cost, and reversibility boundary;
+- `## Revisit Trigger & Evidence Needed` — observable prototype behavior or test
+  that makes revisiting worthwhile;
+- `## Resolution & Graph Impact` — filled when `affirmed` or `rejected`.
+
+Projects without the multi-graph bundle may still keep lightweight narrative
+files `_aiHumanInteract/knowledge-debt/<topic>.md` linked from decision records.

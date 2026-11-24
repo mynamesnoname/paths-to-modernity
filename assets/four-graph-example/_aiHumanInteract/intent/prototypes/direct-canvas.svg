@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 146">
+  <rect width="380" height="146" rx="8" fill="#F6F6F4" stroke="#CFD6DE"/>
+  <text x="14" y="21" font-family="sans-serif" font-size="10.5" font-weight="700" fill="#1F5A52">Epistemic Prototype A · 直接画布操作 + 侧栏非阻塞三态声明 (Selected)</text>
+  <rect x="14" y="30" width="236" height="82" rx="6" fill="#FFFFFF" stroke="#9CCFC7" stroke-width="1.4"/>
+  <polyline points="24,96 56,88 84,54 114,90 148,68 184,42 212,90 238,85" fill="none" stroke="#3B7A8C" stroke-width="2"/>
+  <circle cx="84" cy="54" r="4.5" fill="#1F5A52"/>
+  <circle cx="184" cy="42" r="4.5" fill="#6E5DC6"/>
+  <rect x="34" y="35" width="98" height="14" rx="3" fill="#EAF7F5"/>
+  <text x="39" y="45" font-family="monospace" font-size="8.8" font-weight="600" fill="#1F5A52">Peak-412nm [Active]</text>
+  <rect x="258" y="30" width="108" height="82" rx="6" fill="#FDF6E7" stroke="#E2C285"/>
+  <text x="266" y="47" font-family="sans-serif" font-size="9.5" font-weight="700" fill="#7A5213">三态技术声明</text>
+  <rect x="266" y="55" width="92" height="15" rx="3" fill="#EDF7F0"/><text x="271" y="66" font-family="sans-serif" font-size="8.5" fill="#234B36">✓ 理解且同意</text>
+  <rect x="266" y="74" width="92" height="15" rx="3" fill="#FFF4DC" stroke="#D9A648"/><text x="271" y="85" font-family="sans-serif" font-size="8.5" fill="#7A5213">★ 暂存KD先做原型</text>
+  <rect x="266" y="93" width="92" height="14" rx="3" fill="#FCEEEE"/><text x="271" y="103" font-family="sans-serif" font-size="8.5" fill="#873535">✕ 否决并提方案</text>
+  <text x="14" y="131" font-family="sans-serif" font-size="10" fill="#52606D">物理旋转结论：视线不离开光谱曲线，未理解技术一键挂入 KD 书签不打断心流。</text>
+</svg>

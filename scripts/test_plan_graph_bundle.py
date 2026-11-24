@@ -396,7 +396,7 @@ def exercise_block_upgrade(root: Path) -> None:
     original = PROTOCOL_BLOCK.read_text(encoding="utf-8")
     try:
         PROTOCOL_BLOCK.write_text(
-            original.replace("paths-to-modernity-protocol-v2", "paths-to-modernity-protocol-v3")
+            original.replace("paths-to-modernity-protocol-v3", "paths-to-modernity-protocol-v4")
             .replace(
                 "are outputs. Never edit them as the authority.",
                 "are outputs. Never edit them as the authority. Regenerate them.",
@@ -417,7 +417,7 @@ def exercise_block_upgrade(root: Path) -> None:
         manifest = json.loads(
             (repo / "_aiHumanInteract" / "adopt-manifest.json").read_text(encoding="utf-8")
         )
-        if manifest["protocol_version"] != "paths-to-modernity-protocol-v3":
+        if manifest["protocol_version"] != "paths-to-modernity-protocol-v4":
             raise RuntimeError("upgrade did not record the new protocol version")
 
         edited = root / "adoption-upgrade-edited"

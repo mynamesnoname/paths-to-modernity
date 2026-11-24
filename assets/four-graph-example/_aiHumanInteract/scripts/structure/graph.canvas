@@ -1,0 +1,114 @@
+{
+  "nodes": [
+    {
+      "id": "SCR-src_event_replay_audit.py",
+      "type": "text",
+      "x": 0,
+      "y": 0,
+      "width": 350,
+      "height": 190,
+      "color": "1",
+      "text": "## `src/event_replay_audit.py`\n\n**Role:** `planned_target` · **LOC:** 0 · **Hub:** 0.54\n\nPlanned in Plan Graph; file not yet created on disk."
+    },
+    {
+      "id": "SCR-src_spectral_store.py",
+      "type": "text",
+      "x": 400,
+      "y": 0,
+      "width": 350,
+      "height": 190,
+      "color": "6",
+      "text": "## `src/spectral_store.py`\n\n**Role:** `module` · **LOC:** 15 · **Hub:** 0.97\n\nPersistent addressable store for spectral peak features and annotations."
+    },
+    {
+      "id": "SCR-src_triage_gate.py",
+      "type": "text",
+      "x": 800,
+      "y": 0,
+      "width": 350,
+      "height": 190,
+      "color": "6",
+      "text": "## `src/triage_gate.py`\n\n**Role:** `module` · **LOC:** 10 · **Hub:** 0.97\n\nThree-way technical disclosure gate and reversible prototype scope checker."
+    },
+    {
+      "id": "SCR-src_workbench_api.py",
+      "type": "text",
+      "x": 1200,
+      "y": 0,
+      "width": 350,
+      "height": 190,
+      "color": "5",
+      "text": "## `src/workbench_api.py`\n\n**Role:** `entrypoint` · **LOC:** 21 · **Hub:** 1.00\n\nMain workbench entrypoint coordinating spectral features and non-blocking triage."
+    },
+    {
+      "id": "SCR-tests_test_workbench.py",
+      "type": "text",
+      "x": 0,
+      "y": 240,
+      "width": 350,
+      "height": 190,
+      "color": "6",
+      "text": "## `tests/test_workbench.py`\n\n**Role:** `test` · **LOC:** 10 · **Hub:** 0.54\n\nVerify spectral workbench session and 3-way technical triage."
+    },
+    {
+      "id": "SCR-web_SpectralCanvas.ts",
+      "type": "text",
+      "x": 400,
+      "y": 240,
+      "width": 350,
+      "height": 190,
+      "color": "6",
+      "text": "## `web/SpectralCanvas.ts`\n\n**Role:** `module` · **LOC:** 5 · **Hub:** 0.54\n\nDirect-manipulation spectral feature canvas without modal interruptions"
+    }
+  ],
+  "edges": [
+    {
+      "id": "scr-edge-0",
+      "fromNode": "SCR-src_workbench_api.py",
+      "fromSide": "right",
+      "toNode": "SCR-src_spectral_store.py",
+      "toSide": "left",
+      "label": "imports"
+    },
+    {
+      "id": "scr-edge-1",
+      "fromNode": "SCR-src_workbench_api.py",
+      "fromSide": "right",
+      "toNode": "SCR-src_triage_gate.py",
+      "toSide": "left",
+      "label": "imports"
+    },
+    {
+      "id": "scr-edge-2",
+      "fromNode": "SCR-tests_test_workbench.py",
+      "fromSide": "right",
+      "toNode": "SCR-src_workbench_api.py",
+      "toSide": "left",
+      "label": "imports"
+    },
+    {
+      "id": "scr-edge-3",
+      "fromNode": "SCR-src_workbench_api.py",
+      "fromSide": "right",
+      "toNode": "SCR-src_spectral_store.py",
+      "toSide": "left",
+      "label": "invokes"
+    },
+    {
+      "id": "scr-edge-4",
+      "fromNode": "SCR-src_workbench_api.py",
+      "fromSide": "right",
+      "toNode": "SCR-src_triage_gate.py",
+      "toSide": "left",
+      "label": "invokes"
+    },
+    {
+      "id": "scr-edge-5",
+      "fromNode": "SCR-tests_test_workbench.py",
+      "fromSide": "right",
+      "toNode": "SCR-src_workbench_api.py",
+      "toSide": "left",
+      "label": "invokes"
+    }
+  ]
+}

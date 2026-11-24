@@ -81,7 +81,11 @@ Re-examine the qualities at risk when one of these happens:
 
 - a responsibility boundary moves — scope enters or leaves, ownership shifts,
   affected interfaces change;
-- a trade is made that buys function with quality;
+- an observable user workflow or interaction behavior changes in a way that
+  could silently erode a stated quality (for example, turning direct
+  manipulation into modal or drawer juggling while functional tests still pass);
+- a trade is proposed that buys function with quality (check before approving
+  the trade, not after executing it);
 - the plan is handed to implementation, or to another person.
 
 Re-splitting work, renaming, re-estimating, or adding a node that changes no

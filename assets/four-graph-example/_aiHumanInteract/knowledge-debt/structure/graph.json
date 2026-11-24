@@ -1,0 +1,210 @@
+{
+  "schema_version": "paths-to-modernity-knowledge-debt-v1",
+  "node_count": 3,
+  "edge_count": 11,
+  "source_of_truth": [
+    "_aiHumanInteract/knowledge-debt/nodes/*.md"
+  ],
+  "nodes": [
+    {
+      "id": "KD-001",
+      "term": "Hebbian Spreading Activation (Base + Flip 双路激活检索)",
+      "kind": "reasoning_gap",
+      "status": "open",
+      "triage_mode": "not_understood_prototype",
+      "updated": "2026-11-24",
+      "intent_refs": [
+        "INT-002"
+      ],
+      "plan_refs": [
+        "WP-002"
+      ],
+      "script_refs": [
+        "src/triage_gate.py",
+        "src/workbench_api.py"
+      ],
+      "revisit_when": "当多跳检索召回过多无关联想节点，或准备固化突触衰减超参数时",
+      "resolution_note": null,
+      "counterproposal": null,
+      "source": "_aiHumanInteract/knowledge-debt/nodes/KD-001.md",
+      "impact_preview": {
+        "kd_id": "KD-001",
+        "term": "Hebbian Spreading Activation (Base + Flip 双路激活检索)",
+        "current_status": "open",
+        "counterproposal": null,
+        "reopen_intents": [
+          "INT-002"
+        ],
+        "supersede_plans": [
+          "WP-002"
+        ],
+        "blocked_or_recheck_downstream_plans": [],
+        "affected_parent_scopes": [
+          "LT-001",
+          "MT-001",
+          "ST-001"
+        ],
+        "affected_scripts": [
+          "src/triage_gate.py",
+          "src/workbench_api.py"
+        ]
+      }
+    },
+    {
+      "id": "KD-002",
+      "term": "Append-Only Event Sourcing 状态事件溯源存储",
+      "kind": "comparison_gap",
+      "status": "open",
+      "triage_mode": "not_understood_prototype",
+      "updated": "2026-11-24",
+      "intent_refs": [
+        "INT-003"
+      ],
+      "plan_refs": [
+        "WP-005"
+      ],
+      "script_refs": [
+        "src/spectral_store.py",
+        "src/event_replay_audit.py"
+      ],
+      "revisit_when": "当普通 JSON 快照无法满足多协作者谱峰标注冲突回溯，或准备编写 src/event_replay_audit.py 时",
+      "resolution_note": null,
+      "counterproposal": null,
+      "source": "_aiHumanInteract/knowledge-debt/nodes/KD-002.md",
+      "impact_preview": {
+        "kd_id": "KD-002",
+        "term": "Append-Only Event Sourcing 状态事件溯源存储",
+        "current_status": "open",
+        "counterproposal": null,
+        "reopen_intents": [
+          "INT-003"
+        ],
+        "supersede_plans": [
+          "WP-005"
+        ],
+        "blocked_or_recheck_downstream_plans": [],
+        "affected_parent_scopes": [
+          "LT-001",
+          "MT-002",
+          "ST-002"
+        ],
+        "affected_scripts": [
+          "src/spectral_store.py",
+          "src/event_replay_audit.py"
+        ]
+      }
+    },
+    {
+      "id": "KD-003",
+      "term": "Apple Silicon MLX 4-bit 端侧量化嵌入 (Qwen3-Embedding-0.6B)",
+      "kind": "concept",
+      "status": "affirmed",
+      "triage_mode": "understood_agreed",
+      "updated": "2026-11-24",
+      "intent_refs": [
+        "INT-001"
+      ],
+      "plan_refs": [
+        "WP-001"
+      ],
+      "script_refs": [
+        "src/workbench_api.py"
+      ],
+      "revisit_when": "迁移至无 Metal GPU 的 Linux 容器环境时验证自动降级通路",
+      "resolution_note": "实测 M1 8GB 内存仅占 ~350MB 且热启动编码 0.26s，确认采用并保留标准库哈希降级。",
+      "counterproposal": null,
+      "source": "_aiHumanInteract/knowledge-debt/nodes/KD-003.md",
+      "impact_preview": {
+        "kd_id": "KD-003",
+        "term": "Apple Silicon MLX 4-bit 端侧量化嵌入 (Qwen3-Embedding-0.6B)",
+        "current_status": "affirmed",
+        "counterproposal": null,
+        "reopen_intents": [
+          "INT-001"
+        ],
+        "supersede_plans": [
+          "WP-001"
+        ],
+        "blocked_or_recheck_downstream_plans": [
+          "WP-002"
+        ],
+        "affected_parent_scopes": [
+          "LT-001",
+          "MT-001",
+          "ST-001"
+        ],
+        "affected_scripts": [
+          "src/workbench_api.py"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "KD-001",
+      "to": "INT-002",
+      "relationship": "bookmarks_intent",
+      "provenance": "declared"
+    },
+    {
+      "from": "KD-001",
+      "to": "WP-002",
+      "relationship": "bookmarks_plan",
+      "provenance": "declared"
+    },
+    {
+      "from": "KD-001",
+      "to": "SCR:src/triage_gate.py",
+      "relationship": "touches_script",
+      "provenance": "declared"
+    },
+    {
+      "from": "KD-001",
+      "to": "SCR:src/workbench_api.py",
+      "relationship": "touches_script",
+      "provenance": "declared"
+    },
+    {
+      "from": "KD-002",
+      "to": "INT-003",
+      "relationship": "bookmarks_intent",
+      "provenance": "declared"
+    },
+    {
+      "from": "KD-002",
+      "to": "WP-005",
+      "relationship": "bookmarks_plan",
+      "provenance": "declared"
+    },
+    {
+      "from": "KD-002",
+      "to": "SCR:src/spectral_store.py",
+      "relationship": "touches_script",
+      "provenance": "declared"
+    },
+    {
+      "from": "KD-002",
+      "to": "SCR:src/event_replay_audit.py",
+      "relationship": "touches_script",
+      "provenance": "declared"
+    },
+    {
+      "from": "KD-003",
+      "to": "INT-001",
+      "relationship": "bookmarks_intent",
+      "provenance": "declared"
+    },
+    {
+      "from": "KD-003",
+      "to": "WP-001",
+      "relationship": "bookmarks_plan",
+      "provenance": "declared"
+    },
+    {
+      "from": "KD-003",
+      "to": "SCR:src/workbench_api.py",
+      "relationship": "touches_script",
+      "provenance": "declared"
+    }
+  ]
+}

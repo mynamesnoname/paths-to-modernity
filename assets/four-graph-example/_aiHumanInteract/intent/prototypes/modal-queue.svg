@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 146">
+  <rect width="380" height="146" rx="8" fill="#F6F6F4" stroke="#CFD6DE"/>
+  <text x="14" y="21" font-family="sans-serif" font-size="11" font-weight="700" fill="#873F3F">Epistemic Prototype B · 传统阻塞弹窗逐条审批 (Rejected after seeing)</text>
+  <rect x="14" y="30" width="352" height="82" rx="6" fill="#E6E9EC"/>
+  <rect x="74" y="38" width="232" height="66" rx="6" fill="#FFFFFF" stroke="#E0ACAC" stroke-width="1.5"/>
+  <text x="88" y="56" font-family="sans-serif" font-size="10" font-weight="700" fill="#873F3F">Confirm Technical Step (4 of 11)?</text>
+  <text x="88" y="72" font-family="sans-serif" font-size="9" fill="#616E7C">Use CQRS Event-Sourced Snapshot Store? (Recommended)</text>
+  <rect x="88" y="81" width="66" height="16" rx="4" fill="#31577D"/><text x="103" y="92" font-family="sans-serif" font-size="9" fill="#FFF">Agree</text>
+  <text x="14" y="131" font-family="sans-serif" font-size="10" fill="#873F3F">问题暴露：遮挡工作区并诱导机械点击 Agree（伪审查）。</text>
+</svg>

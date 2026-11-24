@@ -1,0 +1,35 @@
+{
+  "nodes": [
+    {
+      "id": "kd-KD-001",
+      "type": "text",
+      "x": 0,
+      "y": 0,
+      "width": 380,
+      "height": 210,
+      "color": "3",
+      "text": "## [[_aiHumanInteract/knowledge-debt/nodes/KD-001.md|KD-001 · Hebbian Spreading Activation (Base + Flip 双路激活检索)]]\n\n**Status:** `open` · **Kind:** `reasoning_gap`\n\n**Revisit when:** 当多跳检索召回过多无关联想节点，或准备固化突触衰减超参数时"
+    },
+    {
+      "id": "kd-KD-002",
+      "type": "text",
+      "x": 440,
+      "y": 0,
+      "width": 380,
+      "height": 210,
+      "color": "3",
+      "text": "## [[_aiHumanInteract/knowledge-debt/nodes/KD-002.md|KD-002 · Append-Only Event Sourcing 状态事件溯源存储]]\n\n**Status:** `open` · **Kind:** `comparison_gap`\n\n**Revisit when:** 当普通 JSON 快照无法满足多协作者谱峰标注冲突回溯，或准备编写 src/event_replay_audit.py 时"
+    },
+    {
+      "id": "kd-KD-003",
+      "type": "text",
+      "x": 880,
+      "y": 0,
+      "width": 380,
+      "height": 210,
+      "color": "4",
+      "text": "## [[_aiHumanInteract/knowledge-debt/nodes/KD-003.md|KD-003 · Apple Silicon MLX 4-bit 端侧量化嵌入 (Qwen3-Embedding-0.6B)]]\n\n**Status:** `affirmed` · **Kind:** `concept`\n\n**Revisit when:** 迁移至无 Metal GPU 的 Linux 容器环境时验证自动降级通路"
+    }
+  ],
+  "edges": []
+}

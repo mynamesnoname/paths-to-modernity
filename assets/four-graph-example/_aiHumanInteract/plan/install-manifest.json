@@ -1,0 +1,33 @@
+{
+  "agents": {
+    "block_sha256": "a2ca3e5b7501faa31d04211fbc6d4e27921069a4d20cded94e02b7c7c0f52b5f",
+    "mode": "appended"
+  },
+  "bundle_version": 2,
+  "created_dirs": [
+    "_aiHumanInteract/plan",
+    "_aiHumanInteract/plan/evaluations",
+    "_aiHumanInteract/plan/long-term",
+    "_aiHumanInteract/plan/mid-term",
+    "_aiHumanInteract/plan/requirements",
+    "_aiHumanInteract/plan/short-term",
+    "_aiHumanInteract/plan/structure",
+    "_aiHumanInteract/plan/work-package"
+  ],
+  "created_files": {
+    "_aiHumanInteract/plan/README.md": "46ab6ba1ab0ae28eeb65ba8d44e90c984e24986c6c807b018053c9604d7167ff",
+    "_aiHumanInteract/plan/build_graph.py": "9844ce6ffdc65645eca0599e6153a1d6fd9c49e03488d33a16bbe028a77e9156",
+    "_aiHumanInteract/plan/plan_view.py": "e957a2788ee72ff433ae7370a4952f258481fcad9ecffbb2265a46c88dcbf53f",
+    "_aiHumanInteract/plan/test_plan_graph.py": "d52197ea788af5c9b9b1487a4690d095816200d63a110c42b98ef54254c9da03",
+    "_aiHumanInteract/plan/validate.py": "c143ea894b6fc55d13384bbb72a0dde3efc4097fdf321d3492abda0100ce80b8"
+  },
+  "managed_files": {
+    "_aiHumanInteract/plan/README.md": "46ab6ba1ab0ae28eeb65ba8d44e90c984e24986c6c807b018053c9604d7167ff",
+    "_aiHumanInteract/plan/build_graph.py": "9844ce6ffdc65645eca0599e6153a1d6fd9c49e03488d33a16bbe028a77e9156",
+    "_aiHumanInteract/plan/plan_view.py": "e957a2788ee72ff433ae7370a4952f258481fcad9ecffbb2265a46c88dcbf53f",
+    "_aiHumanInteract/plan/test_plan_graph.py": "d52197ea788af5c9b9b1487a4690d095816200d63a110c42b98ef54254c9da03",
+    "_aiHumanInteract/plan/validate.py": "c143ea894b6fc55d13384bbb72a0dde3efc4097fdf321d3492abda0100ce80b8"
+  },
+  "manifest_version": 1,
+  "schema_version": "paths-to-modernity-plan-graph-v4"
+}

@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>PtM Curated Studio — Project Architecture Studio</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #F6F6F4;
+    --surface: rgba(255, 255, 255, 0.94);
+    --ink: #232D37;
+    --muted: #74808B;
+    --line: #DDE2E7;
+    --focus: #3E68A8;
+    --panel-w: 430px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--paper); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", "Segoe UI", sans-serif;
+  }
+  #canvas {
+    width: 100%; height: 100%; display: block;
+    cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none;
+  }
+  #canvas.dragging { cursor: grabbing; }
+  #canvas text { user-select: none; -webkit-user-select: none; }
+
+  /* Responsive Top Bar — shifts left smoothly when right inspector opens */
+  #topbar {
+    position: fixed; top: 14px; left: 16px; right: 16px; z-index: 30;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    pointer-events: none; transition: right .2s ease;
+  }
+  body.panel-open #topbar { right: calc(var(--panel-w) + 16px); }
+
+  .bar-cluster {
+    pointer-events: auto;
+    display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+    background: var(--surface); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--line); border-radius: 11px; padding: 5px 9px;
+    box-shadow: 0 3px 14px rgba(24, 34, 44, 0.055);
+  }
+  .brand {
+    font-size: 12.5px; font-weight: 700; padding: 0 5px 0 2px;
+    color: #1F2933; display: flex; align-items: center; gap: 6px;
+  }
+  .brand-badge {
+    font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 5px;
+    background: #ECEAE4; color: #52606D;
+  }
+  .sep { width: 1px; height: 17px; background: var(--line); margin: 0 2px; }
+  .lens-btn {
+    border: 1px solid transparent; background: transparent; color: #4A5562;
+    font: inherit; font-size: 11.5px; font-weight: 500; padding: 4px 9px;
+    border-radius: 7px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+    transition: background .14s ease, color .14s ease;
+  }
+  .lens-btn:hover { background: #EFECE6; color: #1F2933; }
+  .lens-btn.active { background: #232D37; color: #FFFFFF; font-weight: 600; }
+  .lens-btn .cnt {
+    font-size: 10px; opacity: 0.8; font-variant-numeric: tabular-nums;
+    padding: 0 4px; border-radius: 4px; background: rgba(120,130,140,0.14);
+  }
+  .lens-btn.active .cnt { background: rgba(255,255,255,0.22); opacity: 1; }
+
+  .toggle-pill {
+    border: 1px solid var(--line); background: #FFFFFF; color: #52606D;
+    font: inherit; font-size: 11px; font-weight: 500; padding: 4px 9px;
+    border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+  }
+  .toggle-pill.on { border-color: #C88A2E; background: #FDF6E7; color: #7A5213; font-weight: 600; }
+  .toggle-pill.cross-on { border-color: #6E5DC6; background: #F3F1FC; color: #44338A; font-weight: 600; }
+  .toggle-pill:disabled { opacity: 0.42; cursor: default; }
+
+  /* Legend Strip */
+  #legend {
+    position: fixed; left: 16px; bottom: 58px; z-index: 24;
+    background: rgba(255,255,255,0.88); border: 1px solid var(--line);
+    border-radius: 8px; padding: 5px 10px; font-size: 10.5px; color: #52606D;
+    display: flex; align-items: center; gap: 12px; pointer-events: none;
+  }
+  .leg-item { display: inline-flex; align-items: center; gap: 5px; }
+  .leg-line { width: 16px; height: 0; border-top: 1.6px solid #9AA5B1; }
+  .leg-line.cross { border-top: 1.6px dashed #6E5DC6; }
+  .leg-line.hebb { border-top: 2px dotted #C88A2E; }
+
+  /* Bottom Controls */
+  #bottombar {
+    position: fixed; left: 16px; bottom: 14px; z-index: 28;
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    background: var(--surface); backdrop-filter: blur(12px);
+    border: 1px solid var(--line); border-radius: 10px; padding: 5px 9px;
+    box-shadow: 0 3px 12px rgba(24, 34, 44, 0.06); font-size: 11px;
+  }
+  .ctrl-btn {
+    border: 1px solid #D3D9DF; background: #FFF; color: #3E4C59;
+    border-radius: 6px; padding: 3px 8px; font: inherit; font-size: 11px; cursor: pointer;
+  }
+  .ctrl-btn:hover { background: #F5F7F9; }
+  .ctrl-btn kbd { font-size: 10px; color: #82909D; font-family: inherit; }
+  #probe-banner {
+    display: none; align-items: center; gap: 6px; padding: 3px 9px;
+    border-radius: 6px; background: #FDF6E7; border: 1px solid #E2C285; color: #7A5213;
+    font-weight: 600;
+  }
+  #probe-banner.on { display: inline-flex; }
+  #probe-clear { border: 0; background: none; color: #7A5213; cursor: pointer; font-size: 13px; padding: 0 2px; }
+
+  /* Top-Docked Dual-Path Command Surface — never collides with bottom HUD or lower canvas */
+  #search-surface {
+    position: fixed; left: 50%; top: 64px; transform: translateX(-50%);
+    width: min(680px, calc(100vw - 48px)); z-index: 45;
+    background: rgba(255,255,255,0.96); backdrop-filter: blur(16px);
+    border: 1px solid #CFD6DE; border-radius: 13px; padding: 10px;
+    box-shadow: 0 16px 44px rgba(15, 23, 32, 0.16);
+    transition: left .2s ease;
+  }
+  body.panel-open #search-surface { left: calc((100vw - var(--panel-w)) / 2); width: min(640px, calc(100vw - var(--panel-w) - 40px)); }
+  #search-surface[hidden] { display: none; }
+  .s-box { display: flex; align-items: center; gap: 8px; padding-bottom: 7px; border-bottom: 1px solid #EBEEF2; }
+  #search-input {
+    flex: 1; border: 1px solid #CBD2D9; border-radius: 8px; padding: 6px 11px;
+    font: inherit; font-size: 12.5px; color: #1F2933; background: #FFF;
+  }
+  #search-input:focus { outline: none; border-color: var(--focus); box-shadow: 0 0 0 3px rgba(62,104,168,0.16); }
+  #search-results { max-height: 240px; overflow-y: auto; padding-top: 6px; }
+  .s-row {
+    display: flex; align-items: center; gap: 8px; padding: 6px 9px;
+    border-radius: 7px; cursor: pointer; font-size: 12px;
+  }
+  .s-row:hover { background: #EEF3FA; }
+  .s-badge {
+    font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 4px;
+    text-transform: uppercase; letter-spacing: 0.04em; flex: none; white-space: nowrap;
+  }
+  .s-badge.base { background: #E6EFFA; color: #2B5488; }
+  .s-badge.flip { background: #FDF3DC; color: #8C5811; border: 1px solid #E9C77B; }
+  .s-id { font-weight: 600; color: #3E4C59; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; flex: none; }
+  .s-title { color: #1F2933; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .s-via { font-size: 10.5px; color: #8C5811; white-space: nowrap; flex: none; }
+
+  /* Right Curated Reasoning & Detail Inspector */
+  #panel {
+    position: fixed; top: 0; right: 0; width: var(--panel-w); height: 100%; z-index: 35;
+    background: #FFFFFF; border-left: 1px solid var(--line);
+    box-shadow: -6px 0 24px rgba(15, 23, 32, 0.08);
+    display: flex; flex-direction: column; font-size: 12.5px; line-height: 1.58;
+  }
+  #panel[hidden] { display: none; }
+  #panel-resizer {
+    position: absolute; left: -6px; top: 0; bottom: 0; width: 12px; cursor: col-resize; z-index: 2;
+  }
+  #panel-head {
+    padding: 16px 18px 12px; border-bottom: 1px solid #E9ECEF; position: relative;
+  }
+  #panel-close {
+    position: absolute; top: 11px; right: 13px; border: 0; background: none;
+    font-size: 20px; color: #7B8794; cursor: pointer; line-height: 1;
+  }
+  .p-kicker {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    color: #616E7C; margin-bottom: 4px;
+  }
+  #panel-head h2 { margin: 0 24px 5px 0; font-size: 14.5px; line-height: 1.38; color: #1F2933; }
+  .p-meta { font-size: 11px; color: #616E7C; }
+  .p-actions { margin-top: 9px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .p-btn {
+    border: 1px solid #CBD2D9; background: #FFF; color: #232D37;
+    font: inherit; font-size: 11px; font-weight: 600; padding: 4px 9px;
+    border-radius: 6px; cursor: pointer;
+  }
+  .p-btn:hover { background: #F5F7F9; }
+  .p-btn.hebb { border-color: #DFB56B; background: #FDF6E7; color: #7A5213; }
+  .p-btn.warn { border-color: #DF9F9F; background: #FCEEEE; color: #873535; }
+  .p-btn.warn.active { background: #873535; color: #FFF; }
+
+  #panel-body { flex: 1; overflow-y: auto; padding: 12px 18px 28px; }
+  .sec-title {
+    margin: 15px 0 6px; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: #7B8794;
+  }
+  .quote-box {
+    background: #F8F7F4; border-left: 3px solid #6E5DC6; padding: 8px 11px;
+    border-radius: 0 7px 7px 0; font-size: 12px; color: #2E3842; margin: 5px 0;
+  }
+  .concept-card {
+    border: 1px solid #E4E7EB; border-radius: 8px; padding: 9px 11px; margin: 7px 0;
+    background: #FCFCFB;
+  }
+  .concept-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 600; font-size: 12.5px; }
+  .variant-list { margin: 6px 0 0; padding: 0; list-style: none; }
+  .variant-item {
+    padding: 5px 8px; margin: 4px 0; border-radius: 6px; font-size: 11.5px;
+    border: 1px solid #EBEEF2; background: #FFF; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  }
+  .variant-item .v-status { white-space: nowrap; flex-shrink: 0; font-size: 10.5px; color: #616E7C; }
+  .variant-item.chosen { border-color: #8FC4B9; background: #EDF8F5; color: #194D44; font-weight: 600; }
+  .variant-item.chosen .v-status { color: #194D44; font-weight: 700; }
+  .proto-frame {
+    margin-top: 8px; border: 1px solid #DDE2E7; border-radius: 8px; padding: 7px;
+    background: #F9F9F7;
+  }
+  .proto-frame svg { width: 100%; height: auto; display: block; border-radius: 4px; }
+  .triage-grid { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+  .triage-opt {
+    border: 1px solid #DDE2E7; border-radius: 7px; padding: 7px 10px; cursor: pointer;
+    background: #FFF; text-align: left; font: inherit; font-size: 11.5px; transition: all .12s ease;
+  }
+  .triage-opt:hover { border-color: #9AA5B1; }
+  .triage-opt.selected-agree { border-color: #88C49C; background: #EDF7F0; }
+  .triage-opt.selected-proto { border-color: #E2C285; background: #FDF6E7; }
+  .triage-opt.selected-reject { border-color: #DF9F9F; background: #FCEEEE; }
+  .cmd-preview {
+    margin-top: 8px; padding: 8px 10px; background: #1F2933; color: #E4E7EB;
+    border-radius: 6px; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px;
+    word-break: break-all;
+  }
+  .chip-wrap { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; }
+  .chip-link {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    padding: 5px 9px; border-radius: 7px; border: 1px solid #E1E6EB;
+    background: #F9FAFB; color: #24476B; font-size: 11.5px; text-decoration: none; cursor: pointer;
+    line-height: 1.4;
+  }
+  .chip-link:hover { background: #EDF2F8; border-color: #B3C9E2; }
+  .chip-link.hebb { border-color: #EAD29E; background: #FDF9F0; color: #7A5213; }
+  .chip-meta { font-size: 10.5px; font-family: ui-monospace, SFMono-Regular, monospace; opacity: 0.78; white-space: nowrap; flex-shrink: 0; }
+
+  /* SVG Scene Styling */
+  .stratum-box { fill: rgba(255,255,255,0.48); stroke: #DDDAD2; stroke-width: 1.2; stroke-dasharray: 6 4; }
+  .stratum-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; fill: #6E7A86; }
+  .stratum-sub { font-size: 10.5px; fill: #9AA5B1; }
+
+  .struct-edge { fill: none; stroke: #B0BAC4; stroke-width: 1.35; stroke-linecap: round; stroke-linejoin: round; }
+  .cross-edge { fill: none; stroke: #7C69C8; stroke-width: 1.2; stroke-dasharray: 5 4; opacity: 0.28; transition: opacity .15s ease; }
+  .hebb-edge { fill: none; stroke: #C88A2E; stroke-dasharray: 2 4; opacity: 0.0; pointer-events: none; transition: opacity .15s ease; }
+  .hebb-edge.backbone { opacity: 0.20; }
+  .hebb-edge.mesh-all { opacity: 0.34; }
+
+  .edge-hot { stroke: #3B66A8 !important; stroke-width: 2.25 !important; opacity: 0.96 !important; }
+  .edge-hebb-hot { stroke: #C07415 !important; opacity: 0.92 !important; stroke-dasharray: none !important; }
+  .edge-blast { stroke: #C93B3B !important; stroke-width: 2.35 !important; opacity: 0.96 !important; stroke-dasharray: 6 3 !important; }
+
+  .g-node { cursor: pointer; transition: opacity .16s ease; }
+  .g-node.dimmed { opacity: 0.20; }
+  .g-node:hover .card-bg { filter: brightness(0.975); }
+  .card-sel { display: none; fill: none; stroke: #3B66A8; stroke-width: 2.4; pointer-events: none; }
+  .g-node.selected .card-sel { display: inline; }
+  .halo-ring { fill: none; pointer-events: none; opacity: 0; }
+  .g-node.probe-base .halo-ring { opacity: 1; stroke: #3E68A8; stroke-width: 3; }
+  .g-node.probe-flip .halo-ring { opacity: 1; stroke: #D48817; stroke-width: 3.2; stroke-dasharray: 6 3; }
+  .g-node.blast-hit .halo-ring { opacity: 1; stroke: #C93B3B; stroke-width: 3.2; }
+  .n-id { font-size: 10.5px; font-weight: 600; fill: #6E7A86; font-family: ui-monospace, SFMono-Regular, monospace; }
+  .n-tag { font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; }
+  .n-title { font-size: 12.5px; font-weight: 600; }
+  .n-sub { font-size: 10px; fill: #616E7C; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="bar-cluster">
+    <div class="brand">
+      <span>Paths to Modernity</span>
+      <span class="brand-badge">Qwen3-Embedding-0.6B-4bit-DWQ</span>
+    </div>
+    <span class="sep"></span>
+    <button class="lens-btn active" data-lens="overview">0 · 双层总览 <span class="cnt">22</span></button>
+    <button class="lens-btn" data-lens="intent">1 · 意图图谱 <span class="cnt">3</span></button>
+    <button class="lens-btn" data-lens="plan">2 · 规划树 2.5D <span class="cnt">10</span></button>
+    <button class="lens-btn" data-lens="knowledge_debt">3 · 知识债书签 <span class="cnt">3</span></button>
+    <button class="lens-btn" data-lens="scripts">4 · 脚本依赖图 <span class="cnt">6</span></button>
+  </div>
+  <div class="bar-cluster">
+    <button id="toggle-cross" class="toggle-pill cross-on" type="button">跨域溯源连线</button>
+    <button id="toggle-hebbian" class="toggle-pill on" type="button" title="点击切换：智能聚焦 / 全局网格 / 隐藏">⚡ 赫布突触: 智能聚焦</button>
+  </div>
+</div>
+
+<div id="legend">
+  <span class="leg-item"><span class="leg-line"></span>Declared / Observed 结构边</span>
+  <span id="leg-cross" class="leg-item"><span class="leg-line cross"></span>跨域溯源边</span>
+  <span class="leg-item"><span class="leg-line hebb"></span>Hebbian 突触 (悬停/选中展开全邻域)</span>
+</div>
+
+<svg id="canvas" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr-struct" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#9AA5B1"/>
+    </marker>
+    <marker id="arr-cross" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#7C69C8"/>
+    </marker>
+  </defs>
+  <g id="viewport">
+    <g id="stratum-layer"></g>
+    <g id="ground-layer"></g>
+    <g id="hebbian-layer"></g>
+    <g id="cross-layer"></g>
+    <g id="struct-layer"></g>
+    <g id="node-layer"></g>
+  </g>
+</svg>
+
+<div id="bottombar">
+  <button id="open-search" class="ctrl-btn" type="button">双路检索 / 激活扩散 <kbd>⌘K</kbd></button>
+  <div id="probe-banner"><span id="probe-label"></span><button id="probe-clear" title="清除激活探针">×</button></div>
+  <span class="sep"></span>
+  <button id="btn-overview" class="ctrl-btn" type="button">全览适配</button>
+  <button id="btn-100" class="ctrl-btn" type="button">100%</button>
+</div>
+
+<div id="search-surface" hidden>
+  <div class="s-box">
+    <input id="search-input" type="search" placeholder="输入概念、意图、术语或文件名 — 实时运行 Base 匹配 + 赫布激活扩散 (Flip)…" autocomplete="off"/>
+    <span style="font-size:10.5px;color:#7B8794;white-space:nowrap;">Esc 关闭</span>
+  </div>
+  <div id="search-results"></div>
+</div>
+
+<aside id="panel" hidden>
+  <div id="panel-resizer"></div>
+  <div id="panel-head">
+    <button id="panel-close" aria-label="关闭详情">×</button>
+    <div id="p-kicker" class="p-kicker"></div>
+    <h2 id="p-title"></h2>
+    <div id="p-meta" class="p-meta"></div>
+    <div id="p-actions" class="p-actions"></div>
+  </div>
+  <div id="panel-body"></div>
+</aside>
+
+<script>
+const DATA = {"nodes": [{"id": "INT-001", "short_id": "INT-001", "graph": "intent", "graph_label": "Intent Graph (认知意图)", "badge": "INTENT", "title": "让科学光谱 Agent 交互更快且具备直接操作感", "inspector_title": "让科学光谱 Agent 交互更快且具备直接操作感", "wrapped_title": ["让科学光谱 Agent", "交互更快且具备直接操作感"], "subtitle": "概念: 科学光谱 Agent · 更快", "status": "crystallized", "source": "_aiHumanInteract/intent/nodes/INT-001.md", "z": 16, "accent": "#6E5DC6", "palette": ["#EDF7F0", "#A7CEB4", "#234B36"], "search_blob": "{\"id\": \"int-001\", \"title\": \"让科学光谱 agent 交互更快且具备直接操作感\", \"status\": \"crystallized\", \"updated\": \"2026-11-24\", \"raw_utterance\": \"我想让这个科学光谱 agent 更快，像在实验台上直接拨动旋钮看谱线一样顺手。\", \"parent\": null, \"refines\": [], \"branches_from\": [], \"constrains\": [], \"supersedes\": [], \"concepts\": [{\"name\": \"科学光谱 agent\", \"role\": \"subject\", \"status\": \"anchored\", \"definition\": \"面向科研人员的光谱特征识别、标注与跨会话对比工作台\"}, {\"name\": \"更快\", \"role\": \"outcome\", \"status\": \"resolved\", \"selected_variant\": \"iv-3\", \"interpretive_variants\": [{\"id\": \"iv-1\", \"meaning\": \"降低单次推理端到端毫秒级延迟\"}, {\"id\": \"iv-2\", \"meaning\": \"扩大后台批量光谱算力吞吐\"}, {\"id\": \"iv-3\", \"meaning\": \"消除低信息量的人工审批弹窗，缩短从想法到可见反馈的认知回路\"}, {\"id\": \"iv-4\", \"meaning\": \"纯底层数值计算代码加速\"}]}], \"implementation_alternatives\": [{\"id\": \"ia-1\", \"approach\": \"直接画布选中谱峰 + 侧栏非阻塞三态技术声明条\", \"selected\": true, \"prototype\": \"_aihumaninteract/intent/prototypes/direct-canvas.svg\"}, {\"id\": \"ia-2\", \"approach\": \"传统分步模态弹窗逐项点击 agree 审批\", \"selected\": false, \"prototype\": \"_aihumaninteract/intent/prototypes/modal-queue.svg\"}], \"plan_refs\": [\"lt-001\", \"wp-001\"], \"knowledge_debt_refs\": [\"kd-003\"], \"qualities\": [\"操作科学对象应像拨动实体仪器一样直接连贯，不退化为管理弹窗\"], \"source\": \"_aihumaninteract/intent/nodes/int-001.md\", \"utterance_ref\": \"_aihumaninteract/intent/utterances/utt-001.md\"}", "raw": {"id": "INT-001", "title": "让科学光谱 Agent 交互更快且具备直接操作感", "status": "crystallized", "updated": "2026-11-24", "raw_utterance": "我想让这个科学光谱 Agent 更快，像在实验台上直接拨动旋钮看谱线一样顺手。", "parent": null, "refines": [], "branches_from": [], "constrains": [], "supersedes": [], "concepts": [{"name": "科学光谱 Agent", "role": "subject", "status": "anchored", "definition": "面向科研人员的光谱特征识别、标注与跨会话对比工作台"}, {"name": "更快", "role": "outcome", "status": "resolved", "selected_variant": "IV-3", "interpretive_variants": [{"id": "IV-1", "meaning": "降低单次推理端到端毫秒级延迟"}, {"id": "IV-2", "meaning": "扩大后台批量光谱算力吞吐"}, {"id": "IV-3", "meaning": "消除低信息量的人工审批弹窗，缩短从想法到可见反馈的认知回路"}, {"id": "IV-4", "meaning": "纯底层数值计算代码加速"}]}], "implementation_alternatives": [{"id": "IA-1", "approach": "直接画布选中谱峰 + 侧栏非阻塞三态技术声明条", "selected": true, "prototype": "_aiHumanInteract/intent/prototypes/direct-canvas.svg"}, {"id": "IA-2", "approach": "传统分步模态弹窗逐项点击 Agree 审批", "selected": false, "prototype": "_aiHumanInteract/intent/prototypes/modal-queue.svg"}], "plan_refs": ["LT-001", "WP-001"], "knowledge_debt_refs": ["KD-003"], "qualities": ["操作科学对象应像拨动实体仪器一样直接连贯，不退化为管理弹窗"], "source": "_aiHumanInteract/intent/nodes/INT-001.md", "utterance_ref": "_aiHumanInteract/intent/utterances/UTT-001.md"}}, {"id": "INT-002", "short_id": "INT-002", "graph": "intent", "graph_label": "Intent Graph (认知意图)", "badge": "INTENT", "title": "对未理解技术采用三态分拣与可回溯知识债书签", "inspector_title": "对未理解技术采用三态分拣与可回溯知识债书签", "wrapped_title": ["对未理解技术采用三态分拣与可回溯知识债", "书签"], "subtitle": "概念: 非完全技术能力责任人 · 先记下来跑通原型", "status": "clarified", "source": "_aiHumanInteract/intent/nodes/INT-002.md", "z": 16, "accent": "#6E5DC6", "palette": ["#EDF6FA", "#A5CBE0", "#23516B"], "search_blob": "{\"id\": \"int-002\", \"title\": \"对未理解技术采用三态分拣与可回溯知识债书签\", \"status\": \"clarified\", \"updated\": \"2026-11-24\", \"raw_utterance\": \"遇到我不懂的底层算法别让我一直盲目点 agree，先记下来把原型跑通，等我看到效果再决定留不留。\", \"parent\": \"int-001\", \"refines\": [\"int-001\"], \"branches_from\": [], \"constrains\": [], \"supersedes\": [], \"concepts\": [{\"name\": \"非完全技术能力责任人\", \"role\": \"authority\", \"status\": \"resolved\", \"definition\": \"拥有目标与体验最终裁决权及技术知情权，但无需在原型前独立精通每项底层机制\"}, {\"name\": \"先记下来跑通原型\", \"role\": \"mechanism\", \"status\": \"resolved\", \"selected_variant\": \"iv-1\", \"interpretive_variants\": [{\"id\": \"iv-1\", \"meaning\": \"创建带重审触发条件与图谱回链的 knowledge debt 书签，以后可肯定或否决重组\"}, {\"id\": \"iv-2\", \"meaning\": \"生成待学习的课后技术教程清单\"}]}], \"implementation_alternatives\": [{\"id\": \"ia-1\", \"approach\": \"三态质询选择（理解同意 / 暂不理解先做原型记入kd / 不同意并提新观点）\", \"selected\": true}], \"plan_refs\": [\"mt-001\", \"wp-002\", \"wp-003\"], \"knowledge_debt_refs\": [\"kd-001\"], \"qualities\": [\"诚实记录未知，绝不把沉默或顺从伪装成技术背书\"], \"source\": \"_aihumaninteract/intent/nodes/int-002.md\", \"utterance_ref\": \"_aihumaninteract/intent/utterances/utt-001.md\"}", "raw": {"id": "INT-002", "title": "对未理解技术采用三态分拣与可回溯知识债书签", "status": "clarified", "updated": "2026-11-24", "raw_utterance": "遇到我不懂的底层算法别让我一直盲目点 Agree，先记下来把原型跑通，等我看到效果再决定留不留。", "parent": "INT-001", "refines": ["INT-001"], "branches_from": [], "constrains": [], "supersedes": [], "concepts": [{"name": "非完全技术能力责任人", "role": "authority", "status": "resolved", "definition": "拥有目标与体验最终裁决权及技术知情权，但无需在原型前独立精通每项底层机制"}, {"name": "先记下来跑通原型", "role": "mechanism", "status": "resolved", "selected_variant": "IV-1", "interpretive_variants": [{"id": "IV-1", "meaning": "创建带重审触发条件与图谱回链的 Knowledge Debt 书签，以后可肯定或否决重组"}, {"id": "IV-2", "meaning": "生成待学习的课后技术教程清单"}]}], "implementation_alternatives": [{"id": "IA-1", "approach": "三态质询选择（理解同意 / 暂不理解先做原型记入KD / 不同意并提新观点）", "selected": true}], "plan_refs": ["MT-001", "WP-002", "WP-003"], "knowledge_debt_refs": ["KD-001"], "qualities": ["诚实记录未知，绝不把沉默或顺从伪装成技术背书"], "source": "_aiHumanInteract/intent/nodes/INT-002.md", "utterance_ref": "_aiHumanInteract/intent/utterances/UTT-001.md"}}, {"id": "INT-003", "short_id": "INT-003", "graph": "intent", "graph_label": "Intent Graph (认知意图)", "badge": "INTENT", "title": "跨会话保持谱峰特征可寻址与历史审计", "inspector_title": "跨会话保持谱峰特征可寻址与历史审计", "wrapped_title": ["跨会话保持谱峰特征可寻址与历史审计"], "subtitle": "概念: 同一谱峰可寻址身份 · 历史状态回放粒度", "status": "exploring", "source": "_aiHumanInteract/intent/nodes/INT-003.md", "z": 16, "accent": "#6E5DC6", "palette": ["#F4F1FC", "#C5B8EA", "#4A3880"], "search_blob": "{\"id\": \"int-003\", \"title\": \"跨会话保持谱峰特征可寻址与历史审计\", \"status\": \"exploring\", \"updated\": \"2026-11-24\", \"raw_utterance\": \"下周回来继续看同一组光谱时，不管是键盘快捷键还是 agent 都要能直接指到同一个谱峰特征。\", \"parent\": \"int-001\", \"refines\": [\"int-001\"], \"branches_from\": [\"int-002\"], \"constrains\": [\"int-002\"], \"supersedes\": [], \"concepts\": [{\"name\": \"同一谱峰可寻址身份\", \"role\": \"invariant\", \"status\": \"resolved\", \"definition\": \"跨会话稳定的 `pk-###` 标识，供 ui 画布与 agent 对话共同引用\"}, {\"name\": \"历史状态回放粒度\", \"role\": \"constraint\", \"status\": \"ambiguous\", \"selected_variant\": \"iv-1\", \"interpretive_variants\": [{\"id\": \"iv-1\", \"meaning\": \"仅需保存当前最新标注与决策快照\"}, {\"id\": \"iv-2\", \"meaning\": \"需要任意时刻逐事件严格重放（event sourcing）\"}]}], \"implementation_alternatives\": [], \"plan_refs\": [\"mt-002\", \"wp-004\", \"wp-005\"], \"knowledge_debt_refs\": [\"kd-002\"], \"qualities\": [\"恢复上下文轻快透明，不引入笨重的运维负担\"], \"source\": \"_aihumaninteract/intent/nodes/int-003.md\"}", "raw": {"id": "INT-003", "title": "跨会话保持谱峰特征可寻址与历史审计", "status": "exploring", "updated": "2026-11-24", "raw_utterance": "下周回来继续看同一组光谱时，不管是键盘快捷键还是 Agent 都要能直接指到同一个谱峰特征。", "parent": "INT-001", "refines": ["INT-001"], "branches_from": ["INT-002"], "constrains": ["INT-002"], "supersedes": [], "concepts": [{"name": "同一谱峰可寻址身份", "role": "invariant", "status": "resolved", "definition": "跨会话稳定的 `PK-###` 标识，供 UI 画布与 Agent 对话共同引用"}, {"name": "历史状态回放粒度", "role": "constraint", "status": "ambiguous", "selected_variant": "IV-1", "interpretive_variants": [{"id": "IV-1", "meaning": "仅需保存当前最新标注与决策快照"}, {"id": "IV-2", "meaning": "需要任意时刻逐事件严格重放（Event Sourcing）"}]}], "implementation_alternatives": [], "plan_refs": ["MT-002", "WP-004", "WP-005"], "knowledge_debt_refs": ["KD-002"], "qualities": ["恢复上下文轻快透明，不引入笨重的运维负担"], "source": "_aiHumanInteract/intent/nodes/INT-003.md"}}, {"id": "LT-001", "short_id": "LT-001", "graph": "plan", "graph_label": "Plan Graph v4 (long-term)", "badge": "PLAN · LT", "title": "交付低摩擦、可追溯的科学光谱协同工作台", "inspector_title": "交付低摩擦、可追溯的科学光谱协同工作台", "wrapped_title": ["交付低摩擦、可追溯的科学光谱协同工作台"], "subtitle": "in progress", "status": "in_progress", "source": "_aiHumanInteract/plan/long-term/LT-001.md", "z": 36, "accent": "#7766A6", "palette": ["#FFF4E8", "#E7BA91", "#7D4E27"], "search_blob": "{\"id\": \"lt-001\", \"title\": \"交付低摩擦、可追溯的科学光谱协同工作台\", \"level\": \"long-term\", \"status\": \"in_progress\", \"updated\": \"2026-11-24\", \"parent\": null, \"depends_on\": [], \"enables\": [], \"validates\": [], \"supersedes\": [], \"conflicts_with\": [], \"objective\": \"让科研人员通过直接画布交互与可回溯知识债机制高效完成光谱特征探索。\", \"deliverables\": [\"直接操作光谱画布与后端会话接口\", \"三态技术声明与知识债追踪闭环\"], \"acceptance\": [\"核心谱峰交互零模态审批弹窗阻塞\", \"所有未确认技术选型均可追溯至 kd 书签\"], \"links\": {\"plan\": [\"_aihumaninteract/plan/long-term/lt-001.md\"], \"intent\": [\"_aihumaninteract/intent/nodes/int-001.md\"], \"code\": [\"src/workbench_api.py\"]}, \"evidence\": [], \"source\": \"_aihumaninteract/plan/long-term/lt-001.md\", \"context\": {\"problem\": \"传统对话式 agent 每步抛出技术审批导致严重思维摩擦与伪同意。\", \"invariants\": [\"不把沉默或顺从当作执行授权\", \"单一决策真源，视图自动生成\"], \"non_goals\": [\"首期不接入外部商业云数据库\"]}, \"qualities\": [\"像拨动实体仪器一样直接连贯，不退化为管理弹窗\"], \"source_requirement\": \"_aihumaninteract/intent/nodes/int-001.md\"}", "raw": {"id": "LT-001", "title": "交付低摩擦、可追溯的科学光谱协同工作台", "level": "long-term", "status": "in_progress", "updated": "2026-11-24", "parent": null, "depends_on": [], "enables": [], "validates": [], "supersedes": [], "conflicts_with": [], "objective": "让科研人员通过直接画布交互与可回溯知识债机制高效完成光谱特征探索。", "deliverables": ["直接操作光谱画布与后端会话接口", "三态技术声明与知识债追踪闭环"], "acceptance": ["核心谱峰交互零模态审批弹窗阻塞", "所有未确认技术选型均可追溯至 KD 书签"], "links": {"plan": ["_aiHumanInteract/plan/long-term/LT-001.md"], "intent": ["_aiHumanInteract/intent/nodes/INT-001.md"], "code": ["src/workbench_api.py"]}, "evidence": [], "source": "_aiHumanInteract/plan/long-term/LT-001.md", "context": {"problem": "传统对话式 Agent 每步抛出技术审批导致严重思维摩擦与伪同意。", "invariants": ["不把沉默或顺从当作执行授权", "单一决策真源，视图自动生成"], "non_goals": ["首期不接入外部商业云数据库"]}, "qualities": ["像拨动实体仪器一样直接连贯，不退化为管理弹窗"], "source_requirement": "_aiHumanInteract/intent/nodes/INT-001.md"}}, {"id": "MT-001", "short_id": "MT-001", "graph": "plan", "graph_label": "Plan Graph v4 (mid-term)", "badge": "PLAN · MT", "title": "建立直接画布交互与认知分拣闸门", "inspector_title": "建立直接画布交互与认知分拣闸门", "wrapped_title": ["建立直接画布交互与认知分拣闸门"], "subtitle": "in progress", "status": "in_progress", "source": "_aiHumanInteract/plan/mid-term/MT-001.md", "z": 24, "accent": "#6487AD", "palette": ["#FFF4E8", "#E7BA91", "#7D4E27"], "search_blob": "{\"id\": \"mt-001\", \"title\": \"建立直接画布交互与认知分拣闸门\", \"level\": \"mid-term\", \"status\": \"in_progress\", \"updated\": \"2026-11-24\", \"parent\": \"lt-001\", \"depends_on\": [], \"enables\": [\"mt-002\"], \"validates\": [], \"supersedes\": [], \"conflicts_with\": [], \"objective\": \"实现无模态打断的谱峰选择画布与三态技术声明分拣模块。\", \"deliverables\": [\"前端直接选择画布组件\", \"后端三态技术分拣闸门\"], \"acceptance\": [\"谱峰点击直接更新选中态\", \"三态分拣准确识别需挂入 kd 的条目\"], \"links\": {\"plan\": [\"_aihumaninteract/plan/mid-term/mt-001.md\"], \"intent\": [\"_aihumaninteract/intent/nodes/int-002.md\"], \"code\": [\"web/spectralcanvas.ts\", \"src/triage_gate.py\"]}, \"evidence\": [], \"source\": \"_aihumaninteract/plan/mid-term/mt-001.md\"}", "raw": {"id": "MT-001", "title": "建立直接画布交互与认知分拣闸门", "level": "mid-term", "status": "in_progress", "updated": "2026-11-24", "parent": "LT-001", "depends_on": [], "enables": ["MT-002"], "validates": [], "supersedes": [], "conflicts_with": [], "objective": "实现无模态打断的谱峰选择画布与三态技术声明分拣模块。", "deliverables": ["前端直接选择画布组件", "后端三态技术分拣闸门"], "acceptance": ["谱峰点击直接更新选中态", "三态分拣准确识别需挂入 KD 的条目"], "links": {"plan": ["_aiHumanInteract/plan/mid-term/MT-001.md"], "intent": ["_aiHumanInteract/intent/nodes/INT-002.md"], "code": ["web/SpectralCanvas.ts", "src/triage_gate.py"]}, "evidence": [], "source": "_aiHumanInteract/plan/mid-term/MT-001.md"}}, {"id": "MT-002", "short_id": "MT-002", "graph": "plan", "graph_label": "Plan Graph v4 (mid-term)", "badge": "PLAN · MT", "title": "实现跨会话谱峰持久存储与可选审计回放", "inspector_title": "实现跨会话谱峰持久存储与可选审计回放", "wrapped_title": ["实现跨会话谱峰持久存储与可选审计回放"], "subtitle": "proposed", "status": "proposed", "source": "_aiHumanInteract/plan/mid-term/MT-002.md", "z": 24, "accent": "#6487AD", "palette": ["#EFF5FC", "#B3C9E2", "#2B4F73"], "search_blob": "{\"id\": \"mt-002\", \"title\": \"实现跨会话谱峰持久存储与可选审计回放\", \"level\": \"mid-term\", \"status\": \"proposed\", \"updated\": \"2026-11-24\", \"parent\": \"lt-001\", \"depends_on\": [], \"enables\": [], \"validates\": [], \"supersedes\": [], \"conflicts_with\": [], \"objective\": \"保证谱峰 id 在会话切换与压缩恢复后稳定可寻址。\", \"deliverables\": [\"轻量谱峰特征存储模块\", \"按需启用的事件回放审计模块\"], \"acceptance\": [\"重启会话后相同 `pk-###` 仍可由画布与 agent 共同引用\"], \"links\": {\"plan\": [\"_aihumaninteract/plan/mid-term/mt-002.md\"], \"intent\": [\"_aihumaninteract/intent/nodes/int-003.md\"], \"code\": [\"src/spectral_store.py\", \"src/event_replay_audit.py\"]}, \"evidence\": [], \"source\": \"_aihumaninteract/plan/mid-term/mt-002.md\"}", "raw": {"id": "MT-002", "title": "实现跨会话谱峰持久存储与可选审计回放", "level": "mid-term", "status": "proposed", "updated": "2026-11-24", "parent": "LT-001", "depends_on": [], "enables": [], "validates": [], "supersedes": [], "conflicts_with": [], "objective": "保证谱峰 ID 在会话切换与压缩恢复后稳定可寻址。", "deliverables": ["轻量谱峰特征存储模块", "按需启用的事件回放审计模块"], "acceptance": ["重启会话后相同 `PK-###` 仍可由画布与 Agent 共同引用"], "links": {"plan": ["_aiHumanInteract/plan/mid-term/MT-002.md"], "intent": ["_aiHumanInteract/intent/nodes/INT-003.md"], "code": ["src/spectral_store.py", "src/event_replay_audit.py"]}, "evidence": [], "source": "_aiHumanInteract/plan/mid-term/MT-002.md"}}, {"id": "ST-001", "short_id": "ST-001", "graph": "plan", "graph_label": "Plan Graph v4 (short-term)", "badge": "PLAN · ST", "title": "落地直接操作画布与三态技术分拣核心", "inspector_title": "落地直接操作画布与三态技术分拣核心", "wrapped_title": ["落地直接操作画布与三态技术分拣核心"], "subtitle": "in progress", "status": "in_progress", "source": "_aiHumanInteract/plan/short-term/ST-001.md", "z": 12, "accent": "#6F9DA2", "palette": ["#FFF4E8", "#E7BA91", "#7D4E27"], "search_blob": "{\"id\": \"st-001\", \"title\": \"落地直接操作画布与三态技术分拣核心\", \"level\": \"short-term\", \"status\": \"in_progress\", \"updated\": \"2026-11-24\", \"parent\": \"mt-001\", \"depends_on\": [], \"enables\": [], \"validates\": [], \"supersedes\": [], \"conflicts_with\": [], \"objective\": \"完成画布组件与三态分拣受控方案比选落地。\", \"deliverables\": [\"`web/spectralcanvas.ts`\", \"`src/triage_gate.py`\"], \"acceptance\": [\"单元测试验证三态分拣书签触发逻辑通过\"], \"links\": {\"plan\": [\"_aihumaninteract/plan/short-term/st-001.md\"], \"code\": [\"web/spectralcanvas.ts\", \"src/triage_gate.py\"]}, \"evidence\": [], \"source\": \"_aihumaninteract/plan/short-term/st-001.md\"}", "raw": {"id": "ST-001", "title": "落地直接操作画布与三态技术分拣核心", "level": "short-term", "status": "in_progress", "updated": "2026-11-24", "parent": "MT-001", "depends_on": [], "enables": [], "validates": [], "supersedes": [], "conflicts_with": [], "objective": "完成画布组件与三态分拣受控方案比选落地。", "deliverables": ["`web/SpectralCanvas.ts`", "`src/triage_gate.py`"], "acceptance": ["单元测试验证三态分拣书签触发逻辑通过"], "links": {"plan": ["_aiHumanInteract/plan/short-term/ST-001.md"], "code": ["web/SpectralCanvas.ts", "src/triage_gate.py"]}, "evidence": [], "source": "_aiHumanInteract/plan/short-term/ST-001.md"}}, {"id": "ST-002", "short_id": "ST-002", "graph": "plan", "graph_label": "Plan Graph v4 (short-term)", "badge": "PLAN · ST", "title": "构建谱峰存储与审计扩展点", "inspector_title": "构建谱峰存储与审计扩展点", "wrapped_title": ["构建谱峰存储与审计扩展点"], "subtitle": "ready", "status": "ready", "source": "_aiHumanInteract/plan/short-term/ST-002.md", "z": 12, "accent": "#6F9DA2", "palette": ["#EAF7F5", "#9CCFC7", "#1F5A52"], "search_blob": "{\"id\": \"st-002\", \"title\": \"构建谱峰存储与审计扩展点\", \"level\": \"short-term\", \"status\": \"ready\", \"updated\": \"2026-11-24\", \"parent\": \"mt-002\", \"depends_on\": [], \"enables\": [], \"validates\": [], \"supersedes\": [], \"conflicts_with\": [], \"objective\": \"先交付可逆键值谱峰存储，并将事件回放模块保持在待重审边界后。\", \"deliverables\": [\"`src/spectral_store.py`\", \"规划中的 `src/event_replay_audit.py`\"], \"acceptance\": [\"基础谱峰读写通过测试，重型事件溯源在 kd-002 确认前不强行耦合\"], \"links\": {\"plan\": [\"_aihumaninteract/plan/short-term/st-002.md\"], \"code\": [\"src/spectral_store.py\", \"src/event_replay_audit.py\"]}, \"evidence\": [], \"source\": \"_aihumaninteract/plan/short-term/st-002.md\"}", "raw": {"id": "ST-002", "title": "构建谱峰存储与审计扩展点", "level": "short-term", "status": "ready", "updated": "2026-11-24", "parent": "MT-002", "depends_on": [], "enables": [], "validates": [], "supersedes": [], "conflicts_with": [], "objective": "先交付可逆键值谱峰存储，并将事件回放模块保持在待重审边界后。", "deliverables": ["`src/spectral_store.py`", "规划中的 `src/event_replay_audit.py`"], "acceptance": ["基础谱峰读写通过测试，重型事件溯源在 KD-002 确认前不强行耦合"], "links": {"plan": ["_aiHumanInteract/plan/short-term/ST-002.md"], "code": ["src/spectral_store.py", "src/event_replay_audit.py"]}, "evidence": [], "source": "_aiHumanInteract/plan/short-term/ST-002.md"}}, {"id": "WP-001", "short_id": "WP-001", "graph": "plan", "graph_label": "Plan Graph v4 (work-package)", "badge": "PLAN · WP", "title": "实现光谱谱峰直接选中画布与工作台会话入口", "inspector_title": "实现光谱谱峰直接选中画布与工作台会话入口", "wrapped_title": ["实现光谱谱峰直接选中画布与工作台会话入", "口"], "subtitle": "done", "status": "done", "source": "_aiHumanInteract/plan/work-package/WP-001.md", "z": 0, "accent": "#9AA5B1", "palette": ["#EDF7F0", "#A7CEB4", "#234B36"], "search_blob": "{\"id\": \"wp-001\", \"title\": \"实现光谱谱峰直接选中画布与工作台会话入口\", \"level\": \"work-package\", \"status\": \"done\", \"updated\": \"2026-11-24\", \"parent\": \"st-001\", \"depends_on\": [], \"enables\": [], \"validates\": [], \"supersedes\": [], \"conflicts_with\": [], \"objective\": \"提供零模态弹窗阻塞的谱峰直接选中句柄与后端会话编排入口。\", \"deliverables\": [\"`web/spectralcanvas.ts` 直接选中函数\", \"`src/workbench_api.py` 会话入口\"], \"acceptance\": [\"调用 `inspect_and_tag` 可一次完成谱峰记录与分拣状态返回\"], \"links\": {\"plan\": [\"_aihumaninteract/plan/work-package/wp-001.md\"], \"intent\": [\"_aihumaninteract/intent/nodes/int-001.md\"], \"prototype\": [\"_aihumaninteract/intent/prototypes/direct-canvas.svg\"], \"code\": [\"web/spectralcanvas.ts\", \"src/workbench_api.py\"], \"tests\": [\"tests/test_workbench.py\"]}, \"evidence\": [\"src/workbench_api.py\", \"tests/test_workbench.py\"], \"source\": \"_aihumaninteract/plan/work-package/wp-001.md\", \"source_requirement\": \"_aihumaninteract/intent/nodes/int-001.md\"}", "raw": {"id": "WP-001", "title": "实现光谱谱峰直接选中画布与工作台会话入口", "level": "work-package", "status": "done", "updated": "2026-11-24", "parent": "ST-001", "depends_on": [], "enables": [], "validates": [], "supersedes": [], "conflicts_with": [], "objective": "提供零模态弹窗阻塞的谱峰直接选中句柄与后端会话编排入口。", "deliverables": ["`web/SpectralCanvas.ts` 直接选中函数", "`src/workbench_api.py` 会话入口"], "acceptance": ["调用 `inspect_and_tag` 可一次完成谱峰记录与分拣状态返回"], "links": {"plan": ["_aiHumanInteract/plan/work-package/WP-001.md"], "intent": ["_aiHumanInteract/intent/nodes/INT-001.md"], "prototype": ["_aiHumanInteract/intent/prototypes/direct-canvas.svg"], "code": ["web/SpectralCanvas.ts", "src/workbench_api.py"], "tests": ["tests/test_workbench.py"]}, "evidence": ["src/workbench_api.py", "tests/test_workbench.py"], "source": "_aiHumanInteract/plan/work-package/WP-001.md", "source_requirement": "_aiHumanInteract/intent/nodes/INT-001.md"}}, {"id": "WP-002", "short_id": "WP-002", "graph": "plan", "graph_label": "Plan Graph v4 (work-package)", "badge": "PLAN · WP", "title": "采用显式三态技术分拣闸门连接知识债书签", "inspector_title": "采用显式三态技术分拣闸门连接知识债书签", "wrapped_title": ["采用显式三态技术分拣闸门连接知识债书签"], "subtitle": "in progress", "status": "in_progress", "source": "_aiHumanInteract/plan/work-package/WP-002.md", "z": 0, "accent": "#9AA5B1", "palette": ["#FFF4E8", "#E7BA91", "#7D4E27"], "search_blob": "{\"id\": \"wp-002\", \"title\": \"采用显式三态技术分拣闸门连接知识债书签\", \"level\": \"work-package\", \"status\": \"in_progress\", \"updated\": \"2026-11-24\", \"parent\": \"st-001\", \"depends_on\": [\"wp-001\"], \"enables\": [], \"validates\": [], \"supersedes\": [\"wp-003\"], \"conflicts_with\": [], \"objective\": \"在不强迫非完全技术能力责任人盲目点 agree 的前提下维护技术知情权。\", \"deliverables\": [\"`src/triage_gate.py` 三态分拣器\"], \"acceptance\": [\"选择 `not_understood_prototype` 时准确标记 `bookmark=true`\"], \"links\": {\"plan\": [\"_aihumaninteract/plan/work-package/wp-002.md\"], \"intent\": [\"_aihumaninteract/intent/nodes/int-002.md\"], \"knowledge_debt\": [\"_aihumaninteract/knowledge-debt/nodes/kd-001.md\"], \"evaluation\": [\"_aihumaninteract/plan/evaluations/eval-001.md\"], \"code\": [\"src/triage_gate.py\"]}, \"evidence\": [], \"source\": \"_aihumaninteract/plan/work-package/wp-002.md\", \"context\": {\"invariants\": [\"不把沉默或顺从当作执行授权\"]}, \"source_requirement\": \"_aihumaninteract/intent/nodes/int-002.md\", \"approach\": \"显式三态分类（理解同意 / 暂存kd先做原型 / 否决提新观点）并联动赫布关联索引\"}", "raw": {"id": "WP-002", "title": "采用显式三态技术分拣闸门连接知识债书签", "level": "work-package", "status": "in_progress", "updated": "2026-11-24", "parent": "ST-001", "depends_on": ["WP-001"], "enables": [], "validates": [], "supersedes": ["WP-003"], "conflicts_with": [], "objective": "在不强迫非完全技术能力责任人盲目点 Agree 的前提下维护技术知情权。", "deliverables": ["`src/triage_gate.py` 三态分拣器"], "acceptance": ["选择 `not_understood_prototype` 时准确标记 `bookmark=True`"], "links": {"plan": ["_aiHumanInteract/plan/work-package/WP-002.md"], "intent": ["_aiHumanInteract/intent/nodes/INT-002.md"], "knowledge_debt": ["_aiHumanInteract/knowledge-debt/nodes/KD-001.md"], "evaluation": ["_aiHumanInteract/plan/evaluations/EVAL-001.md"], "code": ["src/triage_gate.py"]}, "evidence": [], "source": "_aiHumanInteract/plan/work-package/WP-002.md", "context": {"invariants": ["不把沉默或顺从当作执行授权"]}, "source_requirement": "_aiHumanInteract/intent/nodes/INT-002.md", "approach": "显式三态分类（理解同意 / 暂存KD先做原型 / 否决提新观点）并联动赫布关联索引"}}, {"id": "WP-003", "short_id": "WP-003", "graph": "plan", "graph_label": "Plan Graph v4 (work-package)", "badge": "PLAN · WP", "title": "备选方案：基于启发式风险分静默跳过技术声明", "inspector_title": "备选方案：基于启发式风险分静默跳过技术声明", "wrapped_title": ["备选方案：基于启发式风险分静默跳过技术", "声明"], "subtitle": "superseded", "status": "superseded", "source": "_aiHumanInteract/plan/work-package/WP-003.md", "z": 0, "accent": "#9AA5B1", "palette": ["#F1F2F4", "#C9CDD2", "#777D85"], "search_blob": "{\"id\": \"wp-003\", \"title\": \"备选方案：基于启发式风险分静默跳过技术声明\", \"level\": \"work-package\", \"status\": \"superseded\", \"updated\": \"2026-11-24\", \"parent\": \"st-001\", \"depends_on\": [], \"enables\": [], \"validates\": [], \"supersedes\": [], \"conflicts_with\": [], \"objective\": \"在不强迫非完全技术能力责任人盲目点 agree 的前提下维护技术知情权。\", \"deliverables\": [\"启发式静默过滤规则评估记录\"], \"acceptance\": [\"对照评估明确其对用户技术知情权的影响\"], \"links\": {\"plan\": [\"_aihumaninteract/plan/work-package/wp-003.md\"], \"intent\": [\"_aihumaninteract/intent/nodes/int-002.md\"], \"evaluation\": [\"_aihumaninteract/plan/evaluations/eval-001.md\"]}, \"evidence\": [\"_aihumaninteract/plan/evaluations/eval-001.md\"], \"source\": \"_aihumaninteract/plan/work-package/wp-003.md\", \"context\": {\"invariants\": [\"不把沉默或顺从当作执行授权\"]}, \"source_requirement\": \"_aihumaninteract/intent/nodes/int-002.md\", \"approach\": \"模型内部估算风险分，低于阈值时完全隐藏技术栈声明\", \"alternative_of\": \"wp-002\"}", "raw": {"id": "WP-003", "title": "备选方案：基于启发式风险分静默跳过技术声明", "level": "work-package", "status": "superseded", "updated": "2026-11-24", "parent": "ST-001", "depends_on": [], "enables": [], "validates": [], "supersedes": [], "conflicts_with": [], "objective": "在不强迫非完全技术能力责任人盲目点 Agree 的前提下维护技术知情权。", "deliverables": ["启发式静默过滤规则评估记录"], "acceptance": ["对照评估明确其对用户技术知情权的影响"], "links": {"plan": ["_aiHumanInteract/plan/work-package/WP-003.md"], "intent": ["_aiHumanInteract/intent/nodes/INT-002.md"], "evaluation": ["_aiHumanInteract/plan/evaluations/EVAL-001.md"]}, "evidence": ["_aiHumanInteract/plan/evaluations/EVAL-001.md"], "source": "_aiHumanInteract/plan/work-package/WP-003.md", "context": {"invariants": ["不把沉默或顺从当作执行授权"]}, "source_requirement": "_aiHumanInteract/intent/nodes/INT-002.md", "approach": "模型内部估算风险分，低于阈值时完全隐藏技术栈声明", "alternative_of": "WP-002"}}, {"id": "WP-004", "short_id": "WP-004", "graph": "plan", "graph_label": "Plan Graph v4 (work-package)", "badge": "PLAN · WP", "title": "落地轻量键值谱峰特征持久存储", "inspector_title": "落地轻量键值谱峰特征持久存储", "wrapped_title": ["落地轻量键值谱峰特征持久存储"], "subtitle": "done", "status": "done", "source": "_aiHumanInteract/plan/work-package/WP-004.md", "z": 0, "accent": "#9AA5B1", "palette": ["#EDF7F0", "#A7CEB4", "#234B36"], "search_blob": "{\"id\": \"wp-004\", \"title\": \"落地轻量键值谱峰特征持久存储\", \"level\": \"work-package\", \"status\": \"done\", \"updated\": \"2026-11-24\", \"parent\": \"st-002\", \"depends_on\": [], \"enables\": [], \"validates\": [], \"supersedes\": [], \"conflicts_with\": [], \"objective\": \"用最小可逆结构持久化 `pk-###` 波长与备注信息。\", \"deliverables\": [\"`src/spectral_store.py`\"], \"acceptance\": [\"支持按稳定 `feature_id` 写入与读取谱峰记录\"], \"links\": {\"plan\": [\"_aihumaninteract/plan/work-package/wp-004.md\"], \"code\": [\"src/spectral_store.py\"], \"tests\": [\"tests/test_workbench.py\"]}, \"evidence\": [\"src/spectral_store.py\", \"tests/test_workbench.py\"], \"source\": \"_aihumaninteract/plan/work-package/wp-004.md\"}", "raw": {"id": "WP-004", "title": "落地轻量键值谱峰特征持久存储", "level": "work-package", "status": "done", "updated": "2026-11-24", "parent": "ST-002", "depends_on": [], "enables": [], "validates": [], "supersedes": [], "conflicts_with": [], "objective": "用最小可逆结构持久化 `PK-###` 波长与备注信息。", "deliverables": ["`src/spectral_store.py`"], "acceptance": ["支持按稳定 `feature_id` 写入与读取谱峰记录"], "links": {"plan": ["_aiHumanInteract/plan/work-package/WP-004.md"], "code": ["src/spectral_store.py"], "tests": ["tests/test_workbench.py"]}, "evidence": ["src/spectral_store.py", "tests/test_workbench.py"], "source": "_aiHumanInteract/plan/work-package/WP-004.md"}}, {"id": "WP-005", "short_id": "WP-005", "graph": "plan", "graph_label": "Plan Graph v4 (work-package)", "badge": "PLAN · WP", "title": "构建追加式事件溯源回放审计器（受 KD-002 书签约束）", "inspector_title": "构建追加式事件溯源回放审计器（受 KD-002 书签约束）", "wrapped_title": ["构建追加式事件溯源回放审计器（受", "KD-002 书签约束）"], "subtitle": "proposed", "status": "proposed", "source": "_aiHumanInteract/plan/work-package/WP-005.md", "z": 0, "accent": "#9AA5B1", "palette": ["#EFF5FC", "#B3C9E2", "#2B4F73"], "search_blob": "{\"id\": \"wp-005\", \"title\": \"构建追加式事件溯源回放审计器（受 kd-002 书签约束）\", \"level\": \"work-package\", \"status\": \"proposed\", \"updated\": \"2026-11-24\", \"parent\": \"st-002\", \"depends_on\": [\"wp-004\"], \"enables\": [], \"validates\": [], \"supersedes\": [], \"conflicts_with\": [], \"objective\": \"在确有跨版本严格回放需求时提供谱峰变更事件日志重放。\", \"deliverables\": [\"`src/event_replay_audit.py`\"], \"acceptance\": [\"支持按时间戳重放任意历史谱峰状态\"], \"links\": {\"plan\": [\"_aihumaninteract/plan/work-package/wp-005.md\"], \"knowledge_debt\": [\"_aihumaninteract/knowledge-debt/nodes/kd-002.md\"], \"code\": [\"src/event_replay_audit.py\"]}, \"evidence\": [], \"source\": \"_aihumaninteract/plan/work-package/wp-005.md\"}", "raw": {"id": "WP-005", "title": "构建追加式事件溯源回放审计器（受 KD-002 书签约束）", "level": "work-package", "status": "proposed", "updated": "2026-11-24", "parent": "ST-002", "depends_on": ["WP-004"], "enables": [], "validates": [], "supersedes": [], "conflicts_with": [], "objective": "在确有跨版本严格回放需求时提供谱峰变更事件日志重放。", "deliverables": ["`src/event_replay_audit.py`"], "acceptance": ["支持按时间戳重放任意历史谱峰状态"], "links": {"plan": ["_aiHumanInteract/plan/work-package/WP-005.md"], "knowledge_debt": ["_aiHumanInteract/knowledge-debt/nodes/KD-002.md"], "code": ["src/event_replay_audit.py"]}, "evidence": [], "source": "_aiHumanInteract/plan/work-package/WP-005.md"}}, {"id": "KD-001", "short_id": "KD-001", "graph": "knowledge_debt", "graph_label": "Knowledge Debt (认知书签)", "badge": "BOOKMARK · OPEN", "title": "Hebbian Spreading Activation (Base + Flip 双路激活检索)", "inspector_title": "Hebbian Spreading Activation (Base + Flip 双路激活检索)", "wrapped_title": ["Hebbian Spreading Activation (Base", "+ Flip 双路激活检索)"], "subtitle": "reasoning_gap · 关联 1 计划", "status": "open", "source": "_aiHumanInteract/knowledge-debt/nodes/KD-001.md", "z": 10, "accent": "#C88A2E", "palette": ["#FDF6E7", "#E2C285", "#7A5213"], "search_blob": "{\"id\": \"kd-001\", \"term\": \"hebbian spreading activation (base + flip 双路激活检索)\", \"kind\": \"reasoning_gap\", \"status\": \"open\", \"triage_mode\": \"not_understood_prototype\", \"updated\": \"2026-11-24\", \"intent_refs\": [\"int-002\"], \"plan_refs\": [\"wp-002\"], \"script_refs\": [\"src/triage_gate.py\", \"src/workbench_api.py\"], \"revisit_when\": \"当多跳检索召回过多无关联想节点，或准备固化突触衰减超参数时\", \"resolution_note\": null, \"counterproposal\": null, \"source\": \"_aihumaninteract/knowledge-debt/nodes/kd-001.md\", \"impact_preview\": {\"kd_id\": \"kd-001\", \"term\": \"hebbian spreading activation (base + flip 双路激活检索)\", \"current_status\": \"open\", \"counterproposal\": null, \"reopen_intents\": [\"int-002\"], \"supersede_plans\": [\"wp-002\"], \"blocked_or_recheck_downstream_plans\": [], \"affected_parent_scopes\": [\"lt-001\", \"mt-001\", \"st-001\"], \"affected_scripts\": [\"src/triage_gate.py\", \"src/workbench_api.py\"]}}", "raw": {"id": "KD-001", "term": "Hebbian Spreading Activation (Base + Flip 双路激活检索)", "kind": "reasoning_gap", "status": "open", "triage_mode": "not_understood_prototype", "updated": "2026-11-24", "intent_refs": ["INT-002"], "plan_refs": ["WP-002"], "script_refs": ["src/triage_gate.py", "src/workbench_api.py"], "revisit_when": "当多跳检索召回过多无关联想节点，或准备固化突触衰减超参数时", "resolution_note": null, "counterproposal": null, "source": "_aiHumanInteract/knowledge-debt/nodes/KD-001.md", "impact_preview": {"kd_id": "KD-001", "term": "Hebbian Spreading Activation (Base + Flip 双路激活检索)", "current_status": "open", "counterproposal": null, "reopen_intents": ["INT-002"], "supersede_plans": ["WP-002"], "blocked_or_recheck_downstream_plans": [], "affected_parent_scopes": ["LT-001", "MT-001", "ST-001"], "affected_scripts": ["src/triage_gate.py", "src/workbench_api.py"]}}}, {"id": "KD-002", "short_id": "KD-002", "graph": "knowledge_debt", "graph_label": "Knowledge Debt (认知书签)", "badge": "BOOKMARK · OPEN", "title": "Append-Only Event Sourcing 状态事件溯源存储", "inspector_title": "Append-Only Event Sourcing 状态事件溯源存储", "wrapped_title": ["Append-Only Event Sourcing", "状态事件溯源存储"], "subtitle": "comparison_gap · 关联 1 计划", "status": "open", "source": "_aiHumanInteract/knowledge-debt/nodes/KD-002.md", "z": 10, "accent": "#C88A2E", "palette": ["#FDF6E7", "#E2C285", "#7A5213"], "search_blob": "{\"id\": \"kd-002\", \"term\": \"append-only event sourcing 状态事件溯源存储\", \"kind\": \"comparison_gap\", \"status\": \"open\", \"triage_mode\": \"not_understood_prototype\", \"updated\": \"2026-11-24\", \"intent_refs\": [\"int-003\"], \"plan_refs\": [\"wp-005\"], \"script_refs\": [\"src/spectral_store.py\", \"src/event_replay_audit.py\"], \"revisit_when\": \"当普通 json 快照无法满足多协作者谱峰标注冲突回溯，或准备编写 src/event_replay_audit.py 时\", \"resolution_note\": null, \"counterproposal\": null, \"source\": \"_aihumaninteract/knowledge-debt/nodes/kd-002.md\", \"impact_preview\": {\"kd_id\": \"kd-002\", \"term\": \"append-only event sourcing 状态事件溯源存储\", \"current_status\": \"open\", \"counterproposal\": null, \"reopen_intents\": [\"int-003\"], \"supersede_plans\": [\"wp-005\"], \"blocked_or_recheck_downstream_plans\": [], \"affected_parent_scopes\": [\"lt-001\", \"mt-002\", \"st-002\"], \"affected_scripts\": [\"src/spectral_store.py\", \"src/event_replay_audit.py\"]}}", "raw": {"id": "KD-002", "term": "Append-Only Event Sourcing 状态事件溯源存储", "kind": "comparison_gap", "status": "open", "triage_mode": "not_understood_prototype", "updated": "2026-11-24", "intent_refs": ["INT-003"], "plan_refs": ["WP-005"], "script_refs": ["src/spectral_store.py", "src/event_replay_audit.py"], "revisit_when": "当普通 JSON 快照无法满足多协作者谱峰标注冲突回溯，或准备编写 src/event_replay_audit.py 时", "resolution_note": null, "counterproposal": null, "source": "_aiHumanInteract/knowledge-debt/nodes/KD-002.md", "impact_preview": {"kd_id": "KD-002", "term": "Append-Only Event Sourcing 状态事件溯源存储", "current_status": "open", "counterproposal": null, "reopen_intents": ["INT-003"], "supersede_plans": ["WP-005"], "blocked_or_recheck_downstream_plans": [], "affected_parent_scopes": ["LT-001", "MT-002", "ST-002"], "affected_scripts": ["src/spectral_store.py", "src/event_replay_audit.py"]}}}, {"id": "KD-003", "short_id": "KD-003", "graph": "knowledge_debt", "graph_label": "Knowledge Debt (认知书签)", "badge": "BOOKMARK · AFFIRMED", "title": "Apple Silicon MLX 4-bit 端侧量化嵌入 (Qwen3-Embedding-0.6B)", "inspector_title": "Apple Silicon MLX 4-bit 端侧量化嵌入 (Qwen3-Embedding-0.6B)", "wrapped_title": ["Apple Silicon MLX 4-bit", "端侧量化嵌入 (Qwen3-Embedding-0.6B)"], "subtitle": "concept · 关联 1 计划", "status": "affirmed", "source": "_aiHumanInteract/knowledge-debt/nodes/KD-003.md", "z": 10, "accent": "#C88A2E", "palette": ["#EDF7F0", "#A7CEB4", "#234B36"], "search_blob": "{\"id\": \"kd-003\", \"term\": \"apple silicon mlx 4-bit 端侧量化嵌入 (qwen3-embedding-0.6b)\", \"kind\": \"concept\", \"status\": \"affirmed\", \"triage_mode\": \"understood_agreed\", \"updated\": \"2026-11-24\", \"intent_refs\": [\"int-001\"], \"plan_refs\": [\"wp-001\"], \"script_refs\": [\"src/workbench_api.py\"], \"revisit_when\": \"迁移至无 metal gpu 的 linux 容器环境时验证自动降级通路\", \"resolution_note\": \"实测 m1 8gb 内存仅占 ~350mb 且热启动编码 0.26s，确认采用并保留标准库哈希降级。\", \"counterproposal\": null, \"source\": \"_aihumaninteract/knowledge-debt/nodes/kd-003.md\", \"impact_preview\": {\"kd_id\": \"kd-003\", \"term\": \"apple silicon mlx 4-bit 端侧量化嵌入 (qwen3-embedding-0.6b)\", \"current_status\": \"affirmed\", \"counterproposal\": null, \"reopen_intents\": [\"int-001\"], \"supersede_plans\": [\"wp-001\"], \"blocked_or_recheck_downstream_plans\": [\"wp-002\"], \"affected_parent_scopes\": [\"lt-001\", \"mt-001\", \"st-001\"], \"affected_scripts\": [\"src/workbench_api.py\"]}}", "raw": {"id": "KD-003", "term": "Apple Silicon MLX 4-bit 端侧量化嵌入 (Qwen3-Embedding-0.6B)", "kind": "concept", "status": "affirmed", "triage_mode": "understood_agreed", "updated": "2026-11-24", "intent_refs": ["INT-001"], "plan_refs": ["WP-001"], "script_refs": ["src/workbench_api.py"], "revisit_when": "迁移至无 Metal GPU 的 Linux 容器环境时验证自动降级通路", "resolution_note": "实测 M1 8GB 内存仅占 ~350MB 且热启动编码 0.26s，确认采用并保留标准库哈希降级。", "counterproposal": null, "source": "_aiHumanInteract/knowledge-debt/nodes/KD-003.md", "impact_preview": {"kd_id": "KD-003", "term": "Apple Silicon MLX 4-bit 端侧量化嵌入 (Qwen3-Embedding-0.6B)", "current_status": "affirmed", "counterproposal": null, "reopen_intents": ["INT-001"], "supersede_plans": ["WP-001"], "blocked_or_recheck_downstream_plans": ["WP-002"], "affected_parent_scopes": ["LT-001", "MT-001", "ST-001"], "affected_scripts": ["src/workbench_api.py"]}}}, {"id": "SCR:src/event_replay_audit.py", "short_id": "src/", "graph": "scripts", "graph_label": "Scripts Graph (代码实现层)", "badge": "PY · PLANNED", "title": "event_replay_audit.py", "inspector_title": "src/event_replay_audit.py", "wrapped_title": ["event_replay_audit.py"], "subtitle": "0 LOC · Hub 0.54", "status": "planned_missing", "source": "src/event_replay_audit.py", "z": 0, "accent": "#3B7A8C", "palette": ["#FCEEEE", "#E0ACAC", "#873F3F"], "search_blob": "{\"id\": \"scr:src/event_replay_audit.py\", \"path\": \"src/event_replay_audit.py\", \"name\": \"event_replay_audit.py\", \"directory\": \"src\", \"language\": \"python\", \"role\": \"planned_target\", \"status\": \"planned_missing\", \"loc\": 0, \"summary\": \"planned in plan graph; file not yet created on disk.\", \"inferred_note\": null, \"inferred_evidence\": null, \"classes\": [], \"functions\": [], \"is_entrypoint\": false, \"governed_by_plans\": [\"mt-002\", \"st-002\", \"wp-005\"], \"centrality\": 0.5405}", "raw": {"id": "SCR:src/event_replay_audit.py", "path": "src/event_replay_audit.py", "name": "event_replay_audit.py", "directory": "src", "language": "python", "role": "planned_target", "status": "planned_missing", "loc": 0, "summary": "Planned in Plan Graph; file not yet created on disk.", "inferred_note": null, "inferred_evidence": null, "classes": [], "functions": [], "is_entrypoint": false, "governed_by_plans": ["MT-002", "ST-002", "WP-005"], "centrality": 0.5405}}, {"id": "SCR:src/spectral_store.py", "short_id": "src/", "graph": "scripts", "graph_label": "Scripts Graph (代码实现层)", "badge": "PY · MODULE", "title": "spectral_store.py", "inspector_title": "src/spectral_store.py", "wrapped_title": ["spectral_store.py"], "subtitle": "15 LOC · Hub 0.97", "status": "clean", "source": "src/spectral_store.py", "z": 0, "accent": "#3B7A8C", "palette": ["#F3F7F9", "#B8CCD6", "#264A5A"], "search_blob": "{\"id\": \"scr:src/spectral_store.py\", \"path\": \"src/spectral_store.py\", \"name\": \"spectral_store.py\", \"directory\": \"src\", \"language\": \"python\", \"role\": \"module\", \"status\": \"clean\", \"loc\": 15, \"summary\": \"persistent addressable store for spectral peak features and annotations.\", \"inferred_note\": null, \"inferred_evidence\": null, \"classes\": [\"spectralfeaturestore\"], \"functions\": [], \"is_entrypoint\": false, \"governed_by_plans\": [\"mt-002\", \"st-002\", \"wp-004\"], \"centrality\": 0.9655}", "raw": {"id": "SCR:src/spectral_store.py", "path": "src/spectral_store.py", "name": "spectral_store.py", "directory": "src", "language": "python", "role": "module", "status": "clean", "loc": 15, "summary": "Persistent addressable store for spectral peak features and annotations.", "inferred_note": null, "inferred_evidence": null, "classes": ["SpectralFeatureStore"], "functions": [], "is_entrypoint": false, "governed_by_plans": ["MT-002", "ST-002", "WP-004"], "centrality": 0.9655}}, {"id": "SCR:src/triage_gate.py", "short_id": "src/", "graph": "scripts", "graph_label": "Scripts Graph (代码实现层)", "badge": "PY · MODULE", "title": "triage_gate.py", "inspector_title": "src/triage_gate.py", "wrapped_title": ["triage_gate.py"], "subtitle": "10 LOC · Hub 0.97", "status": "clean", "source": "src/triage_gate.py", "z": 0, "accent": "#3B7A8C", "palette": ["#F3F7F9", "#B8CCD6", "#264A5A"], "search_blob": "{\"id\": \"scr:src/triage_gate.py\", \"path\": \"src/triage_gate.py\", \"name\": \"triage_gate.py\", \"directory\": \"src\", \"language\": \"python\", \"role\": \"module\", \"status\": \"clean\", \"loc\": 10, \"summary\": \"three-way technical disclosure gate and reversible prototype scope checker.\", \"inferred_note\": null, \"inferred_evidence\": null, \"classes\": [], \"functions\": [\"classify_disclosure\"], \"is_entrypoint\": false, \"governed_by_plans\": [\"mt-001\", \"st-001\", \"wp-002\"], \"centrality\": 0.9655}", "raw": {"id": "SCR:src/triage_gate.py", "path": "src/triage_gate.py", "name": "triage_gate.py", "directory": "src", "language": "python", "role": "module", "status": "clean", "loc": 10, "summary": "Three-way technical disclosure gate and reversible prototype scope checker.", "inferred_note": null, "inferred_evidence": null, "classes": [], "functions": ["classify_disclosure"], "is_entrypoint": false, "governed_by_plans": ["MT-001", "ST-001", "WP-002"], "centrality": 0.9655}}, {"id": "SCR:src/workbench_api.py", "short_id": "src/", "graph": "scripts", "graph_label": "Scripts Graph (代码实现层)", "badge": "PY · ENTRY", "title": "workbench_api.py", "inspector_title": "src/workbench_api.py", "wrapped_title": ["workbench_api.py"], "subtitle": "21 LOC · Hub 1.00", "status": "clean", "source": "src/workbench_api.py", "z": 0, "accent": "#3B7A8C", "palette": ["#F3F7F9", "#B8CCD6", "#264A5A"], "search_blob": "{\"id\": \"scr:src/workbench_api.py\", \"path\": \"src/workbench_api.py\", \"name\": \"workbench_api.py\", \"directory\": \"src\", \"language\": \"python\", \"role\": \"entrypoint\", \"status\": \"clean\", \"loc\": 21, \"summary\": \"main workbench entrypoint coordinating spectral features and non-blocking triage.\", \"inferred_note\": null, \"inferred_evidence\": null, \"classes\": [\"workbenchsession\"], \"functions\": [\"main\"], \"is_entrypoint\": true, \"governed_by_plans\": [\"lt-001\", \"wp-001\"], \"centrality\": 1.0}", "raw": {"id": "SCR:src/workbench_api.py", "path": "src/workbench_api.py", "name": "workbench_api.py", "directory": "src", "language": "python", "role": "entrypoint", "status": "clean", "loc": 21, "summary": "Main workbench entrypoint coordinating spectral features and non-blocking triage.", "inferred_note": null, "inferred_evidence": null, "classes": ["WorkbenchSession"], "functions": ["main"], "is_entrypoint": true, "governed_by_plans": ["LT-001", "WP-001"], "centrality": 1.0}}, {"id": "SCR:tests/test_workbench.py", "short_id": "tests/", "graph": "scripts", "graph_label": "Scripts Graph (代码实现层)", "badge": "PY · TEST", "title": "test_workbench.py", "inspector_title": "tests/test_workbench.py", "wrapped_title": ["test_workbench.py"], "subtitle": "10 LOC · Hub 0.54", "status": "clean", "source": "tests/test_workbench.py", "z": 0, "accent": "#3B7A8C", "palette": ["#F3F7F9", "#B8CCD6", "#264A5A"], "search_blob": "{\"id\": \"scr:tests/test_workbench.py\", \"path\": \"tests/test_workbench.py\", \"name\": \"test_workbench.py\", \"directory\": \"tests\", \"language\": \"python\", \"role\": \"test\", \"status\": \"clean\", \"loc\": 10, \"summary\": \"verify spectral workbench session and 3-way technical triage.\", \"inferred_note\": null, \"inferred_evidence\": null, \"classes\": [\"workbenchtests\"], \"functions\": [], \"is_entrypoint\": false, \"governed_by_plans\": [\"wp-001\", \"wp-004\"], \"centrality\": 0.5405}", "raw": {"id": "SCR:tests/test_workbench.py", "path": "tests/test_workbench.py", "name": "test_workbench.py", "directory": "tests", "language": "python", "role": "test", "status": "clean", "loc": 10, "summary": "Verify spectral workbench session and 3-way technical triage.", "inferred_note": null, "inferred_evidence": null, "classes": ["WorkbenchTests"], "functions": [], "is_entrypoint": false, "governed_by_plans": ["WP-001", "WP-004"], "centrality": 0.5405}}, {"id": "SCR:web/SpectralCanvas.ts", "short_id": "web/", "graph": "scripts", "graph_label": "Scripts Graph (代码实现层)", "badge": "TS · MODULE", "title": "SpectralCanvas.ts", "inspector_title": "web/SpectralCanvas.ts", "wrapped_title": ["SpectralCanvas.ts"], "subtitle": "5 LOC · Hub 0.54", "status": "clean", "source": "web/SpectralCanvas.ts", "z": 0, "accent": "#3B7A8C", "palette": ["#F3F7F9", "#B8CCD6", "#264A5A"], "search_blob": "{\"id\": \"scr:web/spectralcanvas.ts\", \"path\": \"web/spectralcanvas.ts\", \"name\": \"spectralcanvas.ts\", \"directory\": \"web\", \"language\": \"typescript\", \"role\": \"module\", \"status\": \"clean\", \"loc\": 5, \"summary\": \"direct-manipulation spectral feature canvas without modal interruptions\", \"inferred_note\": null, \"inferred_evidence\": null, \"classes\": [], \"functions\": [], \"is_entrypoint\": false, \"governed_by_plans\": [\"mt-001\", \"st-001\", \"wp-001\"], \"centrality\": 0.5405}", "raw": {"id": "SCR:web/SpectralCanvas.ts", "path": "web/SpectralCanvas.ts", "name": "SpectralCanvas.ts", "directory": "web", "language": "typescript", "role": "module", "status": "clean", "loc": 5, "summary": "Direct-manipulation spectral feature canvas without modal interruptions", "inferred_note": null, "inferred_evidence": null, "classes": [], "functions": [], "is_entrypoint": false, "governed_by_plans": ["MT-001", "ST-001", "WP-001"], "centrality": 0.5405}}], "structural_edges": [{"from": "INT-001", "to": "INT-002", "relationship": "decomposes_intent", "provenance": "declared"}, {"from": "INT-002", "to": "INT-001", "relationship": "refines", "provenance": "declared"}, {"from": "INT-001", "to": "INT-003", "relationship": "decomposes_intent", "provenance": "declared"}, {"from": "INT-003", "to": "INT-001", "relationship": "refines", "provenance": "declared"}, {"from": "INT-003", "to": "INT-002", "relationship": "branches_from", "provenance": "declared"}, {"from": "WP-003", "to": "WP-002", "relationship": "alternative_of", "source_field": "alternative_of", "declared_on": "WP-003"}, {"from": "LT-001", "to": "MT-001", "relationship": "decomposes_to", "source_field": "parent", "declared_on": "MT-001"}, {"from": "LT-001", "to": "MT-002", "relationship": "decomposes_to", "source_field": "parent", "declared_on": "MT-002"}, {"from": "MT-001", "to": "ST-001", "relationship": "decomposes_to", "source_field": "parent", "declared_on": "ST-001"}, {"from": "MT-002", "to": "ST-002", "relationship": "decomposes_to", "source_field": "parent", "declared_on": "ST-002"}, {"from": "ST-001", "to": "WP-001", "relationship": "decomposes_to", "source_field": "parent", "declared_on": "WP-001"}, {"from": "ST-001", "to": "WP-002", "relationship": "decomposes_to", "source_field": "parent", "declared_on": "WP-002"}, {"from": "ST-001", "to": "WP-003", "relationship": "decomposes_to", "source_field": "parent", "declared_on": "WP-003"}, {"from": "ST-002", "to": "WP-004", "relationship": "decomposes_to", "source_field": "parent", "declared_on": "WP-004"}, {"from": "ST-002", "to": "WP-005", "relationship": "decomposes_to", "source_field": "parent", "declared_on": "WP-005"}, {"from": "MT-001", "to": "MT-002", "relationship": "enables", "source_field": "enables", "declared_on": "MT-001"}, {"from": "WP-001", "to": "WP-002", "relationship": "prerequisite_for", "source_field": "depends_on", "declared_on": "WP-002"}, {"from": "WP-004", "to": "WP-005", "relationship": "prerequisite_for", "source_field": "depends_on", "declared_on": "WP-005"}, {"from": "WP-002", "to": "WP-003", "relationship": "supersedes", "source_field": "supersedes", "declared_on": "WP-002"}, {"from": "SCR:src/workbench_api.py", "to": "SCR:src/spectral_store.py", "from_path": "src/workbench_api.py", "to_path": "src/spectral_store.py", "relationship": "imports", "provenance": "observed", "details": ["src.spectral_store"]}, {"from": "SCR:src/workbench_api.py", "to": "SCR:src/triage_gate.py", "from_path": "src/workbench_api.py", "to_path": "src/triage_gate.py", "relationship": "imports", "provenance": "observed", "details": ["src.triage_gate"]}, {"from": "SCR:tests/test_workbench.py", "to": "SCR:src/workbench_api.py", "from_path": "tests/test_workbench.py", "to_path": "src/workbench_api.py", "relationship": "imports", "provenance": "observed", "details": ["src.workbench_api"]}], "cross_edges": [{"from": "INT-001", "to": "LT-001", "relationship": "seeds_plan", "provenance": "declared"}, {"from": "INT-001", "to": "WP-001", "relationship": "seeds_plan", "provenance": "declared"}, {"from": "INT-002", "to": "MT-001", "relationship": "seeds_plan", "provenance": "declared"}, {"from": "INT-002", "to": "WP-002", "relationship": "seeds_plan", "provenance": "declared"}, {"from": "INT-002", "to": "WP-003", "relationship": "seeds_plan", "provenance": "declared"}, {"from": "INT-003", "to": "MT-002", "relationship": "seeds_plan", "provenance": "declared"}, {"from": "INT-003", "to": "WP-004", "relationship": "seeds_plan", "provenance": "declared"}, {"from": "INT-003", "to": "WP-005", "relationship": "seeds_plan", "provenance": "declared"}, {"from": "LT-001", "to": "SCR:src/workbench_api.py", "relationship": "implements_in", "provenance": "declared"}, {"from": "MT-001", "to": "SCR:web/SpectralCanvas.ts", "relationship": "implements_in", "provenance": "declared"}, {"from": "MT-001", "to": "SCR:src/triage_gate.py", "relationship": "implements_in", "provenance": "declared"}, {"from": "MT-002", "to": "SCR:src/spectral_store.py", "relationship": "implements_in", "provenance": "declared"}, {"from": "MT-002", "to": "SCR:src/event_replay_audit.py", "relationship": "implements_in", "provenance": "declared"}, {"from": "ST-001", "to": "SCR:web/SpectralCanvas.ts", "relationship": "implements_in", "provenance": "declared"}, {"from": "ST-001", "to": "SCR:src/triage_gate.py", "relationship": "implements_in", "provenance": "declared"}, {"from": "ST-002", "to": "SCR:src/spectral_store.py", "relationship": "implements_in", "provenance": "declared"}, {"from": "ST-002", "to": "SCR:src/event_replay_audit.py", "relationship": "implements_in", "provenance": "declared"}, {"from": "WP-001", "to": "SCR:web/SpectralCanvas.ts", "relationship": "implements_in", "provenance": "declared"}, {"from": "WP-001", "to": "SCR:src/workbench_api.py", "relationship": "implements_in", "provenance": "declared"}, {"from": "WP-001", "to": "SCR:tests/test_workbench.py", "relationship": "implements_in", "provenance": "declared"}, {"from": "WP-002", "to": "SCR:src/triage_gate.py", "relationship": "implements_in", "provenance": "declared"}, {"from": "WP-004", "to": "SCR:src/spectral_store.py", "relationship": "implements_in", "provenance": "declared"}, {"from": "WP-004", "to": "SCR:tests/test_workbench.py", "relationship": "implements_in", "provenance": "declared"}, {"from": "WP-005", "to": "SCR:src/event_replay_audit.py", "relationship": "implements_in", "provenance": "declared"}, {"from": "KD-001", "to": "INT-002", "relationship": "bookmarks_intent", "provenance": "declared"}, {"from": "KD-001", "to": "WP-002", "relationship": "bookmarks_plan", "provenance": "declared"}, {"from": "KD-001", "to": "SCR:src/triage_gate.py", "relationship": "touches_script", "provenance": "declared"}, {"from": "KD-001", "to": "SCR:src/workbench_api.py", "relationship": "touches_script", "provenance": "declared"}, {"from": "KD-002", "to": "INT-003", "relationship": "bookmarks_intent", "provenance": "declared"}, {"from": "KD-002", "to": "WP-005", "relationship": "bookmarks_plan", "provenance": "declared"}, {"from": "KD-002", "to": "SCR:src/spectral_store.py", "relationship": "touches_script", "provenance": "declared"}, {"from": "KD-002", "to": "SCR:src/event_replay_audit.py", "relationship": "touches_script", "provenance": "declared"}, {"from": "KD-003", "to": "INT-001", "relationship": "bookmarks_intent", "provenance": "declared"}, {"from": "KD-003", "to": "WP-001", "relationship": "bookmarks_plan", "provenance": "declared"}, {"from": "KD-003", "to": "SCR:src/workbench_api.py", "relationship": "touches_script", "provenance": "declared"}], "synapses": [{"from": "INT-001", "to": "LT-001", "weight": 0.3794, "coactivations": 1, "similarity": 0.7494, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "INT-001", "to": "WP-001", "weight": 0.3774, "coactivations": 1, "similarity": 0.6709, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "INT-002", "to": "MT-001", "weight": 0.3774, "coactivations": 1, "similarity": 0.5933, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "INT-002", "to": "WP-002", "weight": 0.3774, "coactivations": 1, "similarity": 0.7144, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "INT-002", "to": "WP-003", "weight": 0.3774, "coactivations": 1, "similarity": 0.5992, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "SCR:src/workbench_api.py", "to": "SCR:tests/test_workbench.py", "weight": 0.3454, "coactivations": 0, "similarity": 0.7843, "origin": "semantic_seed", "provenance": "associative"}, {"from": "INT-003", "to": "MT-002", "weight": 0.3435, "coactivations": 0, "similarity": 0.7817, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "MT-001", "to": "ST-001", "weight": 0.3435, "coactivations": 0, "similarity": 0.7817, "origin": "semantic_seed", "provenance": "associative"}, {"from": "MT-002", "to": "ST-002", "weight": 0.3398, "coactivations": 0, "similarity": 0.7766, "origin": "semantic_seed", "provenance": "associative"}, {"from": "MT-001", "to": "WP-002", "weight": 0.3323, "coactivations": 1, "similarity": 0.6861, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "MT-001", "to": "WP-001", "weight": 0.3315, "coactivations": 1, "similarity": 0.685, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "SCR:src/spectral_store.py", "to": "WP-004", "weight": 0.3281, "coactivations": 0, "similarity": 0.761, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "INT-001", "to": "INT-003", "weight": 0.3221, "coactivations": 1, "similarity": 0.6722, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "ST-002", "to": "WP-005", "weight": 0.3204, "coactivations": 0, "similarity": 0.7506, "origin": "semantic_seed", "provenance": "associative"}, {"from": "ST-002", "to": "WP-004", "weight": 0.3184, "coactivations": 0, "similarity": 0.748, "origin": "semantic_seed", "provenance": "associative"}, {"from": "INT-001", "to": "KD-003", "weight": 0.3174, "coactivations": 1, "similarity": 0.3726, "origin": "cross_graph_link", "provenance": "associative"}, {"from": "INT-002", "to": "KD-001", "weight": 0.3174, "coactivations": 0, "similarity": 0.5399, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "INT-003", "to": "KD-002", "weight": 0.3174, "coactivations": 0, "similarity": 0.6178, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "INT-003", "to": "WP-004", "weight": 0.3174, "coactivations": 0, "similarity": 0.633, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "INT-003", "to": "WP-005", "weight": 0.3174, "coactivations": 0, "similarity": 0.6405, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "KD-001", "to": "SCR:src/triage_gate.py", "weight": 0.3174, "coactivations": 1, "similarity": 0.4515, "origin": "cross_graph_link", "provenance": "associative"}, {"from": "KD-001", "to": "SCR:src/workbench_api.py", "weight": 0.3174, "coactivations": 1, "similarity": 0.3996, "origin": "cross_graph_link", "provenance": "associative"}, {"from": "KD-001", "to": "WP-002", "weight": 0.3174, "coactivations": 0, "similarity": 0.4761, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "KD-002", "to": "SCR:src/event_replay_audit.py", "weight": 0.3174, "coactivations": 0, "similarity": 0.5886, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "KD-002", "to": "SCR:src/spectral_store.py", "weight": 0.3174, "coactivations": 1, "similarity": 0.5403, "origin": "cross_graph_link", "provenance": "associative"}, {"from": "KD-002", "to": "WP-005", "weight": 0.3174, "coactivations": 0, "similarity": 0.7171, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "KD-003", "to": "SCR:src/workbench_api.py", "weight": 0.3174, "coactivations": 1, "similarity": 0.357, "origin": "cross_graph_link", "provenance": "associative"}, {"from": "KD-003", "to": "WP-001", "weight": 0.3174, "coactivations": 1, "similarity": 0.3526, "origin": "cross_graph_link", "provenance": "associative"}, {"from": "LT-001", "to": "SCR:src/workbench_api.py", "weight": 0.3174, "coactivations": 1, "similarity": 0.5452, "origin": "cross_graph_link", "provenance": "associative"}, {"from": "MT-001", "to": "SCR:src/triage_gate.py", "weight": 0.3174, "coactivations": 1, "similarity": 0.483, "origin": "cross_graph_link", "provenance": "associative"}, {"from": "MT-001", "to": "SCR:web/SpectralCanvas.ts", "weight": 0.3174, "coactivations": 1, "similarity": 0.5316, "origin": "cross_graph_link", "provenance": "associative"}, {"from": "MT-002", "to": "SCR:src/event_replay_audit.py", "weight": 0.3174, "coactivations": 1, "similarity": 0.5418, "origin": "cross_graph_link", "provenance": "associative"}, {"from": "MT-002", "to": "SCR:src/spectral_store.py", "weight": 0.3174, "coactivations": 1, "similarity": 0.5884, "origin": "cross_graph_link", "provenance": "associative"}, {"from": "SCR:src/event_replay_audit.py", "to": "ST-002", "weight": 0.3174, "coactivations": 0, "similarity": 0.6221, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "SCR:src/event_replay_audit.py", "to": "WP-005", "weight": 0.3174, "coactivations": 0, "similarity": 0.673, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "SCR:src/spectral_store.py", "to": "ST-002", "weight": 0.3174, "coactivations": 0, "similarity": 0.6332, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "SCR:src/triage_gate.py", "to": "ST-001", "weight": 0.3174, "coactivations": 0, "similarity": 0.5401, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "SCR:src/triage_gate.py", "to": "WP-002", "weight": 0.3174, "coactivations": 0, "similarity": 0.662, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "SCR:src/workbench_api.py", "to": "WP-001", "weight": 0.3174, "coactivations": 0, "similarity": 0.7135, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "SCR:tests/test_workbench.py", "to": "WP-001", "weight": 0.3174, "coactivations": 0, "similarity": 0.566, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "SCR:tests/test_workbench.py", "to": "WP-004", "weight": 0.3174, "coactivations": 1, "similarity": 0.4565, "origin": "cross_graph_link", "provenance": "associative"}, {"from": "SCR:web/SpectralCanvas.ts", "to": "ST-001", "weight": 0.3174, "coactivations": 1, "similarity": 0.5647, "origin": "cross_graph_link", "provenance": "associative"}, {"from": "SCR:web/SpectralCanvas.ts", "to": "WP-001", "weight": 0.3174, "coactivations": 0, "similarity": 0.6843, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "LT-001", "to": "WP-001", "weight": 0.3167, "coactivations": 1, "similarity": 0.665, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "LT-001", "to": "MT-001", "weight": 0.3084, "coactivations": 1, "similarity": 0.6538, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "WP-002", "to": "WP-003", "weight": 0.3057, "coactivations": 1, "similarity": 0.6502, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "INT-003", "to": "WP-001", "weight": 0.3029, "coactivations": 1, "similarity": 0.6465, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "ST-001", "to": "WP-002", "weight": 0.2951, "coactivations": 0, "similarity": 0.7166, "origin": "semantic_seed", "provenance": "associative"}, {"from": "INT-003", "to": "LT-001", "weight": 0.2933, "coactivations": 1, "similarity": 0.6336, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "MT-002", "to": "WP-004", "weight": 0.2816, "coactivations": 0, "similarity": 0.6986, "origin": "semantic_seed", "provenance": "associative"}, {"from": "MT-002", "to": "WP-005", "weight": 0.2743, "coactivations": 0, "similarity": 0.6887, "origin": "semantic_seed", "provenance": "associative"}, {"from": "KD-002", "to": "ST-002", "weight": 0.2649, "coactivations": 0, "similarity": 0.676, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "ST-001", "to": "WP-001", "weight": 0.2336, "coactivations": 0, "similarity": 0.634, "origin": "semantic_seed", "provenance": "associative"}, {"from": "LT-001", "to": "ST-001", "weight": 0.2289, "coactivations": 0, "similarity": 0.6276, "origin": "semantic_seed", "provenance": "associative"}, {"from": "SCR:src/workbench_api.py", "to": "SCR:web/SpectralCanvas.ts", "weight": 0.2157, "coactivations": 0, "similarity": 0.6099, "origin": "semantic_seed", "provenance": "associative"}, {"from": "KD-002", "to": "MT-002", "weight": 0.213, "coactivations": 0, "similarity": 0.6063, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "INT-002", "to": "ST-001", "weight": 0.2114, "coactivations": 0, "similarity": 0.6041, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "INT-003", "to": "SCR:src/spectral_store.py", "weight": 0.2087, "coactivations": 0, "similarity": 0.6005, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "SCR:src/spectral_store.py", "to": "SCR:src/workbench_api.py", "weight": 0.2043, "coactivations": 0, "similarity": 0.5946, "origin": "semantic_seed", "provenance": "associative"}, {"from": "SCR:src/spectral_store.py", "to": "SCR:web/SpectralCanvas.ts", "weight": 0.1965, "coactivations": 0, "similarity": 0.5841, "origin": "semantic_seed", "provenance": "associative"}, {"from": "MT-001", "to": "WP-003", "weight": 0.1954, "coactivations": 1, "similarity": 0.502, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "INT-001", "to": "SCR:web/SpectralCanvas.ts", "weight": 0.1897, "coactivations": 0, "similarity": 0.5749, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "SCR:src/triage_gate.py", "to": "SCR:tests/test_workbench.py", "weight": 0.173, "coactivations": 0, "similarity": 0.5526, "origin": "semantic_seed", "provenance": "associative"}, {"from": "SCR:src/event_replay_audit.py", "to": "ST-001", "weight": 0.1706, "coactivations": 0, "similarity": 0.5493, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "SCR:src/triage_gate.py", "to": "WP-003", "weight": 0.1659, "coactivations": 0, "similarity": 0.5429, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "LT-001", "to": "SCR:tests/test_workbench.py", "weight": 0.1473, "coactivations": 0, "similarity": 0.5179, "origin": "cross_graph_seed", "provenance": "associative"}, {"from": "INT-001", "to": "INT-002", "weight": 0.14, "coactivations": 1, "similarity": 0.5132, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "INT-001", "to": "MT-001", "weight": 0.14, "coactivations": 1, "similarity": 0.5069, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "INT-001", "to": "WP-002", "weight": 0.14, "coactivations": 1, "similarity": 0.4211, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "INT-001", "to": "WP-003", "weight": 0.14, "coactivations": 1, "similarity": 0.3988, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "INT-002", "to": "INT-003", "weight": 0.14, "coactivations": 1, "similarity": 0.571, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "INT-002", "to": "LT-001", "weight": 0.14, "coactivations": 1, "similarity": 0.5611, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "INT-002", "to": "WP-001", "weight": 0.14, "coactivations": 1, "similarity": 0.4611, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "INT-003", "to": "MT-001", "weight": 0.14, "coactivations": 1, "similarity": 0.5133, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "INT-003", "to": "WP-002", "weight": 0.14, "coactivations": 1, "similarity": 0.4625, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "INT-003", "to": "WP-003", "weight": 0.14, "coactivations": 1, "similarity": 0.4578, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "LT-001", "to": "WP-002", "weight": 0.14, "coactivations": 1, "similarity": 0.5483, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "LT-001", "to": "WP-003", "weight": 0.14, "coactivations": 1, "similarity": 0.4956, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "WP-001", "to": "WP-002", "weight": 0.14, "coactivations": 1, "similarity": 0.5191, "origin": "hebbian_coactivation", "provenance": "associative"}, {"from": "WP-001", "to": "WP-003", "weight": 0.14, "coactivations": 1, "similarity": 0.4475, "origin": "hebbian_coactivation", "provenance": "associative"}], "layouts": {"overview": {"positions": {"INT-002": [262.0, 278.0], "INT-003": [582.0, 278.0], "INT-001": [422.0, 134.0], "KD-001": [970.0, 134.0], "KD-002": [1274.0, 134.0], "KD-003": [1578.0, 134.0], "LT-001": [326.0, 516.2], "MT-001": [86.0, 666.8], "MT-002": [566.0, 666.8], "ST-001": [86.0, 817.4], "ST-002": [566.0, 817.4], "WP-001": [86.0, 968.0], "WP-002": [86.0, 1064.0], "WP-003": [86.0, 1160.0], "WP-004": [406.0, 968.0], "WP-005": [726.0, 968.0], "SCR:tests/test_workbench.py": [1434.0, 524.0], "SCR:src/workbench_api.py": [1434.0, 674.0], "SCR:src/spectral_store.py": [1114.0, 824.0], "SCR:src/triage_gate.py": [1434.0, 824.0], "SCR:web/SpectralCanvas.ts": [1754.0, 824.0], "SCR:src/event_replay_audit.py": [1434.0, 974.0]}, "width": 2104.0, "height": 1336.0, "strata": {"epistemic": {"x": 54.0, "y": 86.0, "w": 1996.0, "h": 300}, "pragmatic": {"x": 54.0, "y": 474.0, "w": 1996.0, "h": 822}}}, "intent": {"positions": {"INT-002": [84.0, 254.0], "INT-003": [404.0, 254.0], "INT-001": [244.0, 110.0]}, "width": 752.0, "height": 508.0}, "plan": {"positions": {"LT-001": [324.0, 90.2], "MT-001": [84.0, 240.8], "MT-002": [564.0, 240.8], "ST-001": [84.0, 391.4], "ST-002": [564.0, 391.4], "WP-001": [84.0, 542.0], "WP-002": [84.0, 638.0], "WP-003": [84.0, 734.0], "WP-004": [404.0, 542.0], "WP-005": [724.0, 542.0]}, "width": 1072.0, "height": 954.0}, "knowledge_debt": {"positions": {"KD-001": [84.0, 110.0], "KD-002": [388.0, 110.0], "KD-003": [692.0, 110.0]}, "width": 1040.0, "height": 508.0}, "scripts": {"positions": {"SCR:tests/test_workbench.py": [404.0, 110.0], "SCR:src/workbench_api.py": [404.0, 260.0], "SCR:src/spectral_store.py": [84.0, 410.0], "SCR:src/triage_gate.py": [404.0, 410.0], "SCR:web/SpectralCanvas.ts": [724.0, 410.0], "SCR:src/event_replay_audit.py": [404.0, 560.0]}, "width": 1072.0, "height": 762.0}}, "stacked_ids": ["WP-001", "WP-002", "WP-003"], "prototypes": {"_aiHumanInteract/intent/prototypes/direct-canvas.svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 380 146\">\n  <rect width=\"380\" height=\"146\" rx=\"8\" fill=\"#F6F6F4\" stroke=\"#CFD6DE\"/>\n  <text x=\"14\" y=\"21\" font-family=\"sans-serif\" font-size=\"10.5\" font-weight=\"700\" fill=\"#1F5A52\">Epistemic Prototype A · 直接画布操作 + 侧栏非阻塞三态声明 (Selected)<\/text>\n  <rect x=\"14\" y=\"30\" width=\"236\" height=\"82\" rx=\"6\" fill=\"#FFFFFF\" stroke=\"#9CCFC7\" stroke-width=\"1.4\"/>\n  <polyline points=\"24,96 56,88 84,54 114,90 148,68 184,42 212,90 238,85\" fill=\"none\" stroke=\"#3B7A8C\" stroke-width=\"2\"/>\n  <circle cx=\"84\" cy=\"54\" r=\"4.5\" fill=\"#1F5A52\"/>\n  <circle cx=\"184\" cy=\"42\" r=\"4.5\" fill=\"#6E5DC6\"/>\n  <rect x=\"34\" y=\"35\" width=\"98\" height=\"14\" rx=\"3\" fill=\"#EAF7F5\"/>\n  <text x=\"39\" y=\"45\" font-family=\"monospace\" font-size=\"8.8\" font-weight=\"600\" fill=\"#1F5A52\">Peak-412nm [Active]<\/text>\n  <rect x=\"258\" y=\"30\" width=\"108\" height=\"82\" rx=\"6\" fill=\"#FDF6E7\" stroke=\"#E2C285\"/>\n  <text x=\"266\" y=\"47\" font-family=\"sans-serif\" font-size=\"9.5\" font-weight=\"700\" fill=\"#7A5213\">三态技术声明<\/text>\n  <rect x=\"266\" y=\"55\" width=\"92\" height=\"15\" rx=\"3\" fill=\"#EDF7F0\"/><text x=\"271\" y=\"66\" font-family=\"sans-serif\" font-size=\"8.5\" fill=\"#234B36\">✓ 理解且同意<\/text>\n  <rect x=\"266\" y=\"74\" width=\"92\" height=\"15\" rx=\"3\" fill=\"#FFF4DC\" stroke=\"#D9A648\"/><text x=\"271\" y=\"85\" font-family=\"sans-serif\" font-size=\"8.5\" fill=\"#7A5213\">★ 暂存KD先做原型<\/text>\n  <rect x=\"266\" y=\"93\" width=\"92\" height=\"14\" rx=\"3\" fill=\"#FCEEEE\"/><text x=\"271\" y=\"103\" font-family=\"sans-serif\" font-size=\"8.5\" fill=\"#873535\">✕ 否决并提方案<\/text>\n  <text x=\"14\" y=\"131\" font-family=\"sans-serif\" font-size=\"10\" fill=\"#52606D\">物理旋转结论：视线不离开光谱曲线，未理解技术一键挂入 KD 书签不打断心流。<\/text>\n<\/svg>\n", "_aiHumanInteract/intent/prototypes/modal-queue.svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 380 146\">\n  <rect width=\"380\" height=\"146\" rx=\"8\" fill=\"#F6F6F4\" stroke=\"#CFD6DE\"/>\n  <text x=\"14\" y=\"21\" font-family=\"sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#873F3F\">Epistemic Prototype B · 传统阻塞弹窗逐条审批 (Rejected after seeing)<\/text>\n  <rect x=\"14\" y=\"30\" width=\"352\" height=\"82\" rx=\"6\" fill=\"#E6E9EC\"/>\n  <rect x=\"74\" y=\"38\" width=\"232\" height=\"66\" rx=\"6\" fill=\"#FFFFFF\" stroke=\"#E0ACAC\" stroke-width=\"1.5\"/>\n  <text x=\"88\" y=\"56\" font-family=\"sans-serif\" font-size=\"10\" font-weight=\"700\" fill=\"#873F3F\">Confirm Technical Step (4 of 11)?<\/text>\n  <text x=\"88\" y=\"72\" font-family=\"sans-serif\" font-size=\"9\" fill=\"#616E7C\">Use CQRS Event-Sourced Snapshot Store? (Recommended)<\/text>\n  <rect x=\"88\" y=\"81\" width=\"66\" height=\"16\" rx=\"4\" fill=\"#31577D\"/><text x=\"103\" y=\"92\" font-family=\"sans-serif\" font-size=\"9\" fill=\"#FFF\">Agree<\/text>\n  <text x=\"14\" y=\"131\" font-family=\"sans-serif\" font-size=\"10\" fill=\"#873F3F\">问题暴露：遮挡工作区并诱导机械点击 Agree（伪审查）。<\/text>\n<\/svg>\n"}};
+const svg = document.getElementById('canvas');
+const vp = document.getElementById('viewport');
+const stratumLayer = document.getElementById('stratum-layer');
+const groundLayer = document.getElementById('ground-layer');
+const hebbLayer = document.getElementById('hebbian-layer');
+const crossLayer = document.getElementById('cross-layer');
+const structLayer = document.getElementById('struct-layer');
+const nodeLayer = document.getElementById('node-layer');
+const panelEl = document.getElementById('panel');
+
+const CARD_W = 264, CARD_H = 78;
+const STACKED_IDS = new Set(DATA.stacked_ids || []);
+let currentLens = 'overview';
+let hebbianMode = 'focus'; // 'focus' | 'all' | 'off'
+let showCross = true;
+let selectedId = null;
+let hoveredId = null;
+let blastKdId = null;
+let probeActive = false;
+let k = 1, tx = 0, ty = 0, dragging = false, lx = 0, ly = 0, moved = false;
+
+const nodesById = new Map(DATA.nodes.map(n => [n.id, n]));
+const synapsesByNode = new Map();
+DATA.synapses.forEach(s => {
+  if (!synapsesByNode.has(s.from)) synapsesByNode.set(s.from, []);
+  if (!synapsesByNode.has(s.to)) synapsesByNode.set(s.to, []);
+  synapsesByNode.get(s.from).push({ target: s.to, weight: s.weight, coactivations: s.coactivations });
+  synapsesByNode.get(s.to).push({ target: s.from, weight: s.weight, coactivations: s.coactivations });
+});
+
+function svgEl(tag, attrs = {}, text = null) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [key, val] of Object.entries(attrs)) el.setAttribute(key, String(val));
+  if (text !== null) el.textContent = text;
+  return el;
+}
+
+function htmlEl(tag, cls = null, text = null) {
+  const el = document.createElement(tag);
+  if (cls) el.className = cls;
+  if (text !== null) el.textContent = text;
+  return el;
+}
+
+function cardPath(x, y, w, h, r = 6) {
+  return `M ${x} ${y} H ${x + w - r} Q ${x + w} ${y} ${x + w} ${y + r} V ${y + h - r} Q ${x + w} ${y + h} ${x + w - r} ${y + h} H ${x} Z`;
+}
+
+function activePositions() {
+  return (DATA.layouts[currentLens] || DATA.layouts.overview).positions;
+}
+
+function routeStructuralEdge(e, p1, p2) {
+  const [x1, y1] = p1, [x2, y2] = p2;
+  const srcNode = nodesById.get(e.from);
+  const z1 = (srcNode && srcNode.z) ? srcNode.z : 0;
+
+  // Case 1: Child is in a vertical leaf stack -> route along clean left spine channel (`x2 - 16`)
+  if ((e.relationship === 'decomposes_to' || e.relationship === 'decomposes_intent') && STACKED_IDS.has(e.to)) {
+    const sx = x1 + CARD_W / 2, sy = y1 + CARD_H + z1;
+    const spineX = x2 - 16;
+    const midY = y1 + CARD_H + 30;
+    const ty = y2 + CARD_H / 2;
+    return `M ${sx} ${sy} V ${midY} H ${spineX} V ${ty} H ${x2}`;
+  }
+
+  // Case 1b: Vertically stacked non-tree sibling relation (`supersedes`, `alternative_of`) -> clean right-side C-arc
+  if (Math.abs(x2 - x1) < 6 && !['decomposes_to', 'decomposes_intent', 'imports', 'prerequisite_for'].includes(e.relationship)) {
+    const rx = x1 + CARD_W;
+    const sy = y1 + CARD_H / 2, ty = y2 + CARD_H / 2;
+    const bow = 30 + Math.min(26, Math.abs(ty - sy) * 0.14);
+    return `M ${rx} ${sy} C ${rx + bow} ${sy}, ${rx + bow} ${ty}, ${rx} ${ty}`;
+  }
+
+  // Case 2: Standard downward edge (`y2 > y1 + 24`)
+  if (y2 > y1 + 24) {
+    const sx = x1 + CARD_W / 2, sy = y1 + CARD_H + z1;
+    const tx = x2 + CARD_W / 2, ty = y2;
+    const my = (sy + ty) / 2;
+    if (Math.abs(sx - tx) < 2) return `M ${sx} ${sy} V ${ty}`;
+    return `M ${sx} ${sy} V ${my} H ${tx} V ${ty}`;
+  }
+
+  // Case 3: Upward edge (`y2 < y1 - 24`) -> exit top, route around outer side channel, enter bottom
+  if (y2 < y1 - 24) {
+    const sx = x1 + CARD_W / 2, sy = y1;
+    const tx = x2 + CARD_W / 2, ty = y2 + CARD_H;
+    const sideX = Math.max(x1, x2) + CARD_W + 28;
+    const topY = Math.min(y1 - 18, ty + 18);
+    return `M ${sx} ${sy} V ${topY} H ${sideX} V ${ty + 18} H ${tx} V ${ty}`;
+  }
+
+  // Case 4: Same-row horizontal sibling edge (`alternative_of`, `supersedes`, `branches_from`, `constrains`)
+  if (Math.abs(x2 - x1) < 6) {
+    // Vertically adjacent siblings (e.g. WP-002 -> WP-003 in stack): curve along right margin
+    const rx = x1 + CARD_W;
+    const sy = y1 + CARD_H / 2, ty = y2 + CARD_H / 2;
+    return `M ${rx} ${sy} C ${rx + 28} ${sy}, ${rx + 28} ${ty}, ${rx} ${ty}`;
+  }
+  const goRight = x2 > x1;
+  const sx = goRight ? x1 + CARD_W : x1;
+  const tx = goRight ? x2 : x2 + CARD_W;
+  const sy = y1 + CARD_H / 2, ty = y2 + CARD_H / 2;
+  const mx = (sx + tx) / 2;
+  return `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`;
+}
+
+function renderScene() {
+  stratumLayer.replaceChildren();
+  groundLayer.replaceChildren();
+  hebbLayer.replaceChildren();
+  crossLayer.replaceChildren();
+  structLayer.replaceChildren();
+  nodeLayer.replaceChildren();
+
+  const layout = DATA.layouts[currentLens] || DATA.layouts.overview;
+  const pos = layout.positions;
+
+  const crossBtn = document.getElementById('toggle-cross');
+  crossBtn.disabled = currentLens !== 'overview';
+  document.getElementById('leg-cross').style.display = currentLens === 'overview' ? 'inline-flex' : 'none';
+
+  if (currentLens === 'overview' && layout.strata) {
+    const ep = layout.strata.epistemic;
+    const pr = layout.strata.pragmatic;
+    stratumLayer.append(
+      svgEl('rect', { x: ep.x, y: ep.y, width: ep.w, height: ep.h, rx: 14, class: 'stratum-box' }),
+      svgEl('text', { x: ep.x + 18, y: ep.y + 24, class: 'stratum-label' }, 'EPISTEMIC LAYER · 认知探索层（Intent 意图与概念拆解  +  Knowledge Debt 认知书签）'),
+      svgEl('text', { x: ep.x + ep.w - 18, y: ep.y + 24, 'text-anchor': 'end', class: 'stratum-sub' }, 'Kirsh & Maglio Epistemic Actions · DesignerlyLoop Intent Canvas'),
+      svgEl('rect', { x: pr.x, y: pr.y, width: pr.w, height: pr.h, rx: 14, class: 'stratum-box' }),
+      svgEl('text', { x: pr.x + 18, y: pr.y + 24, class: 'stratum-label' }, 'PRAGMATIC & ARTIFACT LAYER · 实践执行与代码层（Plan Graph v4 2.5D  +  Scripts AST 依赖图）'),
+      svgEl('text', { x: pr.x + pr.w - 18, y: pr.y + 24, 'text-anchor': 'end', class: 'stratum-sub' }, 'Agent-Driven Execution · Deterministic AST Verification')
+    );
+  }
+
+  for (const n of DATA.nodes) {
+    const p = pos[n.id];
+    if (!p) continue;
+    const [x, y] = p;
+    const z = n.z || 0;
+    const gx = x - z * 0.34, gy = y + z;
+    groundLayer.append(svgEl('ellipse', {
+      cx: gx + CARD_W / 2, cy: gy + CARD_H, rx: CARD_W / 2 - 4, ry: 4.5,
+      fill: '#000', opacity: 0.042
+    }));
+    if (z > 0) {
+      groundLayer.append(svgEl('path', {
+        d: `M ${x} ${y + CARD_H} L ${x + CARD_W} ${y + CARD_H} L ${gx + CARD_W} ${gy + CARD_H} L ${gx} ${gy + CARD_H} Z`,
+        fill: '#E1E5E8', stroke: '#D3D8DE', 'stroke-width': 0.85
+      }));
+    }
+  }
+
+  for (const e of DATA.structural_edges) {
+    const p1 = pos[e.from], p2 = pos[e.to];
+    if (!p1 || !p2) continue;
+    const d = routeStructuralEdge(e, p1, p2);
+    const path = svgEl('path', {
+      d, class: 'struct-edge', 'data-from': e.from, 'data-to': e.to,
+      'data-rel': e.relationship, 'marker-end': 'url(#arr-struct)'
+    });
+    if (!['decomposes_to', 'decomposes_intent', 'imports'].includes(e.relationship)) {
+      path.setAttribute('stroke-dasharray', '4 3');
+    }
+    structLayer.append(path);
+  }
+
+  // In Overview, draw clean cross-stratum bridges (keep top-level Intent->RootPlan & KD->Intent/Plan concise)
+  if (showCross && currentLens === 'overview') {
+    for (const e of DATA.cross_edges) {
+      const p1 = pos[e.from], p2 = pos[e.to];
+      if (!p1 || !p2) continue;
+      // Route vertically between bottom of upper card and top of lower card (or horizontal if both in Epistemic stratum)
+      const sameStratum = Math.abs(p1[1] - p2[1]) < 140;
+      let d;
+      if (sameStratum) {
+        const goLeft = p2[0] < p1[0];
+        const sx = goLeft ? p1[0] : p1[0] + CARD_W;
+        const tx = goLeft ? p2[0] + CARD_W : p2[0];
+        const sy = p1[1] + CARD_H / 2, ty = p2[1] + CARD_H / 2;
+        const mx = (sx + tx) / 2;
+        d = `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`;
+      } else {
+        const sx = p1[0] + CARD_W / 2, sy = p1[1] + CARD_H + ((nodesById.get(e.from)?.z) || 0);
+        const tx = p2[0] + CARD_W / 2, ty = p2[1];
+        const cy1 = sy + (ty - sy) * 0.44, cy2 = sy + (ty - sy) * 0.56;
+        d = `M ${sx} ${sy} C ${sx} ${cy1}, ${tx} ${cy2}, ${tx} ${ty}`;
+      }
+      crossLayer.append(svgEl('path', {
+        d, class: 'cross-edge', 'data-from': e.from, 'data-to': e.to,
+        'marker-end': 'url(#arr-cross)'
+      }));
+    }
+  }
+
+  if (hebbianMode !== 'off') {
+    DATA.synapses.forEach((s, idx) => {
+      const p1 = pos[s.from], p2 = pos[s.to];
+      if (!p1 || !p2) return;
+      const cx1 = p1[0] + CARD_W / 2, cy1 = p1[1] + CARD_H / 2;
+      const cx2 = p2[0] + CARD_W / 2, cy2 = p2[1] + CARD_H / 2;
+      const dx = cx2 - cx1, dy = cy2 - cy1;
+      const dist = Math.hypot(dx, dy) || 1;
+      const bend = 28 + Math.min(60, dist * 0.10);
+      const mx = (cx1 + cx2) / 2 - (dy / dist) * bend * 0.42;
+      const my = (cy1 + cy2) / 2 - bend * 0.48;
+      const w = Math.max(1.1, s.weight * 3.6);
+      const cls = ['hebb-edge'];
+      if (hebbianMode === 'all') cls.push('mesh-all');
+      else if (idx < 10 && s.weight >= 0.32) cls.push('backbone');
+      hebbLayer.append(svgEl('path', {
+        d: `M ${cx1} ${cy1} Q ${mx} ${my} ${cx2} ${cy2}`,
+        class: cls.join(' '), 'stroke-width': w.toFixed(2),
+        'data-from': s.from, 'data-to': s.to, 'data-weight': s.weight
+      }));
+    });
+  }
+
+  for (const n of DATA.nodes) {
+    const p = pos[n.id];
+    if (!p) continue;
+    const [x, y] = p;
+    const g = svgEl('g', { class: 'g-node', 'data-id': n.id });
+    g.append(
+      svgEl('rect', { class: 'halo-ring', x: x - 6, y: y - 6, width: CARD_W + 12, height: CARD_H + 12, rx: 10 }),
+      svgEl('path', { class: 'card-bg', d: cardPath(x, y, CARD_W, CARD_H), fill: n.palette[0], stroke: n.palette[1], 'stroke-width': 1.35 }),
+      svgEl('rect', { x, y, width: 6.5, height: CARD_H, fill: n.accent }),
+      svgEl('path', { class: 'card-sel', d: cardPath(x, y, CARD_W, CARD_H) }),
+      svgEl('text', { x: x + 14, y: y + 18, class: 'n-id' }, n.short_id),
+      svgEl('text', { x: x + CARD_W - 10, y: y + 18, 'text-anchor': 'end', class: 'n-tag', fill: n.accent }, n.badge)
+    );
+    n.wrapped_title.forEach((line, idx) => {
+      g.append(svgEl('text', { x: x + 14, y: y + 37 + idx * 15.5, class: 'n-title', fill: n.palette[2] }, line));
+    });
+    if (n.subtitle) {
+      g.append(svgEl('text', { x: x + 14, y: y + 70, class: 'n-sub' }, n.subtitle));
+    }
+    g.addEventListener('mouseenter', () => { hoveredId = n.id; if (!probeActive && !blastKdId) reapplyHighlights(); });
+    g.addEventListener('mouseleave', () => { hoveredId = null; if (!probeActive && !blastKdId) reapplyHighlights(); });
+    g.addEventListener('click', (ev) => {
+      if (moved) return;
+      ev.stopPropagation();
+      selectNode(n.id);
+    });
+    nodeLayer.append(g);
+  }
+
+  reapplyHighlights();
+}
+
+function applyTransform() {
+  vp.setAttribute('transform', `translate(${tx} ${ty}) scale(${k})`);
+}
+
+function fitOverview() {
+  const layout = DATA.layouts[currentLens] || DATA.layouts.overview;
+  const r = svg.getBoundingClientRect();
+  const panelOpen = !panelEl.hidden;
+  const pWidth = panelOpen ? panelEl.getBoundingClientRect().width : 0;
+  const availW = Math.max(320, r.width - pWidth - 44);
+  const availH = Math.max(240, r.height - 134);
+  k = Math.min(1.04, Math.max(0.18, Math.min(availW / layout.width, availH / layout.height)));
+  tx = Math.max(16, (availW - layout.width * k) / 2 + 16);
+  ty = Math.max(64, (availH - layout.height * k) / 2 + 56);
+  applyTransform();
+}
+
+function clearProbeAndBlast() {
+  blastKdId = null;
+  probeActive = false;
+  document.getElementById('probe-banner').classList.remove('on');
+  document.querySelectorAll('.g-node').forEach(g => {
+    g.classList.remove('dimmed', 'probe-base', 'probe-flip', 'blast-hit');
+  });
+  document.querySelectorAll('.edge-hot, .edge-hebb-hot, .edge-blast').forEach(e => {
+    e.classList.remove('edge-hot', 'edge-hebb-hot', 'edge-blast');
+  });
+}
+
+function reapplyHighlights() {
+  document.querySelectorAll('.g-node.selected').forEach(g => g.classList.remove('selected'));
+  if (!probeActive && !blastKdId) {
+    document.querySelectorAll('.edge-hot, .edge-hebb-hot').forEach(e => e.classList.remove('edge-hot', 'edge-hebb-hot'));
+  }
+  const focusId = hoveredId || selectedId;
+  if (selectedId) {
+    const target = nodeLayer.querySelector(`.g-node[data-id="${CSS.escape(selectedId)}"]`);
+    if (target) target.classList.add('selected');
+  }
+  if (focusId && !probeActive && !blastKdId) {
+    [...structLayer.children, ...crossLayer.children].forEach(p => {
+      if (p.dataset.from === focusId || p.dataset.to === focusId) p.classList.add('edge-hot');
+    });
+    [...hebbLayer.children].forEach(p => {
+      if (p.dataset.from === focusId || p.dataset.to === focusId) p.classList.add('edge-hebb-hot');
+    });
+  }
+  if (blastKdId) triggerBlastRadius(blastKdId, true);
+}
+
+function runSpreadingProbe(seedQueryOrId, fromNode = false) {
+  clearProbeAndBlast();
+  const baseScores = new Map();
+  if (fromNode && nodesById.has(seedQueryOrId)) {
+    baseScores.set(seedQueryOrId, 1.0);
+  } else {
+    const tokens = seedQueryOrId.toLowerCase().split(/\s+/).filter(Boolean);
+    if (!tokens.length) return [];
+    for (const n of DATA.nodes) {
+      let hits = 0;
+      for (const tok of tokens) {
+        if (n.search_blob.includes(tok)) hits += 1;
+      }
+      if (hits > 0) baseScores.set(n.id, hits / tokens.length);
+    }
+  }
+
+  const spreadScores = new Map(baseScores);
+  const viaMap = new Map();
+  for (const [srcId, bScore] of baseScores.entries()) {
+    if (bScore < 0.34) continue;
+    for (const syn of (synapsesByNode.get(srcId) || [])) {
+      const boost = 0.38 * bScore * syn.weight;
+      spreadScores.set(syn.target, (spreadScores.get(syn.target) || 0) + boost);
+      if (!viaMap.has(syn.target) || viaMap.get(syn.target).boost < boost) {
+        viaMap.set(syn.target, { via: srcId, weight: syn.weight, boost });
+      }
+    }
+  }
+
+  const baseTop = [...baseScores.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(x => x[0]);
+  const baseSet = new Set(baseTop);
+  const flipped = [...spreadScores.entries()]
+    .filter(([id]) => !baseSet.has(id) && viaMap.has(id))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([id, score]) => ({ id, score, ...viaMap.get(id) }));
+
+  const activeSet = new Set([...baseTop, ...flipped.map(f => f.id)]);
+  if (activeSet.size > 0) {
+    probeActive = true;
+    nodeLayer.querySelectorAll('.g-node').forEach(g => {
+      const id = g.dataset.id;
+      if (baseSet.has(id)) g.classList.add('probe-base');
+      else if (activeSet.has(id)) g.classList.add('probe-flip');
+      else g.classList.add('dimmed');
+    });
+    hebbLayer.querySelectorAll('.hebb-edge').forEach(p => {
+      const u = p.dataset.from, v = p.dataset.to;
+      if ((baseSet.has(u) && activeSet.has(v)) || (baseSet.has(v) && activeSet.has(u))) {
+        p.classList.add('edge-hebb-hot');
+      }
+    });
+    const banner = document.getElementById('probe-banner');
+    document.getElementById('probe-label').textContent =
+      `⚡ 双路激活：Base ${baseTop.length} 项 + Hebbian Flip ${flipped.length} 项`;
+    banner.classList.add('on');
+  }
+
+  return [
+    ...baseTop.map(id => ({ id, flipped: false, score: spreadScores.get(id) || 0 })),
+    ...flipped.map(f => ({ id: f.id, flipped: true, score: f.score, via: f.via, weight: f.weight }))
+  ];
+}
+
+function triggerBlastRadius(kdId, keepState = false) {
+  const kd = nodesById.get(kdId);
+  if (!kd || !kd.raw.impact_preview) return;
+  if (!keepState && blastKdId === kdId) {
+    clearProbeAndBlast();
+    reapplyHighlights();
+    return;
+  }
+  clearProbeAndBlast();
+  blastKdId = kdId;
+  const imp = kd.raw.impact_preview;
+  const affected = new Set([
+    kdId,
+    ...(imp.reopen_intents || []),
+    ...(imp.supersede_plans || []),
+    ...(imp.blocked_or_recheck_downstream_plans || []),
+    ...(imp.affected_parent_scopes || []),
+    ...(imp.affected_scripts || []).map(s => 'SCR:' + s)
+  ]);
+
+  nodeLayer.querySelectorAll('.g-node').forEach(g => {
+    if (affected.has(g.dataset.id)) g.classList.add('blast-hit');
+    else g.classList.add('dimmed');
+  });
+  [...structLayer.children, ...crossLayer.children].forEach(p => {
+    if (affected.has(p.dataset.from) && affected.has(p.dataset.to)) p.classList.add('edge-blast');
+  });
+  const banner = document.getElementById('probe-banner');
+  document.getElementById('probe-label').textContent =
+    `重审否定影响半径 (${kdId})：重开意图 ${(imp.reopen_intents || []).length} · 重组计划 ${(imp.supersede_plans || []).length + (imp.blocked_or_recheck_downstream_plans || []).length}`;
+  banner.classList.add('on');
+}
+
+function makeChip(targetId, metaRight = '', extra = '') {
+  const target = nodesById.get(targetId);
+  const label = target ? `${target.short_id} · ${target.title}` : targetId;
+  const a = htmlEl('a', 'chip-link' + (extra ? ' ' + extra : ''));
+  a.append(htmlEl('span', null, label));
+  if (metaRight) a.append(htmlEl('span', 'chip-meta', metaRight));
+  a.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!activePositions()[targetId]) setLens('overview');
+    selectNode(targetId);
+  });
+  return a;
+}
+
+function selectNode(id) {
+  const n = nodesById.get(id);
+  if (!n) return;
+  const wasHidden = panelEl.hidden;
+  selectedId = id;
+  panelEl.hidden = false;
+  document.body.classList.add('panel-open');
+  if (wasHidden) fitOverview();
+  reapplyHighlights();
+
+  const head = document.getElementById('panel-head');
+  const body = document.getElementById('panel-body');
+  head.style.background = n.palette[0];
+  head.style.borderBottomColor = n.palette[1];
+
+  document.getElementById('p-kicker').textContent = `${n.graph_label} · ${n.status}`;
+  document.getElementById('p-title').textContent = `${n.short_id} · ${n.inspector_title || n.title}`;
+  document.getElementById('p-meta').textContent = n.source ? `真源: ${n.source}` : '';
+
+  const actions = document.getElementById('p-actions');
+  actions.replaceChildren();
+  const probeBtn = htmlEl('button', 'p-btn hebb', '⚡ 从此节点激活扩散');
+  probeBtn.addEventListener('click', () => runSpreadingProbe(id, true));
+  actions.append(probeBtn);
+
+  if (n.graph === 'knowledge_debt') {
+    const blastBtn = htmlEl('button', 'p-btn warn' + (blastKdId === id ? ' active' : ''), '预演「否定并重组」影响半径');
+    blastBtn.addEventListener('click', () => {
+      triggerBlastRadius(id);
+      blastBtn.classList.toggle('active', blastKdId === id);
+    });
+    actions.append(blastBtn);
+  }
+
+  body.replaceChildren();
+  const raw = n.raw;
+
+  if (n.graph === 'intent') {
+    body.append(htmlEl('div', 'sec-title', '原始表达副本 (Verbatim Utterance)'));
+    body.append(htmlEl('div', 'quote-box', `“${raw.raw_utterance}”`));
+
+    body.append(htmlEl('div', 'sec-title', '概念拆解与解释性变体 (Concepts & Interpretive Variants)'));
+    (raw.concepts || []).forEach(c => {
+      const card = htmlEl('div', 'concept-card');
+      const ch = htmlEl('div', 'concept-head');
+      ch.append(htmlEl('span', null, `◆ ${c.name}`), htmlEl('span', 's-badge base', `${c.role || 'concept'} · ${c.status || 'open'}`));
+      card.append(ch);
+      if (c.definition) card.append(htmlEl('div', 'p-meta', c.definition));
+      if (Array.isArray(c.interpretive_variants) && c.interpretive_variants.length) {
+        const ul = htmlEl('ul', 'variant-list');
+        c.interpretive_variants.forEach(v => {
+          const chosen = c.selected_variant === v.id || v.selected;
+          const li = htmlEl('li', 'variant-item' + (chosen ? ' chosen' : ''));
+          li.append(htmlEl('span', null, `${v.id}: ${v.meaning}`), htmlEl('span', 'v-status', chosen ? '✓ 已选解释' : '备选解读'));
+          ul.append(li);
+        });
+        card.append(ul);
+      }
+      body.append(card);
+    });
+
+    if (Array.isArray(raw.implementation_alternatives) && raw.implementation_alternatives.length) {
+      body.append(htmlEl('div', 'sec-title', '实现备选与认知原型对照 (Alternatives & Physical Rotation)'));
+      raw.implementation_alternatives.forEach(alt => {
+        const card = htmlEl('div', 'concept-card');
+        const ch = htmlEl('div', 'concept-head');
+        ch.append(htmlEl('span', null, `${alt.id || 'ALT'}: ${alt.approach}`), htmlEl('span', 's-badge ' + (alt.selected ? 'base' : ''), alt.selected ? '✓ 采用路径' : '对照方案'));
+        card.append(ch);
+        if (alt.prototype && DATA.prototypes[alt.prototype]) {
+          const frame = htmlEl('div', 'proto-frame');
+          frame.innerHTML = DATA.prototypes[alt.prototype];
+          card.append(frame);
+        }
+        body.append(card);
+      });
+    }
+
+    if (Array.isArray(raw.qualities) && raw.qualities.length) {
+      body.append(htmlEl('div', 'sec-title', '保留体验品质 (Qualities)'));
+      const ul = htmlEl('ul');
+      raw.qualities.forEach(q => ul.append(htmlEl('li', null, q)));
+      body.append(ul);
+    }
+
+    if ((raw.plan_refs || []).length || (raw.knowledge_debt_refs || []).length) {
+      body.append(htmlEl('div', 'sec-title', '实践层与书签映射 (Pragmatic & Bookmark Links)'));
+      const wrap = htmlEl('div', 'chip-wrap');
+      (raw.plan_refs || []).forEach(pid => wrap.append(makeChip(pid, 'PLAN')));
+      (raw.knowledge_debt_refs || []).forEach(kid => wrap.append(makeChip(kid, 'BOOKMARK')));
+      body.append(wrap);
+    }
+  } else if (n.graph === 'plan') {
+    body.append(htmlEl('div', 'sec-title', '目标成果 (Objective)'));
+    body.append(htmlEl('p', null, raw.objective));
+    if (raw.approach) {
+      body.append(htmlEl('div', 'sec-title', '技术路径 (Approach)'));
+      body.append(htmlEl('p', null, raw.approach));
+    }
+    for (const [label, key] of [['交付物 (Deliverables)', 'deliverables'], ['验收标准 (Acceptance)', 'acceptance'], ['体验品质 (Qualities)', 'qualities']]) {
+      if (Array.isArray(raw[key]) && raw[key].length) {
+        body.append(htmlEl('div', 'sec-title', label));
+        const ul = htmlEl('ul');
+        raw[key].forEach(item => ul.append(htmlEl('li', null, item)));
+        body.append(ul);
+      }
+    }
+    const codeRefs = [...((raw.links || {}).code || []), ...((raw.links || {}).tests || [])];
+    if (codeRefs.length) {
+      body.append(htmlEl('div', 'sec-title', '关联代码脚本 (Scripts Graph)'));
+      const wrap = htmlEl('div', 'chip-wrap');
+      codeRefs.forEach(r => wrap.append(makeChip('SCR:' + r, 'SCRIPT')));
+      body.append(wrap);
+    }
+  } else if (n.graph === 'knowledge_debt') {
+    body.append(htmlEl('div', 'sec-title', '重审触发条件 (Revisit Trigger)'));
+    body.append(htmlEl('div', 'quote-box', raw.revisit_when));
+
+    body.append(htmlEl('div', 'sec-title', '非完全技术能力责任人 · 三态技术质询分拣'));
+    const grid = htmlEl('div', 'triage-grid');
+    const cmdBox = htmlEl('div', 'cmd-preview');
+    const modes = [
+      { key: 'affirmed', cls: 'selected-agree', title: '① 理解且同意 (Informed Acceptance)', desc: '取消知识债并确认当时技术选型合理，关联计划保持有效。', cmd: `python3 -B scripts/ptm.py kd resolve ${n.id} --verdict affirmed --note "已在原型实践中验证并认可该技术方案"` },
+      { key: 'open', cls: 'selected-proto', title: '② 暂不理解 · 先按此做可逆原型 (Knowledge Debt Bookmark)', desc: '保持书签开启，不消耗额外心智摩擦阻塞当前原型推进。', cmd: `# 当前保持 open 书签状态，待触发条件满足时重审 (${n.id})` },
+      { key: 'rejected', cls: 'selected-reject', title: '③ 不同意该做法 · 提出新观点并重组图谱 (Reject & Reorganize)', desc: '否定原决定，自动重开关联 Intent 并标记下游 Plan 进入修订。', cmd: `python3 -B scripts/ptm.py kd resolve ${n.id} --verdict rejected --counterproposal "改用更直观的替代方案" --note "原型体验不符合预期"` }
+    ];
+    modes.forEach(m => {
+      const btn = htmlEl('button', 'triage-opt' + (raw.status === m.key ? ' ' + m.cls : ''));
+      btn.append(htmlEl('div', null, m.title), htmlEl('div', 'p-meta', m.desc));
+      if (raw.status === m.key) cmdBox.textContent = m.cmd;
+      btn.addEventListener('click', () => {
+        grid.querySelectorAll('.triage-opt').forEach(b => b.className = 'triage-opt');
+        btn.classList.add(m.cls);
+        cmdBox.textContent = m.cmd;
+        if (m.key === 'rejected') triggerBlastRadius(n.id, true);
+      });
+      grid.append(btn);
+    });
+    body.append(grid, cmdBox);
+
+    const imp = raw.impact_preview || {};
+    body.append(htmlEl('div', 'sec-title', '关联节点与重组影响范围'));
+    const wrap = htmlEl('div', 'chip-wrap');
+    (imp.reopen_intents || []).forEach(x => wrap.append(makeChip(x, '重开 INTENT')));
+    (imp.supersede_plans || []).forEach(x => wrap.append(makeChip(x, '替代 PLAN')));
+    (imp.blocked_or_recheck_downstream_plans || []).forEach(x => wrap.append(makeChip(x, '下游复核')));
+    (imp.affected_scripts || []).forEach(x => wrap.append(makeChip('SCR:' + x, '触及脚本')));
+    body.append(wrap);
+  } else if (n.graph === 'scripts') {
+    body.append(htmlEl('div', 'sec-title', '模块职责摘要 (AST Summary)'));
+    body.append(htmlEl('p', null, raw.summary || '无模块文档字符串'));
+    body.append(htmlEl('div', 'sec-title', '静态指标 (Static Metrics)'));
+    body.append(htmlEl('p', null, `语言: ${raw.language} · 角色: ${raw.role} · 代码行: ${raw.loc} LOC · PageRank 枢纽度: ${raw.centrality}`));
+    if ((raw.classes || []).length || (raw.functions || []).length) {
+      body.append(htmlEl('div', 'sec-title', '导出符号 (Classes & Functions)'));
+      body.append(htmlEl('p', null, [...(raw.classes || []), ...(raw.functions || []).map(f => f + '()')].join(', ')));
+    }
+    if ((raw.governed_by_plans || []).length) {
+      body.append(htmlEl('div', 'sec-title', '所属执行计划 (Governed by Plans)'));
+      const wrap = htmlEl('div', 'chip-wrap');
+      raw.governed_by_plans.forEach(pid => wrap.append(makeChip(pid, 'PLAN')));
+      body.append(wrap);
+    }
+  }
+
+  const syns = (synapsesByNode.get(id) || []).slice().sort((a, b) => b.weight - a.weight);
+  if (syns.length) {
+    body.append(htmlEl('div', 'sec-title', `赫布关联邻居 (Hebbian Synapses · ${syns.length})`));
+    const wrap = htmlEl('div', 'chip-wrap');
+    syns.slice(0, 8).forEach(s => {
+      wrap.append(makeChip(s.target, `w=${s.weight.toFixed(2)}`, 'hebb'));
+    });
+    body.append(wrap);
+  }
+
+  history.replaceState(null, '', '#' + encodeURIComponent(id));
+}
+
+function closePanel() {
+  selectedId = null;
+  panelEl.hidden = true;
+  document.body.classList.remove('panel-open');
+  history.replaceState(null, '', location.pathname + location.search);
+  reapplyHighlights();
+  fitOverview();
+}
+
+function setLens(lens) {
+  currentLens = lens;
+  document.querySelectorAll('.lens-btn').forEach(b => b.classList.toggle('active', b.dataset.lens === lens));
+  renderScene();
+  fitOverview();
+}
+
+document.querySelectorAll('.lens-btn').forEach(btn => {
+  btn.addEventListener('click', () => setLens(btn.dataset.lens));
+});
+document.getElementById('toggle-hebbian').addEventListener('click', (e) => {
+  const order = ['focus', 'all', 'off'];
+  hebbianMode = order[(order.indexOf(hebbianMode) + 1) % order.length];
+  const labels = {
+    focus: '⚡ 赫布突触: 智能聚焦',
+    all: '⚡ 赫布突触: 全局网格',
+    off: '⚡ 赫布突触: 已隐藏'
+  };
+  e.currentTarget.textContent = labels[hebbianMode];
+  e.currentTarget.classList.toggle('on', hebbianMode !== 'off');
+  renderScene();
+});
+document.getElementById('toggle-cross').addEventListener('click', (e) => {
+  showCross = !showCross;
+  e.currentTarget.classList.toggle('cross-on', showCross);
+  renderScene();
+});
+document.getElementById('btn-overview').addEventListener('click', fitOverview);
+document.getElementById('btn-100').addEventListener('click', () => { k = 1; applyTransform(); });
+document.getElementById('probe-clear').addEventListener('click', () => { clearProbeAndBlast(); reapplyHighlights(); });
+document.getElementById('panel-close').addEventListener('click', closePanel);
+
+svg.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const r = svg.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  const next = Math.min(2.8, Math.max(0.14, k * Math.exp(-e.deltaY * 0.0015)));
+  tx = mx - (mx - tx) * (next / k);
+  ty = my - (my - ty) * (next / k);
+  k = next;
+  applyTransform();
+}, { passive: false });
+
+svg.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('.g-node')) return;
+  dragging = true; moved = false; lx = e.clientX; ly = e.clientY;
+  svg.classList.add('dragging');
+});
+window.addEventListener('pointermove', (e) => {
+  if (!dragging) return;
+  if (Math.abs(e.clientX - lx) + Math.abs(e.clientY - ly) > 3) moved = true;
+  tx += e.clientX - lx; ty += e.clientY - ly;
+  lx = e.clientX; ly = e.clientY;
+  applyTransform();
+});
+window.addEventListener('pointerup', () => { dragging = false; svg.classList.remove('dragging'); });
+
+const searchSurface = document.getElementById('search-surface');
+const searchInput = document.getElementById('search-input');
+const searchResults = document.getElementById('search-results');
+
+function renderSearchDropdown() {
+  const q = searchInput.value.trim();
+  searchResults.replaceChildren();
+  if (!q) {
+    clearProbeAndBlast();
+    reapplyHighlights();
+    searchResults.append(htmlEl('div', 'p-meta', '提示：输入任意关键词（如“更快”、“谱峰”、“赫布”、“AST”），实时执行 Base + Hebbian Flip 双路激活扩散检索。'));
+    return;
+  }
+  const hits = runSpreadingProbe(q, false);
+  if (!hits.length) {
+    searchResults.append(htmlEl('div', 'p-meta', '未找到匹配或关联激活节点。'));
+    return;
+  }
+  hits.forEach(h => {
+    const n = nodesById.get(h.id);
+    const row = htmlEl('div', 's-row');
+    row.append(
+      htmlEl('span', 's-badge ' + (h.flipped ? 'flip' : 'base'), h.flipped ? '⚡ Hebbian Flip' : 'Base Match'),
+      htmlEl('span', 's-id', n.short_id),
+      htmlEl('span', 's-title', n.title)
+    );
+    if (h.flipped && h.via) {
+      const viaN = nodesById.get(h.via);
+      row.append(htmlEl('span', 's-via', `← 经 ${viaN ? viaN.short_id : h.via} (w=${h.weight.toFixed(2)})`));
+    }
+    row.addEventListener('click', () => {
+      searchSurface.hidden = true;
+      if (!activePositions()[h.id]) setLens('overview');
+      selectNode(h.id);
+    });
+    searchResults.append(row);
+  });
+}
+
+function syncSearchTop() {
+  const tb = document.getElementById('topbar').getBoundingClientRect();
+  searchSurface.style.top = Math.max(64, Math.round(tb.bottom + 10)) + 'px';
+}
+
+document.getElementById('open-search').addEventListener('click', () => {
+  searchSurface.hidden = !searchSurface.hidden;
+  if (!searchSurface.hidden) { syncSearchTop(); renderSearchDropdown(); searchInput.focus(); }
+});
+searchInput.addEventListener('input', renderSearchDropdown);
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    searchSurface.hidden = !searchSurface.hidden;
+    if (!searchSurface.hidden) { syncSearchTop(); renderSearchDropdown(); searchInput.focus(); }
+    return;
+  }
+  if (document.activeElement !== searchInput && ['0','1','2','3','4'].includes(e.key)) {
+    const map = { '0': 'overview', '1': 'intent', '2': 'plan', '3': 'knowledge_debt', '4': 'scripts' };
+    setLens(map[e.key]);
+  }
+  if (e.key === 'Escape') {
+    if (!searchSurface.hidden) searchSurface.hidden = true;
+    else if (blastKdId || probeActive) { clearProbeAndBlast(); reapplyHighlights(); }
+    else if (!panelEl.hidden) closePanel();
+  }
+});
+
+const resizer = document.getElementById('panel-resizer');
+let resizing = false;
+resizer.addEventListener('pointerdown', (e) => { resizing = true; e.preventDefault(); });
+window.addEventListener('pointermove', (e) => {
+  if (!resizing) return;
+  const w = Math.min(720, Math.max(340, window.innerWidth - e.clientX));
+  document.documentElement.style.setProperty('--panel-w', w + 'px');
+  fitOverview();
+});
+window.addEventListener('pointerup', () => { resizing = false; });
+window.addEventListener('resize', fitOverview);
+
+renderScene();
+fitOverview();
+const initHash = decodeURIComponent(location.hash.slice(1));
+if (initHash && nodesById.has(initHash)) selectNode(initHash);
+</script>
+</body>
+</html>

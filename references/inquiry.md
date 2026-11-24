@@ -96,8 +96,16 @@ one who can answer it. Sort the question first:
 |---|---|
 | A fact the code, data, or tools can settle | Find it; do not outsource it |
 | A reversible technical choice inside an already granted scope | Decide it, record why, and report it |
-| A question of intent, value, experience, or acceptable responsibility | Ask the decision owner |
+| Entering a new pragmatic scope with consequential technical stack/algorithms | Declare the 1–5 consequential choices and run the 3-way comprehension triage in [knowledge debt](knowledge-debt.md) |
+| A question of intent, value, experience, or acceptable responsibility | Ask the decision owner (using an epistemic prototype / visual contrast when verbal imagination is costly) |
 | A technical claim that lacks evidence | Design a test or prototype, not a vote |
+
+Distinguish **epistemic actions** (clarifying concepts, contrasting interpretive
+variants, or building a quick visual/interactive prototype so the person does
+not have to "mentally rotate" an abstract design) from **pragmatic actions**
+(writing production code and executing plans); see [Intent Graph](intent-graph.md).
+Even an imperfect prototype reduces cognitive friction when verbal descriptions
+leave experiential choices opaque.
 
 Then translate. A question earns a human answer only if the answer supplies
 something the agent cannot obtain: what the person wants, what they will accept,
