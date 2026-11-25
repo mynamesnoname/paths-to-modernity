@@ -27,16 +27,17 @@ PORTRAIT_START = "<!-- paths-to-modernity:portrait:start -->"
 PORTRAIT_END = "<!-- paths-to-modernity:portrait:end -->"
 
 SUBAGENT_SYSTEM_PROMPT = """You are an isolated Paths-to-Modernity (PtM) Recovery Portrait Subagent.
-Given a compact JSON digest of a project's Intent Graph, Plan Graph, Knowledge Debt bookmarks,
-Scripts Graph hubs, and Hebbian associative hubs, write a crisp, high-signal Markdown summary
-(strictly <= 18 lines, no outer code fences, Chinese preferred when source titles/utterances
-contain Chinese, otherwise match source language) with EXACTLY these three bullet sections:
+Given a compact JSON digest of a project's Intent Graph, Spec Graph (standing invariants, glossary,
+standards, contracts), Plan Graph, Knowledge Debt bookmarks, Scripts Graph hubs, and Hebbian hubs,
+write a crisp, high-signal Markdown summary (strictly <= 20 lines, no outer code fences, Chinese
+preferred when source titles/utterances contain Chinese) with EXACTLY these four bullet sections:
 
 - **意图画像 (Intent Portrait):** 2-3 concise clauses summarizing core user intents, resolved concept variants, and key experiential qualities.
+- **常驻规范与术语 (Spec & Glossary Portrait):** active `SPEC-###` invariants (Do/Don't redlines), canonical glossary terms, and enforced contracts.
 - **规划与执行画像 (Plan & Scripts Portrait):** active/ready pragmatic work (`LT/MT/ST/WP`), completion ratio, core code hubs, and missing planned scripts if any.
 - **认知书签与关联枢纽 (Epistemic Watchlist & Hubs):** open `KD-###` technical bookmarks (and revisit triggers) plus top cross-graph Hebbian associative hubs.
 
-Be factual, cite exact IDs (`INT-###`, `WP-###`, `KD-###`, file paths), never invent authorization, and keep every line dense and immediately useful after context compaction."""
+Be factual, cite exact IDs (`INT-###`, `SPEC-###`, `WP-###`, `KD-###`, file paths), never invent authorization, and keep every line dense and immediately useful after context compaction."""
 
 
 def load_dotenv(env_paths: list[Path]) -> dict[str, str]:
@@ -109,6 +110,21 @@ def build_portrait_digest(
         for n in federated.get("intent", {}).get("nodes", [])
     ]
 
+    specs = [
+        {
+            "id": s["id"],
+            "title": s["title"],
+            "kind": s["kind"],
+            "status": s["status"],
+            "enforcement": s["enforcement"],
+            "canonical_term": s.get("canonical_term"),
+            "forbidden_aliases": s.get("forbidden_aliases", []),
+            "summary": s["summary"][:110],
+        }
+        for s in federated.get("specs", {}).get("nodes", [])
+        if s.get("status") not in {"superseded", "deprecated"}
+    ]
+
     plan_nodes = federated.get("plan", {}).get("nodes", [])
     plan_by_status: dict[str, list[str]] = {}
     for p in plan_nodes:
@@ -121,6 +137,7 @@ def build_portrait_digest(
             "status": n["status"],
             "triage_mode": n["triage_mode"],
             "intent_refs": n["intent_refs"],
+            "spec_refs": n.get("spec_refs", []),
             "plan_refs": n["plan_refs"],
             "revisit_when": n["revisit_when"][:100],
         }
@@ -135,6 +152,7 @@ def build_portrait_digest(
 
     return {
         "intents": intents,
+        "specs": specs,
         "plan_counts": {k: len(v) for k, v in plan_by_status.items()},
         "active_or_ready_plans": (
             plan_by_status.get("in_progress", []) + plan_by_status.get("ready", [])
@@ -167,6 +185,17 @@ def deterministic_portrait_body(digest: Mapping[str, Any]) -> str:
     else:
         intent_line = "- **意图画像 (Intent Portrait):** 尚未建立持久化 `INT-###` 节点（见对话或 `plan/requirements/`）。"
 
+    specs = digest.get("specs", [])
+    if specs:
+        sp_parts = [
+            f"`{s['id']}` [{s['kind']}] {s['title']}"
+            + (f"（标准词：`{s['canonical_term']}`）" if s.get("canonical_term") else "")
+            for s in specs[:4]
+        ]
+        spec_line = f"- **常驻规范与术语 (Spec & Glossary Portrait):** {' · '.join(sp_parts)}。"
+    else:
+        spec_line = "- **常驻规范与术语 (Spec & Glossary Portrait):** 尚未沉淀独立 `SPEC-###` 节点。"
+
     p_counts = digest.get("plan_counts", {})
     count_str = ", ".join(f"{k}={v}" for k, v in sorted(p_counts.items())) or "无节点"
     active_p = ", ".join(digest.get("active_or_ready_plans", [])[:4]) or "暂无 ready/in_progress 节点"
@@ -189,7 +218,7 @@ def deterministic_portrait_body(digest: Mapping[str, Any]) -> str:
     hub_str = f"；赫布高连接枢纽：{hub_items}" if hubs else ""
     kd_line = f"- **认知书签与关联枢纽 (Epistemic Watchlist & Hubs):** {kd_str}{hub_str}。"
 
-    return "\n".join([intent_line, plan_line, kd_line])
+    return "\n".join([intent_line, spec_line, plan_line, kd_line])
 
 
 def call_subagent_llm(digest: Mapping[str, Any], config: Mapping[str, str]) -> str:
@@ -206,7 +235,7 @@ def call_subagent_llm(digest: Mapping[str, Any], config: Mapping[str, str]) -> s
                 },
             ],
             "temperature": 0.2,
-            "max_tokens": 700,
+            "max_tokens": 2400,
         }
     ).encode("utf-8")
     req = urllib.request.Request(
@@ -217,9 +246,12 @@ def call_subagent_llm(digest: Mapping[str, Any], config: Mapping[str, str]) -> s
             "Authorization": f"Bearer {config['api_key']}",
         },
     )
-    with urllib.request.urlopen(req, timeout=35) as resp:
+    with urllib.request.urlopen(req, timeout=45) as resp:
         data = json.loads(resp.read().decode("utf-8"))
-    content = data["choices"][0]["message"]["content"].strip()
+    choice = data["choices"][0]
+    content = (choice["message"].get("content") or "").strip()
+    if choice.get("finish_reason") == "length" or len(content) < 80:
+        raise ValueError("LLM portrait output truncated or incomplete")
     if content.startswith("```"):
         lines = [ln for ln in content.splitlines() if not ln.strip().startswith("```")]
         content = "\n".join(lines).strip()
@@ -265,6 +297,7 @@ def render_portrait_block(
             body.strip(),
             "",
             "- **快速恢复入口 (Quick Routes):** 意图 `_aiHumanInteract/intent/structure/graph.json` · "
+            "规范 `_aiHumanInteract/specs/structure/graph.json` · "
             "规划 `_aiHumanInteract/plan/structure/graph.json` · "
             "知识债 `_aiHumanInteract/knowledge-debt/structure/graph.json` · "
             "脚本 `_aiHumanInteract/scripts/structure/graph.json` · "

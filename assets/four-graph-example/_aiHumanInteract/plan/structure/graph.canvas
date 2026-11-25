@@ -63,7 +63,7 @@
     {
       "id": "plan-WP-001",
       "type": "text",
-      "x": -1250,
+      "x": -1510,
       "y": 1260,
       "width": 420,
       "height": 240,
@@ -73,7 +73,7 @@
     {
       "id": "plan-WP-002",
       "type": "text",
-      "x": -730,
+      "x": -990,
       "y": 1260,
       "width": 420,
       "height": 240,
@@ -83,7 +83,7 @@
     {
       "id": "plan-WP-003",
       "type": "text",
-      "x": -210,
+      "x": -470,
       "y": 1260,
       "width": 420,
       "height": 240,
@@ -93,7 +93,7 @@
     {
       "id": "plan-WP-004",
       "type": "text",
-      "x": 310,
+      "x": 50,
       "y": 1260,
       "width": 420,
       "height": 240,
@@ -103,12 +103,22 @@
     {
       "id": "plan-WP-005",
       "type": "text",
-      "x": 830,
+      "x": 570,
       "y": 1260,
       "width": 420,
       "height": 240,
       "color": "5",
       "text": "## [[_aiHumanInteract/plan/work-package/WP-005.md|WP-005 · 构建追加式事件溯源回放审计器（受 KD-002 书签约束）]]\n\n**Level:** `work-package` · **Status:** `proposed`\n**Updated:** 2026-11-24\n\n在确有跨版本严格回放需求时提供谱峰变更事件日志重放。"
+    },
+    {
+      "id": "plan-WP-006",
+      "type": "text",
+      "x": 1090,
+      "y": 1260,
+      "width": 420,
+      "height": 240,
+      "color": "4",
+      "text": "## [[_aiHumanInteract/plan/work-package/WP-006.md|WP-006 · 端到端验证直接画布会话与三态分拣契约]]\n\n**Level:** `work-package` · **Status:** `done`\n**Updated:** 2026-11-24\n\n通过自动化回归用例验证直接谱峰标记与知识债书签触发行为。"
     }
   ],
   "edges": [
@@ -121,6 +131,36 @@
       "toSide": "left",
       "toFloating": false,
       "label": "alternative_of",
+      "color": "5",
+      "styleAttributes": {
+        "pathfindingMethod": "square",
+        "strokeStyle": "dashed"
+      }
+    },
+    {
+      "id": "conflicts_with-WP-003--WP-005--WP-003",
+      "fromNode": "plan-WP-003",
+      "fromSide": "right",
+      "fromFloating": false,
+      "toNode": "plan-WP-005",
+      "toSide": "left",
+      "toFloating": false,
+      "label": "conflicts_with",
+      "color": "5",
+      "styleAttributes": {
+        "pathfindingMethod": "square",
+        "strokeStyle": "dashed"
+      }
+    },
+    {
+      "id": "conflicts_with-WP-005--WP-003--WP-005",
+      "fromNode": "plan-WP-005",
+      "fromSide": "right",
+      "fromFloating": false,
+      "toNode": "plan-WP-003",
+      "toSide": "left",
+      "toFloating": false,
+      "label": "conflicts_with",
       "color": "5",
       "styleAttributes": {
         "pathfindingMethod": "square",
@@ -233,6 +273,21 @@
       }
     },
     {
+      "id": "decomposes_to-ST-001--WP-006--WP-006",
+      "fromNode": "plan-ST-001",
+      "fromSide": "bottom",
+      "fromFloating": false,
+      "toNode": "plan-WP-006",
+      "toSide": "top",
+      "toFloating": false,
+      "label": "decomposes_to",
+      "color": "6",
+      "styleAttributes": {
+        "pathfindingMethod": "square",
+        "strokeStyle": "solid"
+      }
+    },
+    {
       "id": "decomposes_to-ST-002--WP-004--WP-004",
       "fromNode": "plan-ST-002",
       "fromSide": "bottom",
@@ -278,11 +333,41 @@
       }
     },
     {
+      "id": "enables-WP-001--WP-004--WP-001",
+      "fromNode": "plan-WP-001",
+      "fromSide": "right",
+      "fromFloating": false,
+      "toNode": "plan-WP-004",
+      "toSide": "left",
+      "toFloating": false,
+      "label": "enables",
+      "color": "5",
+      "styleAttributes": {
+        "pathfindingMethod": "square",
+        "strokeStyle": "dashed"
+      }
+    },
+    {
       "id": "prerequisite_for-WP-001--WP-002--WP-002",
       "fromNode": "plan-WP-001",
       "fromSide": "right",
       "fromFloating": false,
       "toNode": "plan-WP-002",
+      "toSide": "left",
+      "toFloating": false,
+      "label": "prerequisite_for",
+      "color": "5",
+      "styleAttributes": {
+        "pathfindingMethod": "square",
+        "strokeStyle": "dashed"
+      }
+    },
+    {
+      "id": "prerequisite_for-WP-001--WP-006--WP-006",
+      "fromNode": "plan-WP-001",
+      "fromSide": "right",
+      "fromFloating": false,
+      "toNode": "plan-WP-006",
       "toSide": "left",
       "toFloating": false,
       "label": "prerequisite_for",
@@ -316,6 +401,36 @@
       "toSide": "left",
       "toFloating": false,
       "label": "supersedes",
+      "color": "5",
+      "styleAttributes": {
+        "pathfindingMethod": "square",
+        "strokeStyle": "dashed"
+      }
+    },
+    {
+      "id": "validates-WP-006--WP-001--WP-006",
+      "fromNode": "plan-WP-006",
+      "fromSide": "right",
+      "fromFloating": false,
+      "toNode": "plan-WP-001",
+      "toSide": "left",
+      "toFloating": false,
+      "label": "validates",
+      "color": "5",
+      "styleAttributes": {
+        "pathfindingMethod": "square",
+        "strokeStyle": "dashed"
+      }
+    },
+    {
+      "id": "validates-WP-006--WP-002--WP-006",
+      "fromNode": "plan-WP-006",
+      "fromSide": "right",
+      "fromFloating": false,
+      "toNode": "plan-WP-002",
+      "toSide": "left",
+      "toFloating": false,
+      "label": "validates",
       "color": "5",
       "styleAttributes": {
         "pathfindingMethod": "square",

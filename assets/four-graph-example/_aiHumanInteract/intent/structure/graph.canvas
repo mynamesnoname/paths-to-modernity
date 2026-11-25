@@ -29,6 +29,26 @@
       "height": 240,
       "color": "3",
       "text": "## [[_aiHumanInteract/intent/nodes/INT-003.md|INT-003 · 跨会话保持谱峰特征可寻址与历史审计]]\n\n> 下周回来继续看同一组光谱时，不管是键盘快捷键还是 Agent 都要能直接指到同一个谱峰特征。\n\n- **同一谱峰可寻址身份** (`resolved`)\n- **历史状态回放粒度** (`ambiguous`)"
+    },
+    {
+      "id": "intent-INT-004",
+      "type": "text",
+      "x": 0,
+      "y": 300,
+      "width": 400,
+      "height": 240,
+      "color": "3",
+      "text": "## [[_aiHumanInteract/intent/nodes/INT-004.md|INT-004 · 备选意图：对用户完全隐藏底层算法与数据策略]]\n\n> 干脆什么技术词都别给我看，全让 Agent 自己黑盒做主行不行？\n\n- **全黑盒免打扰代理** (`resolved`)"
+    },
+    {
+      "id": "intent-INT-005",
+      "type": "text",
+      "x": 460,
+      "y": 300,
+      "width": 400,
+      "height": 240,
+      "color": "6",
+      "text": "## [[_aiHumanInteract/intent/nodes/INT-005.md|INT-005 · 实证检验直接画布与书签流是否消除伪同意摩擦]]\n\n> 做完第一版后我们要跑一遍真实标注回放，确认真的不用点弹窗也不会漏掉关键技术债。\n\n- **零弹窗回放验收** (`resolved`)"
     }
   ],
   "edges": [
@@ -44,21 +64,21 @@
       "id": "int-edge-1",
       "fromNode": "intent-INT-002",
       "fromSide": "right",
-      "toNode": "intent-INT-001",
+      "toNode": "intent-INT-003",
       "toSide": "left",
-      "label": "refines"
+      "label": "enables"
     },
     {
       "id": "int-edge-2",
-      "fromNode": "intent-INT-001",
+      "fromNode": "intent-INT-002",
       "fromSide": "right",
-      "toNode": "intent-INT-003",
+      "toNode": "intent-INT-004",
       "toSide": "left",
-      "label": "decomposes_intent"
+      "label": "supersedes"
     },
     {
       "id": "int-edge-3",
-      "fromNode": "intent-INT-003",
+      "fromNode": "intent-INT-002",
       "fromSide": "right",
       "toNode": "intent-INT-001",
       "toSide": "left",
@@ -66,6 +86,30 @@
     },
     {
       "id": "int-edge-4",
+      "fromNode": "intent-INT-001",
+      "fromSide": "right",
+      "toNode": "intent-INT-003",
+      "toSide": "left",
+      "label": "decomposes_intent"
+    },
+    {
+      "id": "int-edge-5",
+      "fromNode": "intent-INT-003",
+      "fromSide": "right",
+      "toNode": "intent-INT-004",
+      "toSide": "left",
+      "label": "conflicts_with"
+    },
+    {
+      "id": "int-edge-6",
+      "fromNode": "intent-INT-003",
+      "fromSide": "right",
+      "toNode": "intent-INT-001",
+      "toSide": "left",
+      "label": "refines"
+    },
+    {
+      "id": "int-edge-7",
       "fromNode": "intent-INT-003",
       "fromSide": "right",
       "toNode": "intent-INT-002",
@@ -73,12 +117,68 @@
       "label": "branches_from"
     },
     {
-      "id": "int-edge-5",
+      "id": "int-edge-8",
       "fromNode": "intent-INT-003",
       "fromSide": "right",
       "toNode": "intent-INT-002",
       "toSide": "left",
       "label": "constrains"
+    },
+    {
+      "id": "int-edge-9",
+      "fromNode": "intent-INT-001",
+      "fromSide": "right",
+      "toNode": "intent-INT-004",
+      "toSide": "left",
+      "label": "decomposes_intent"
+    },
+    {
+      "id": "int-edge-10",
+      "fromNode": "intent-INT-004",
+      "fromSide": "right",
+      "toNode": "intent-INT-003",
+      "toSide": "left",
+      "label": "conflicts_with"
+    },
+    {
+      "id": "int-edge-11",
+      "fromNode": "intent-INT-004",
+      "fromSide": "right",
+      "toNode": "intent-INT-002",
+      "toSide": "left",
+      "label": "alternative_of"
+    },
+    {
+      "id": "int-edge-12",
+      "fromNode": "intent-INT-001",
+      "fromSide": "right",
+      "toNode": "intent-INT-005",
+      "toSide": "left",
+      "label": "decomposes_intent"
+    },
+    {
+      "id": "int-edge-13",
+      "fromNode": "intent-INT-002",
+      "fromSide": "right",
+      "toNode": "intent-INT-005",
+      "toSide": "left",
+      "label": "prerequisite_for"
+    },
+    {
+      "id": "int-edge-14",
+      "fromNode": "intent-INT-005",
+      "fromSide": "right",
+      "toNode": "intent-INT-001",
+      "toSide": "left",
+      "label": "validates"
+    },
+    {
+      "id": "int-edge-15",
+      "fromNode": "intent-INT-005",
+      "fromSide": "right",
+      "toNode": "intent-INT-002",
+      "toSide": "left",
+      "label": "validates"
     }
   ]
 }

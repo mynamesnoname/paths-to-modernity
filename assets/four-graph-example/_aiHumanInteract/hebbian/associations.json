@@ -2,87 +2,51 @@
   "schema_version": "paths-to-modernity-hebbian-associative-v1",
   "embedding_backend": "mlx",
   "embedding_model": "mlx-community/Qwen3-Embedding-0.6B-4bit-DWQ",
-  "node_count": 22,
-  "synapse_count": 83,
+  "node_count": 30,
+  "synapse_count": 119,
   "hubs": [
     {
       "id": "WP-001",
       "graph": "plan",
       "title": "实现光谱谱峰直接选中画布与工作台会话入口",
       "degree": 12,
-      "associative_strength": 3.2517,
-      "access_count": 1,
+      "associative_strength": 3.535,
+      "access_count": 0,
       "is_hub": true
     },
     {
-      "id": "INT-003",
-      "graph": "intent",
-      "title": "跨会话保持谱峰特征可寻址与历史审计",
-      "degree": 13,
-      "associative_strength": 3.109,
-      "access_count": 1,
+      "id": "SPEC-001",
+      "graph": "specs",
+      "title": "核心光谱画布零模态阻塞与显式授权铁律",
+      "degree": 12,
+      "associative_strength": 3.4794,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "SPEC-004",
+      "graph": "specs",
+      "title": "三态技术分拣闸门与知识债状态机契约",
+      "degree": 11,
+      "associative_strength": 3.3112,
+      "access_count": 0,
       "is_hub": true
     },
     {
       "id": "MT-001",
       "graph": "plan",
       "title": "建立直接画布交互与认知分拣闸门",
-      "degree": 10,
-      "associative_strength": 2.8033,
-      "access_count": 1,
-      "is_hub": true
-    },
-    {
-      "id": "WP-002",
-      "graph": "plan",
-      "title": "采用显式三态技术分拣闸门连接知识债书签",
-      "degree": 10,
-      "associative_strength": 2.5053,
-      "access_count": 1,
-      "is_hub": true
-    },
-    {
-      "id": "LT-001",
-      "graph": "plan",
-      "title": "交付低摩擦、可追溯的科学光谱协同工作台",
-      "degree": 10,
-      "associative_strength": 2.4114,
-      "access_count": 1,
-      "is_hub": true
-    },
-    {
-      "id": "INT-002",
-      "graph": "intent",
-      "title": "对未理解技术采用三态分拣与可回溯知识债书签",
-      "degree": 10,
-      "associative_strength": 2.3549,
-      "access_count": 1,
-      "is_hub": true
-    },
-    {
-      "id": "INT-001",
-      "graph": "intent",
-      "title": "让科学光谱 Agent 交互更快且具备直接操作感",
-      "degree": 9,
-      "associative_strength": 2.146,
-      "access_count": 1,
-      "is_hub": true
-    },
-    {
-      "id": "ST-001",
-      "graph": "plan",
-      "title": "落地直接操作画布与三态技术分拣核心",
-      "degree": 8,
-      "associative_strength": 2.1179,
+      "degree": 11,
+      "associative_strength": 3.1542,
       "access_count": 0,
       "is_hub": true
     },
     {
-      "id": "MT-002",
+      "id": "WP-006",
       "graph": "plan",
-      "title": "实现跨会话谱峰持久存储与可选审计回放",
-      "degree": 7,
-      "associative_strength": 2.087,
+      "title": "端到端验证直接画布会话与三态分拣契约",
+      "degree": 10,
+      "associative_strength": 3.0125,
       "access_count": 0,
       "is_hub": true
     },
@@ -90,8 +54,35 @@
       "id": "SCR:src/workbench_api.py",
       "graph": "scripts",
       "title": "src/workbench_api.py",
-      "degree": 7,
-      "associative_strength": 2.035,
+      "degree": 10,
+      "associative_strength": 3.0115,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "INT-002",
+      "graph": "intent",
+      "title": "对未理解技术采用三态分拣与可回溯知识债书签",
+      "degree": 9,
+      "associative_strength": 2.6149,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "SPEC-003",
+      "graph": "specs",
+      "title": "建筑极简柔和视觉与模块单向解耦开发标准",
+      "degree": 9,
+      "associative_strength": 2.6055,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "SCR:src/triage_gate.py",
+      "graph": "scripts",
+      "title": "src/triage_gate.py",
+      "degree": 9,
+      "associative_strength": 2.5816,
       "access_count": 0,
       "is_hub": true
     },
@@ -99,8 +90,107 @@
       "id": "SCR:src/spectral_store.py",
       "graph": "scripts",
       "title": "src/spectral_store.py",
+      "degree": 9,
+      "associative_strength": 2.5451,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "SCR:web/SpectralCanvas.ts",
+      "graph": "scripts",
+      "title": "web/SpectralCanvas.ts",
+      "degree": 9,
+      "associative_strength": 2.5267,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "ST-001",
+      "graph": "plan",
+      "title": "落地直接操作画布与三态技术分拣核心",
+      "degree": 9,
+      "associative_strength": 2.5143,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "INT-003",
+      "graph": "intent",
+      "title": "跨会话保持谱峰特征可寻址与历史审计",
+      "degree": 9,
+      "associative_strength": 2.4731,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "WP-002",
+      "graph": "plan",
+      "title": "采用显式三态技术分拣闸门连接知识债书签",
+      "degree": 8,
+      "associative_strength": 2.4479,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "SCR:tests/test_workbench.py",
+      "graph": "scripts",
+      "title": "tests/test_workbench.py",
+      "degree": 8,
+      "associative_strength": 2.4426,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "MT-002",
+      "graph": "plan",
+      "title": "实现跨会话谱峰持久存储与可选审计回放",
+      "degree": 8,
+      "associative_strength": 2.4239,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "KD-002",
+      "graph": "knowledge_debt",
+      "title": "Append-Only Event Sourcing 状态事件溯源存储",
+      "degree": 8,
+      "associative_strength": 2.2086,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "INT-001",
+      "graph": "intent",
+      "title": "让科学光谱 Agent 交互更快且具备直接操作感",
       "degree": 7,
-      "associative_strength": 1.8898,
+      "associative_strength": 2.0574,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "KD-001",
+      "graph": "knowledge_debt",
+      "title": "Hebbian Spreading Activation (Base + Flip 双路激活检索)",
+      "degree": 8,
+      "associative_strength": 1.9914,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "SPEC-002",
+      "graph": "specs",
+      "title": "统一谱峰可寻址标识词典 (PeakHandle)",
+      "degree": 6,
+      "associative_strength": 1.92,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "WP-004",
+      "graph": "plan",
+      "title": "落地轻量键值谱峰特征持久存储",
+      "degree": 6,
+      "associative_strength": 1.8956,
       "access_count": 0,
       "is_hub": true
     },
@@ -109,52 +199,25 @@
       "graph": "plan",
       "title": "构建谱峰存储与审计扩展点",
       "degree": 6,
-      "associative_strength": 1.8783,
+      "associative_strength": 1.8935,
       "access_count": 0,
       "is_hub": true
     },
     {
-      "id": "KD-002",
-      "graph": "knowledge_debt",
-      "title": "Append-Only Event Sourcing 状态事件溯源存储",
+      "id": "LT-001",
+      "graph": "plan",
+      "title": "交付低摩擦、可追溯的科学光谱协同工作台",
+      "degree": 6,
+      "associative_strength": 1.718,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "INT-005",
+      "graph": "intent",
+      "title": "实证检验直接画布与书签流是否消除伪同意摩擦",
       "degree": 7,
-      "associative_strength": 1.8734,
-      "access_count": 0,
-      "is_hub": true
-    },
-    {
-      "id": "SCR:src/triage_gate.py",
-      "graph": "scripts",
-      "title": "src/triage_gate.py",
-      "degree": 6,
-      "associative_strength": 1.6085,
-      "access_count": 0,
-      "is_hub": true
-    },
-    {
-      "id": "WP-003",
-      "graph": "plan",
-      "title": "备选方案：基于启发式风险分静默跳过技术声明",
-      "degree": 8,
-      "associative_strength": 1.6044,
-      "access_count": 1,
-      "is_hub": true
-    },
-    {
-      "id": "WP-004",
-      "graph": "plan",
-      "title": "落地轻量键值谱峰特征持久存储",
-      "degree": 5,
-      "associative_strength": 1.5629,
-      "access_count": 0,
-      "is_hub": true
-    },
-    {
-      "id": "SCR:web/SpectralCanvas.ts",
-      "graph": "scripts",
-      "title": "web/SpectralCanvas.ts",
-      "degree": 6,
-      "associative_strength": 1.5541,
+      "associative_strength": 1.5699,
       "access_count": 0,
       "is_hub": true
     },
@@ -163,16 +226,7 @@
       "graph": "plan",
       "title": "构建追加式事件溯源回放审计器（受 KD-002 书签约束）",
       "degree": 5,
-      "associative_strength": 1.5469,
-      "access_count": 0,
-      "is_hub": true
-    },
-    {
-      "id": "KD-001",
-      "graph": "knowledge_debt",
-      "title": "Hebbian Spreading Activation (Base + Flip 双路激活检索)",
-      "degree": 6,
-      "associative_strength": 1.5218,
+      "associative_strength": 1.5595,
       "access_count": 0,
       "is_hub": true
     },
@@ -181,16 +235,16 @@
       "graph": "scripts",
       "title": "src/event_replay_audit.py",
       "degree": 5,
-      "associative_strength": 1.4402,
+      "associative_strength": 1.4566,
       "access_count": 0,
       "is_hub": true
     },
     {
-      "id": "SCR:tests/test_workbench.py",
-      "graph": "scripts",
-      "title": "tests/test_workbench.py",
+      "id": "WP-003",
+      "graph": "plan",
+      "title": "备选方案：基于启发式风险分静默跳过技术声明",
       "degree": 5,
-      "associative_strength": 1.3005,
+      "associative_strength": 1.3749,
       "access_count": 0,
       "is_hub": true
     },
@@ -198,8 +252,26 @@
       "id": "KD-003",
       "graph": "knowledge_debt",
       "title": "Apple Silicon MLX 4-bit 端侧量化嵌入 (Qwen3-Embedding-0.6B)",
-      "degree": 4,
-      "associative_strength": 1.0861,
+      "degree": 6,
+      "associative_strength": 1.3056,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "INT-004",
+      "graph": "intent",
+      "title": "备选意图：对用户完全隐藏底层算法与数据策略",
+      "degree": 5,
+      "associative_strength": 1.2947,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "SPEC-005",
+      "graph": "specs",
+      "title": "废止旧规范：按内部风险分静默省略技术披露",
+      "degree": 5,
+      "associative_strength": 1.1843,
       "access_count": 0,
       "is_hub": true
     }
@@ -210,79 +282,43 @@
       "graph": "plan",
       "title": "实现光谱谱峰直接选中画布与工作台会话入口",
       "degree": 12,
-      "associative_strength": 3.2517,
-      "access_count": 1,
+      "associative_strength": 3.535,
+      "access_count": 0,
       "is_hub": true
     },
     {
-      "id": "INT-003",
-      "graph": "intent",
-      "title": "跨会话保持谱峰特征可寻址与历史审计",
-      "degree": 13,
-      "associative_strength": 3.109,
-      "access_count": 1,
+      "id": "SPEC-001",
+      "graph": "specs",
+      "title": "核心光谱画布零模态阻塞与显式授权铁律",
+      "degree": 12,
+      "associative_strength": 3.4794,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "SPEC-004",
+      "graph": "specs",
+      "title": "三态技术分拣闸门与知识债状态机契约",
+      "degree": 11,
+      "associative_strength": 3.3112,
+      "access_count": 0,
       "is_hub": true
     },
     {
       "id": "MT-001",
       "graph": "plan",
       "title": "建立直接画布交互与认知分拣闸门",
-      "degree": 10,
-      "associative_strength": 2.8033,
-      "access_count": 1,
-      "is_hub": true
-    },
-    {
-      "id": "WP-002",
-      "graph": "plan",
-      "title": "采用显式三态技术分拣闸门连接知识债书签",
-      "degree": 10,
-      "associative_strength": 2.5053,
-      "access_count": 1,
-      "is_hub": true
-    },
-    {
-      "id": "LT-001",
-      "graph": "plan",
-      "title": "交付低摩擦、可追溯的科学光谱协同工作台",
-      "degree": 10,
-      "associative_strength": 2.4114,
-      "access_count": 1,
-      "is_hub": true
-    },
-    {
-      "id": "INT-002",
-      "graph": "intent",
-      "title": "对未理解技术采用三态分拣与可回溯知识债书签",
-      "degree": 10,
-      "associative_strength": 2.3549,
-      "access_count": 1,
-      "is_hub": true
-    },
-    {
-      "id": "INT-001",
-      "graph": "intent",
-      "title": "让科学光谱 Agent 交互更快且具备直接操作感",
-      "degree": 9,
-      "associative_strength": 2.146,
-      "access_count": 1,
-      "is_hub": true
-    },
-    {
-      "id": "ST-001",
-      "graph": "plan",
-      "title": "落地直接操作画布与三态技术分拣核心",
-      "degree": 8,
-      "associative_strength": 2.1179,
+      "degree": 11,
+      "associative_strength": 3.1542,
       "access_count": 0,
       "is_hub": true
     },
     {
-      "id": "MT-002",
+      "id": "WP-006",
       "graph": "plan",
-      "title": "实现跨会话谱峰持久存储与可选审计回放",
-      "degree": 7,
-      "associative_strength": 2.087,
+      "title": "端到端验证直接画布会话与三态分拣契约",
+      "degree": 10,
+      "associative_strength": 3.0125,
       "access_count": 0,
       "is_hub": true
     },
@@ -290,8 +326,35 @@
       "id": "SCR:src/workbench_api.py",
       "graph": "scripts",
       "title": "src/workbench_api.py",
-      "degree": 7,
-      "associative_strength": 2.035,
+      "degree": 10,
+      "associative_strength": 3.0115,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "INT-002",
+      "graph": "intent",
+      "title": "对未理解技术采用三态分拣与可回溯知识债书签",
+      "degree": 9,
+      "associative_strength": 2.6149,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "SPEC-003",
+      "graph": "specs",
+      "title": "建筑极简柔和视觉与模块单向解耦开发标准",
+      "degree": 9,
+      "associative_strength": 2.6055,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "SCR:src/triage_gate.py",
+      "graph": "scripts",
+      "title": "src/triage_gate.py",
+      "degree": 9,
+      "associative_strength": 2.5816,
       "access_count": 0,
       "is_hub": true
     },
@@ -299,8 +362,107 @@
       "id": "SCR:src/spectral_store.py",
       "graph": "scripts",
       "title": "src/spectral_store.py",
+      "degree": 9,
+      "associative_strength": 2.5451,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "SCR:web/SpectralCanvas.ts",
+      "graph": "scripts",
+      "title": "web/SpectralCanvas.ts",
+      "degree": 9,
+      "associative_strength": 2.5267,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "ST-001",
+      "graph": "plan",
+      "title": "落地直接操作画布与三态技术分拣核心",
+      "degree": 9,
+      "associative_strength": 2.5143,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "INT-003",
+      "graph": "intent",
+      "title": "跨会话保持谱峰特征可寻址与历史审计",
+      "degree": 9,
+      "associative_strength": 2.4731,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "WP-002",
+      "graph": "plan",
+      "title": "采用显式三态技术分拣闸门连接知识债书签",
+      "degree": 8,
+      "associative_strength": 2.4479,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "SCR:tests/test_workbench.py",
+      "graph": "scripts",
+      "title": "tests/test_workbench.py",
+      "degree": 8,
+      "associative_strength": 2.4426,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "MT-002",
+      "graph": "plan",
+      "title": "实现跨会话谱峰持久存储与可选审计回放",
+      "degree": 8,
+      "associative_strength": 2.4239,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "KD-002",
+      "graph": "knowledge_debt",
+      "title": "Append-Only Event Sourcing 状态事件溯源存储",
+      "degree": 8,
+      "associative_strength": 2.2086,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "INT-001",
+      "graph": "intent",
+      "title": "让科学光谱 Agent 交互更快且具备直接操作感",
       "degree": 7,
-      "associative_strength": 1.8898,
+      "associative_strength": 2.0574,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "KD-001",
+      "graph": "knowledge_debt",
+      "title": "Hebbian Spreading Activation (Base + Flip 双路激活检索)",
+      "degree": 8,
+      "associative_strength": 1.9914,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "SPEC-002",
+      "graph": "specs",
+      "title": "统一谱峰可寻址标识词典 (PeakHandle)",
+      "degree": 6,
+      "associative_strength": 1.92,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "WP-004",
+      "graph": "plan",
+      "title": "落地轻量键值谱峰特征持久存储",
+      "degree": 6,
+      "associative_strength": 1.8956,
       "access_count": 0,
       "is_hub": true
     },
@@ -309,52 +471,25 @@
       "graph": "plan",
       "title": "构建谱峰存储与审计扩展点",
       "degree": 6,
-      "associative_strength": 1.8783,
+      "associative_strength": 1.8935,
       "access_count": 0,
       "is_hub": true
     },
     {
-      "id": "KD-002",
-      "graph": "knowledge_debt",
-      "title": "Append-Only Event Sourcing 状态事件溯源存储",
+      "id": "LT-001",
+      "graph": "plan",
+      "title": "交付低摩擦、可追溯的科学光谱协同工作台",
+      "degree": 6,
+      "associative_strength": 1.718,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "INT-005",
+      "graph": "intent",
+      "title": "实证检验直接画布与书签流是否消除伪同意摩擦",
       "degree": 7,
-      "associative_strength": 1.8734,
-      "access_count": 0,
-      "is_hub": true
-    },
-    {
-      "id": "SCR:src/triage_gate.py",
-      "graph": "scripts",
-      "title": "src/triage_gate.py",
-      "degree": 6,
-      "associative_strength": 1.6085,
-      "access_count": 0,
-      "is_hub": true
-    },
-    {
-      "id": "WP-003",
-      "graph": "plan",
-      "title": "备选方案：基于启发式风险分静默跳过技术声明",
-      "degree": 8,
-      "associative_strength": 1.6044,
-      "access_count": 1,
-      "is_hub": true
-    },
-    {
-      "id": "WP-004",
-      "graph": "plan",
-      "title": "落地轻量键值谱峰特征持久存储",
-      "degree": 5,
-      "associative_strength": 1.5629,
-      "access_count": 0,
-      "is_hub": true
-    },
-    {
-      "id": "SCR:web/SpectralCanvas.ts",
-      "graph": "scripts",
-      "title": "web/SpectralCanvas.ts",
-      "degree": 6,
-      "associative_strength": 1.5541,
+      "associative_strength": 1.5699,
       "access_count": 0,
       "is_hub": true
     },
@@ -363,16 +498,7 @@
       "graph": "plan",
       "title": "构建追加式事件溯源回放审计器（受 KD-002 书签约束）",
       "degree": 5,
-      "associative_strength": 1.5469,
-      "access_count": 0,
-      "is_hub": true
-    },
-    {
-      "id": "KD-001",
-      "graph": "knowledge_debt",
-      "title": "Hebbian Spreading Activation (Base + Flip 双路激活检索)",
-      "degree": 6,
-      "associative_strength": 1.5218,
+      "associative_strength": 1.5595,
       "access_count": 0,
       "is_hub": true
     },
@@ -381,16 +507,16 @@
       "graph": "scripts",
       "title": "src/event_replay_audit.py",
       "degree": 5,
-      "associative_strength": 1.4402,
+      "associative_strength": 1.4566,
       "access_count": 0,
       "is_hub": true
     },
     {
-      "id": "SCR:tests/test_workbench.py",
-      "graph": "scripts",
-      "title": "tests/test_workbench.py",
+      "id": "WP-003",
+      "graph": "plan",
+      "title": "备选方案：基于启发式风险分静默跳过技术声明",
       "degree": 5,
-      "associative_strength": 1.3005,
+      "associative_strength": 1.3749,
       "access_count": 0,
       "is_hub": true
     },
@@ -398,108 +524,56 @@
       "id": "KD-003",
       "graph": "knowledge_debt",
       "title": "Apple Silicon MLX 4-bit 端侧量化嵌入 (Qwen3-Embedding-0.6B)",
-      "degree": 4,
-      "associative_strength": 1.0861,
+      "degree": 6,
+      "associative_strength": 1.3056,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "INT-004",
+      "graph": "intent",
+      "title": "备选意图：对用户完全隐藏底层算法与数据策略",
+      "degree": 5,
+      "associative_strength": 1.2947,
+      "access_count": 0,
+      "is_hub": true
+    },
+    {
+      "id": "SPEC-005",
+      "graph": "specs",
+      "title": "废止旧规范：按内部风险分静默省略技术披露",
+      "degree": 5,
+      "associative_strength": 1.1843,
       "access_count": 0,
       "is_hub": true
     }
   ],
-  "access_counts": {
-    "INT-001": 1,
-    "INT-002": 1,
-    "INT-003": 1,
-    "LT-001": 1,
-    "MT-001": 1,
-    "WP-001": 1,
-    "WP-002": 1,
-    "WP-003": 1
-  },
-  "last_activated": {
-    "INT-001": "2026-11-24T11:56:38",
-    "INT-002": "2026-11-24T11:56:38",
-    "INT-003": "2026-11-24T11:56:38",
-    "LT-001": "2026-11-24T11:56:38",
-    "MT-001": "2026-11-24T11:56:38",
-    "WP-001": "2026-11-24T11:56:38",
-    "WP-002": "2026-11-24T11:56:38",
-    "WP-003": "2026-11-24T11:56:38"
-  },
-  "coactivation_events": [
-    {
-      "timestamp": "2026-11-24T11:56:38",
-      "reason": "query:让科学 Agent 更快，避免盲目点 Agree 技术审批",
-      "nodes": [
-        "INT-001",
-        "LT-001",
-        "WP-003",
-        "INT-002",
-        "WP-002",
-        "INT-003",
-        "WP-001",
-        "MT-001"
-      ],
-      "pairs_reinforced": 28
-    }
-  ],
+  "access_counts": {},
+  "last_activated": {},
+  "coactivation_events": [],
   "synapses": [
-    {
-      "from": "INT-001",
-      "to": "LT-001",
-      "weight": 0.3794,
-      "coactivations": 1,
-      "similarity": 0.7494,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
-      "from": "INT-001",
-      "to": "WP-001",
-      "weight": 0.3774,
-      "coactivations": 1,
-      "similarity": 0.6709,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
-      "from": "INT-002",
-      "to": "MT-001",
-      "weight": 0.3774,
-      "coactivations": 1,
-      "similarity": 0.5933,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
-      "from": "INT-002",
-      "to": "WP-002",
-      "weight": 0.3774,
-      "coactivations": 1,
-      "similarity": 0.7144,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
-      "from": "INT-002",
-      "to": "WP-003",
-      "weight": 0.3774,
-      "coactivations": 1,
-      "similarity": 0.5992,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
     {
       "from": "SCR:src/workbench_api.py",
       "to": "SCR:tests/test_workbench.py",
-      "weight": 0.3454,
+      "weight": 0.3482,
       "coactivations": 0,
       "similarity": 0.7843,
       "origin": "semantic_seed",
       "provenance": "associative"
     },
     {
+      "from": "SPEC-004",
+      "to": "WP-002",
+      "weight": 0.3482,
+      "coactivations": 0,
+      "similarity": 0.7843,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
       "from": "INT-003",
       "to": "MT-002",
-      "weight": 0.3435,
+      "weight": 0.3463,
       "coactivations": 0,
       "similarity": 0.7817,
       "origin": "cross_graph_seed",
@@ -508,7 +582,7 @@
     {
       "from": "MT-001",
       "to": "ST-001",
-      "weight": 0.3435,
+      "weight": 0.3463,
       "coactivations": 0,
       "similarity": 0.7817,
       "origin": "semantic_seed",
@@ -517,61 +591,43 @@
     {
       "from": "MT-002",
       "to": "ST-002",
-      "weight": 0.3398,
+      "weight": 0.3425,
       "coactivations": 0,
       "similarity": 0.7766,
       "origin": "semantic_seed",
       "provenance": "associative"
     },
     {
-      "from": "MT-001",
-      "to": "WP-002",
-      "weight": 0.3323,
-      "coactivations": 1,
-      "similarity": 0.6861,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
-      "from": "MT-001",
-      "to": "WP-001",
-      "weight": 0.3315,
-      "coactivations": 1,
-      "similarity": 0.685,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
       "from": "SCR:src/spectral_store.py",
       "to": "WP-004",
-      "weight": 0.3281,
+      "weight": 0.3307,
       "coactivations": 0,
       "similarity": 0.761,
       "origin": "cross_graph_seed",
       "provenance": "associative"
     },
     {
-      "from": "INT-001",
-      "to": "INT-003",
-      "weight": 0.3221,
-      "coactivations": 1,
-      "similarity": 0.6722,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
       "from": "ST-002",
       "to": "WP-005",
-      "weight": 0.3204,
+      "weight": 0.323,
       "coactivations": 0,
       "similarity": 0.7506,
       "origin": "semantic_seed",
       "provenance": "associative"
     },
     {
+      "from": "INT-001",
+      "to": "LT-001",
+      "weight": 0.322,
+      "coactivations": 0,
+      "similarity": 0.7494,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
       "from": "ST-002",
       "to": "WP-004",
-      "weight": 0.3184,
+      "weight": 0.321,
       "coactivations": 0,
       "similarity": 0.748,
       "origin": "semantic_seed",
@@ -580,25 +636,97 @@
     {
       "from": "INT-001",
       "to": "KD-003",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 1,
       "similarity": 0.3726,
       "origin": "cross_graph_link",
       "provenance": "associative"
     },
     {
+      "from": "INT-001",
+      "to": "SPEC-001",
+      "weight": 0.32,
+      "coactivations": 0,
+      "similarity": 0.5911,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "INT-001",
+      "to": "SPEC-003",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.4632,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
+      "from": "INT-001",
+      "to": "WP-001",
+      "weight": 0.32,
+      "coactivations": 0,
+      "similarity": 0.6709,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
       "from": "INT-002",
       "to": "KD-001",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 0,
       "similarity": 0.5399,
       "origin": "cross_graph_seed",
       "provenance": "associative"
     },
     {
+      "from": "INT-002",
+      "to": "MT-001",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.5933,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
+      "from": "INT-002",
+      "to": "SPEC-001",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.4721,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
+      "from": "INT-002",
+      "to": "SPEC-004",
+      "weight": 0.32,
+      "coactivations": 0,
+      "similarity": 0.6568,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "INT-002",
+      "to": "WP-002",
+      "weight": 0.32,
+      "coactivations": 0,
+      "similarity": 0.7144,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "INT-002",
+      "to": "WP-003",
+      "weight": 0.32,
+      "coactivations": 0,
+      "similarity": 0.5992,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
       "from": "INT-003",
       "to": "KD-002",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 0,
       "similarity": 0.6178,
       "origin": "cross_graph_seed",
@@ -606,8 +734,17 @@
     },
     {
       "from": "INT-003",
+      "to": "SPEC-002",
+      "weight": 0.32,
+      "coactivations": 0,
+      "similarity": 0.6286,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "INT-003",
       "to": "WP-004",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 0,
       "similarity": 0.633,
       "origin": "cross_graph_seed",
@@ -616,16 +753,52 @@
     {
       "from": "INT-003",
       "to": "WP-005",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 0,
       "similarity": 0.6405,
       "origin": "cross_graph_seed",
       "provenance": "associative"
     },
     {
+      "from": "INT-004",
+      "to": "SPEC-005",
+      "weight": 0.32,
+      "coactivations": 0,
+      "similarity": 0.623,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "INT-004",
+      "to": "WP-003",
+      "weight": 0.32,
+      "coactivations": 0,
+      "similarity": 0.6558,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "INT-005",
+      "to": "SPEC-004",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.4941,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
+      "from": "INT-005",
+      "to": "WP-006",
+      "weight": 0.32,
+      "coactivations": 0,
+      "similarity": 0.7176,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
       "from": "KD-001",
       "to": "SCR:src/triage_gate.py",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 1,
       "similarity": 0.4515,
       "origin": "cross_graph_link",
@@ -634,7 +807,7 @@
     {
       "from": "KD-001",
       "to": "SCR:src/workbench_api.py",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 1,
       "similarity": 0.3996,
       "origin": "cross_graph_link",
@@ -642,26 +815,35 @@
     },
     {
       "from": "KD-001",
+      "to": "SPEC-004",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.4414,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
+      "from": "KD-001",
       "to": "WP-002",
-      "weight": 0.3174,
-      "coactivations": 0,
+      "weight": 0.32,
+      "coactivations": 1,
       "similarity": 0.4761,
-      "origin": "cross_graph_seed",
+      "origin": "cross_graph_link",
       "provenance": "associative"
     },
     {
       "from": "KD-002",
       "to": "SCR:src/event_replay_audit.py",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 0,
-      "similarity": 0.5886,
+      "similarity": 0.5869,
       "origin": "cross_graph_seed",
       "provenance": "associative"
     },
     {
       "from": "KD-002",
       "to": "SCR:src/spectral_store.py",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 1,
       "similarity": 0.5403,
       "origin": "cross_graph_link",
@@ -669,8 +851,17 @@
     },
     {
       "from": "KD-002",
+      "to": "SPEC-004",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.4543,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
+      "from": "KD-002",
       "to": "WP-005",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 0,
       "similarity": 0.7171,
       "origin": "cross_graph_seed",
@@ -679,7 +870,7 @@
     {
       "from": "KD-003",
       "to": "SCR:src/workbench_api.py",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 1,
       "similarity": 0.357,
       "origin": "cross_graph_link",
@@ -688,7 +879,7 @@
     {
       "from": "KD-003",
       "to": "WP-001",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 1,
       "similarity": 0.3526,
       "origin": "cross_graph_link",
@@ -697,16 +888,25 @@
     {
       "from": "LT-001",
       "to": "SCR:src/workbench_api.py",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 1,
       "similarity": 0.5452,
       "origin": "cross_graph_link",
       "provenance": "associative"
     },
     {
+      "from": "LT-001",
+      "to": "SPEC-001",
+      "weight": 0.32,
+      "coactivations": 0,
+      "similarity": 0.6252,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
       "from": "MT-001",
       "to": "SCR:src/triage_gate.py",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 1,
       "similarity": 0.483,
       "origin": "cross_graph_link",
@@ -715,52 +915,88 @@
     {
       "from": "MT-001",
       "to": "SCR:web/SpectralCanvas.ts",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 1,
       "similarity": 0.5316,
       "origin": "cross_graph_link",
       "provenance": "associative"
     },
     {
+      "from": "MT-001",
+      "to": "SPEC-003",
+      "weight": 0.32,
+      "coactivations": 0,
+      "similarity": 0.5687,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
       "from": "MT-002",
       "to": "SCR:src/event_replay_audit.py",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 1,
-      "similarity": 0.5418,
+      "similarity": 0.5455,
       "origin": "cross_graph_link",
       "provenance": "associative"
     },
     {
       "from": "MT-002",
       "to": "SCR:src/spectral_store.py",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 1,
       "similarity": 0.5884,
       "origin": "cross_graph_link",
       "provenance": "associative"
     },
     {
+      "from": "MT-002",
+      "to": "SPEC-002",
+      "weight": 0.32,
+      "coactivations": 0,
+      "similarity": 0.5779,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
       "from": "SCR:src/event_replay_audit.py",
       "to": "ST-002",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 0,
-      "similarity": 0.6221,
+      "similarity": 0.6302,
       "origin": "cross_graph_seed",
       "provenance": "associative"
     },
     {
       "from": "SCR:src/event_replay_audit.py",
       "to": "WP-005",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 0,
-      "similarity": 0.673,
+      "similarity": 0.6655,
       "origin": "cross_graph_seed",
       "provenance": "associative"
     },
     {
       "from": "SCR:src/spectral_store.py",
+      "to": "SPEC-002",
+      "weight": 0.32,
+      "coactivations": 0,
+      "similarity": 0.5813,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "SCR:src/spectral_store.py",
+      "to": "SPEC-003",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.4584,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
+      "from": "SCR:src/spectral_store.py",
       "to": "ST-002",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 0,
       "similarity": 0.6332,
       "origin": "cross_graph_seed",
@@ -768,35 +1004,116 @@
     },
     {
       "from": "SCR:src/triage_gate.py",
-      "to": "ST-001",
-      "weight": 0.3174,
+      "to": "SPEC-003",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.4293,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
+      "from": "SCR:src/triage_gate.py",
+      "to": "SPEC-004",
+      "weight": 0.32,
       "coactivations": 0,
-      "similarity": 0.5401,
+      "similarity": 0.6579,
       "origin": "cross_graph_seed",
       "provenance": "associative"
     },
     {
       "from": "SCR:src/triage_gate.py",
+      "to": "ST-001",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.5401,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
+      "from": "SCR:src/triage_gate.py",
       "to": "WP-002",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 0,
       "similarity": 0.662,
       "origin": "cross_graph_seed",
       "provenance": "associative"
     },
     {
+      "from": "SCR:src/triage_gate.py",
+      "to": "WP-006",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.4672,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
+      "from": "SCR:src/workbench_api.py",
+      "to": "SPEC-001",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.4828,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
+      "from": "SCR:src/workbench_api.py",
+      "to": "SPEC-004",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.392,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
       "from": "SCR:src/workbench_api.py",
       "to": "WP-001",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 0,
       "similarity": 0.7135,
       "origin": "cross_graph_seed",
       "provenance": "associative"
     },
     {
+      "from": "SCR:src/workbench_api.py",
+      "to": "WP-006",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.593,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
+      "from": "SCR:tests/test_workbench.py",
+      "to": "SPEC-001",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.4056,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
+      "from": "SCR:tests/test_workbench.py",
+      "to": "SPEC-002",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.3613,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
+      "from": "SCR:tests/test_workbench.py",
+      "to": "SPEC-004",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.4163,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
       "from": "SCR:tests/test_workbench.py",
       "to": "WP-001",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 0,
       "similarity": 0.566,
       "origin": "cross_graph_seed",
@@ -805,16 +1122,52 @@
     {
       "from": "SCR:tests/test_workbench.py",
       "to": "WP-004",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 1,
       "similarity": 0.4565,
       "origin": "cross_graph_link",
       "provenance": "associative"
     },
     {
+      "from": "SCR:tests/test_workbench.py",
+      "to": "WP-006",
+      "weight": 0.32,
+      "coactivations": 0,
+      "similarity": 0.6452,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "SCR:web/SpectralCanvas.ts",
+      "to": "SPEC-001",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.5536,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
+      "from": "SCR:web/SpectralCanvas.ts",
+      "to": "SPEC-002",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.4024,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
+      "from": "SCR:web/SpectralCanvas.ts",
+      "to": "SPEC-003",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.4855,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
       "from": "SCR:web/SpectralCanvas.ts",
       "to": "ST-001",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 1,
       "similarity": 0.5647,
       "origin": "cross_graph_link",
@@ -823,115 +1176,277 @@
     {
       "from": "SCR:web/SpectralCanvas.ts",
       "to": "WP-001",
-      "weight": 0.3174,
+      "weight": 0.32,
       "coactivations": 0,
       "similarity": 0.6843,
       "origin": "cross_graph_seed",
       "provenance": "associative"
     },
     {
-      "from": "LT-001",
+      "from": "SPEC-001",
       "to": "WP-001",
-      "weight": 0.3167,
-      "coactivations": 1,
-      "similarity": 0.665,
-      "origin": "hebbian_coactivation",
+      "weight": 0.32,
+      "coactivations": 0,
+      "similarity": 0.6498,
+      "origin": "cross_graph_seed",
       "provenance": "associative"
     },
     {
-      "from": "LT-001",
-      "to": "MT-001",
-      "weight": 0.3084,
+      "from": "SPEC-001",
+      "to": "WP-002",
+      "weight": 0.32,
       "coactivations": 1,
-      "similarity": 0.6538,
-      "origin": "hebbian_coactivation",
+      "similarity": 0.4785,
+      "origin": "cross_graph_link",
       "provenance": "associative"
     },
     {
-      "from": "WP-002",
+      "from": "SPEC-001",
+      "to": "WP-006",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.5395,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
+      "from": "SPEC-002",
+      "to": "WP-004",
+      "weight": 0.32,
+      "coactivations": 0,
+      "similarity": 0.6179,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "SPEC-003",
+      "to": "ST-001",
+      "weight": 0.32,
+      "coactivations": 0,
+      "similarity": 0.5773,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "SPEC-003",
+      "to": "WP-001",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.5284,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
+      "from": "SPEC-004",
+      "to": "WP-006",
+      "weight": 0.32,
+      "coactivations": 1,
+      "similarity": 0.5551,
+      "origin": "cross_graph_link",
+      "provenance": "associative"
+    },
+    {
+      "from": "SPEC-005",
       "to": "WP-003",
-      "weight": 0.3057,
-      "coactivations": 1,
-      "similarity": 0.6502,
-      "origin": "hebbian_coactivation",
+      "weight": 0.32,
+      "coactivations": 0,
+      "similarity": 0.722,
+      "origin": "cross_graph_seed",
       "provenance": "associative"
     },
     {
-      "from": "INT-003",
-      "to": "WP-001",
-      "weight": 0.3029,
-      "coactivations": 1,
-      "similarity": 0.6465,
-      "origin": "hebbian_coactivation",
+      "from": "INT-002",
+      "to": "INT-004",
+      "weight": 0.3139,
+      "coactivations": 0,
+      "similarity": 0.7386,
+      "origin": "semantic_seed",
       "provenance": "associative"
     },
     {
       "from": "ST-001",
       "to": "WP-002",
-      "weight": 0.2951,
+      "weight": 0.2975,
       "coactivations": 0,
       "similarity": 0.7166,
       "origin": "semantic_seed",
       "provenance": "associative"
     },
     {
-      "from": "INT-003",
-      "to": "LT-001",
-      "weight": 0.2933,
-      "coactivations": 1,
-      "similarity": 0.6336,
-      "origin": "hebbian_coactivation",
+      "from": "ST-001",
+      "to": "WP-006",
+      "weight": 0.2866,
+      "coactivations": 0,
+      "similarity": 0.7021,
+      "origin": "semantic_seed",
       "provenance": "associative"
     },
     {
       "from": "MT-002",
       "to": "WP-004",
-      "weight": 0.2816,
+      "weight": 0.2839,
       "coactivations": 0,
       "similarity": 0.6986,
       "origin": "semantic_seed",
       "provenance": "associative"
     },
     {
+      "from": "WP-001",
+      "to": "WP-006",
+      "weight": 0.2821,
+      "coactivations": 0,
+      "similarity": 0.6962,
+      "origin": "semantic_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "MT-001",
+      "to": "WP-006",
+      "weight": 0.277,
+      "coactivations": 0,
+      "similarity": 0.6893,
+      "origin": "semantic_seed",
+      "provenance": "associative"
+    },
+    {
       "from": "MT-002",
       "to": "WP-005",
-      "weight": 0.2743,
+      "weight": 0.2765,
       "coactivations": 0,
       "similarity": 0.6887,
       "origin": "semantic_seed",
       "provenance": "associative"
     },
     {
+      "from": "MT-001",
+      "to": "WP-002",
+      "weight": 0.2745,
+      "coactivations": 0,
+      "similarity": 0.6861,
+      "origin": "semantic_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "MT-001",
+      "to": "WP-001",
+      "weight": 0.2737,
+      "coactivations": 0,
+      "similarity": 0.685,
+      "origin": "semantic_seed",
+      "provenance": "associative"
+    },
+    {
       "from": "KD-002",
       "to": "ST-002",
-      "weight": 0.2649,
+      "weight": 0.267,
       "coactivations": 0,
       "similarity": 0.676,
       "origin": "cross_graph_seed",
       "provenance": "associative"
     },
     {
+      "from": "INT-001",
+      "to": "INT-003",
+      "weight": 0.2642,
+      "coactivations": 0,
+      "similarity": 0.6722,
+      "origin": "semantic_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "LT-001",
+      "to": "WP-001",
+      "weight": 0.2588,
+      "coactivations": 0,
+      "similarity": 0.665,
+      "origin": "semantic_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "LT-001",
+      "to": "MT-001",
+      "weight": 0.2504,
+      "coactivations": 0,
+      "similarity": 0.6538,
+      "origin": "semantic_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "WP-002",
+      "to": "WP-003",
+      "weight": 0.2477,
+      "coactivations": 0,
+      "similarity": 0.6502,
+      "origin": "semantic_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "LT-001",
+      "to": "WP-006",
+      "weight": 0.2468,
+      "coactivations": 0,
+      "similarity": 0.6491,
+      "origin": "semantic_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "INT-002",
+      "to": "INT-005",
+      "weight": 0.246,
+      "coactivations": 0,
+      "similarity": 0.6479,
+      "origin": "semantic_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "INT-003",
+      "to": "WP-001",
+      "weight": 0.2449,
+      "coactivations": 0,
+      "similarity": 0.6465,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
       "from": "ST-001",
       "to": "WP-001",
-      "weight": 0.2336,
+      "weight": 0.2355,
       "coactivations": 0,
       "similarity": 0.634,
       "origin": "semantic_seed",
       "provenance": "associative"
     },
     {
-      "from": "LT-001",
-      "to": "ST-001",
-      "weight": 0.2289,
+      "from": "INT-005",
+      "to": "MT-001",
+      "weight": 0.2283,
       "coactivations": 0,
-      "similarity": 0.6276,
+      "similarity": 0.6244,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "INT-004",
+      "to": "INT-005",
+      "weight": 0.2243,
+      "coactivations": 0,
+      "similarity": 0.619,
       "origin": "semantic_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "MT-001",
+      "to": "SPEC-001",
+      "weight": 0.224,
+      "coactivations": 0,
+      "similarity": 0.6187,
+      "origin": "cross_graph_seed",
       "provenance": "associative"
     },
     {
       "from": "SCR:src/workbench_api.py",
       "to": "SCR:web/SpectralCanvas.ts",
-      "weight": 0.2157,
+      "weight": 0.2174,
       "coactivations": 0,
       "similarity": 0.6099,
       "origin": "semantic_seed",
@@ -940,25 +1455,25 @@
     {
       "from": "KD-002",
       "to": "MT-002",
-      "weight": 0.213,
+      "weight": 0.2147,
       "coactivations": 0,
       "similarity": 0.6063,
       "origin": "cross_graph_seed",
       "provenance": "associative"
     },
     {
-      "from": "INT-002",
+      "from": "SPEC-004",
       "to": "ST-001",
-      "weight": 0.2114,
+      "weight": 0.2118,
       "coactivations": 0,
-      "similarity": 0.6041,
+      "similarity": 0.6024,
       "origin": "cross_graph_seed",
       "provenance": "associative"
     },
     {
       "from": "INT-003",
       "to": "SCR:src/spectral_store.py",
-      "weight": 0.2087,
+      "weight": 0.2104,
       "coactivations": 0,
       "similarity": 0.6005,
       "origin": "cross_graph_seed",
@@ -967,7 +1482,7 @@
     {
       "from": "SCR:src/spectral_store.py",
       "to": "SCR:src/workbench_api.py",
-      "weight": 0.2043,
+      "weight": 0.2059,
       "coactivations": 0,
       "similarity": 0.5946,
       "origin": "semantic_seed",
@@ -976,196 +1491,97 @@
     {
       "from": "SCR:src/spectral_store.py",
       "to": "SCR:web/SpectralCanvas.ts",
-      "weight": 0.1965,
+      "weight": 0.1981,
       "coactivations": 0,
       "similarity": 0.5841,
       "origin": "semantic_seed",
       "provenance": "associative"
     },
     {
-      "from": "MT-001",
-      "to": "WP-003",
-      "weight": 0.1954,
-      "coactivations": 1,
-      "similarity": 0.502,
-      "origin": "hebbian_coactivation",
+      "from": "SPEC-001",
+      "to": "SPEC-003",
+      "weight": 0.1939,
+      "coactivations": 0,
+      "similarity": 0.5785,
+      "origin": "semantic_seed",
       "provenance": "associative"
     },
     {
       "from": "INT-001",
       "to": "SCR:web/SpectralCanvas.ts",
-      "weight": 0.1897,
+      "weight": 0.1912,
       "coactivations": 0,
       "similarity": 0.5749,
       "origin": "cross_graph_seed",
       "provenance": "associative"
     },
     {
-      "from": "SCR:src/triage_gate.py",
-      "to": "SCR:tests/test_workbench.py",
-      "weight": 0.173,
+      "from": "SPEC-004",
+      "to": "SPEC-005",
+      "weight": 0.1912,
       "coactivations": 0,
-      "similarity": 0.5526,
+      "similarity": 0.5749,
+      "origin": "semantic_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "SPEC-001",
+      "to": "SPEC-005",
+      "weight": 0.1815,
+      "coactivations": 0,
+      "similarity": 0.562,
       "origin": "semantic_seed",
       "provenance": "associative"
     },
     {
       "from": "SCR:src/event_replay_audit.py",
       "to": "ST-001",
-      "weight": 0.1706,
+      "weight": 0.1766,
       "coactivations": 0,
-      "similarity": 0.5493,
+      "similarity": 0.5555,
       "origin": "cross_graph_seed",
       "provenance": "associative"
     },
     {
       "from": "SCR:src/triage_gate.py",
+      "to": "SCR:tests/test_workbench.py",
+      "weight": 0.1744,
+      "coactivations": 0,
+      "similarity": 0.5526,
+      "origin": "semantic_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "SPEC-003",
+      "to": "SPEC-005",
+      "weight": 0.1716,
+      "coactivations": 0,
+      "similarity": 0.5488,
+      "origin": "semantic_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "SCR:src/triage_gate.py",
       "to": "WP-003",
-      "weight": 0.1659,
+      "weight": 0.1672,
       "coactivations": 0,
       "similarity": 0.5429,
       "origin": "cross_graph_seed",
       "provenance": "associative"
     },
     {
-      "from": "LT-001",
-      "to": "SCR:tests/test_workbench.py",
-      "weight": 0.1473,
+      "from": "INT-005",
+      "to": "KD-001",
+      "weight": 0.1372,
       "coactivations": 0,
-      "similarity": 0.5179,
+      "similarity": 0.5029,
       "origin": "cross_graph_seed",
-      "provenance": "associative"
-    },
-    {
-      "from": "INT-001",
-      "to": "INT-002",
-      "weight": 0.14,
-      "coactivations": 1,
-      "similarity": 0.5132,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
-      "from": "INT-001",
-      "to": "MT-001",
-      "weight": 0.14,
-      "coactivations": 1,
-      "similarity": 0.5069,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
-      "from": "INT-001",
-      "to": "WP-002",
-      "weight": 0.14,
-      "coactivations": 1,
-      "similarity": 0.4211,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
-      "from": "INT-001",
-      "to": "WP-003",
-      "weight": 0.14,
-      "coactivations": 1,
-      "similarity": 0.3988,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
-      "from": "INT-002",
-      "to": "INT-003",
-      "weight": 0.14,
-      "coactivations": 1,
-      "similarity": 0.571,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
-      "from": "INT-002",
-      "to": "LT-001",
-      "weight": 0.14,
-      "coactivations": 1,
-      "similarity": 0.5611,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
-      "from": "INT-002",
-      "to": "WP-001",
-      "weight": 0.14,
-      "coactivations": 1,
-      "similarity": 0.4611,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
-      "from": "INT-003",
-      "to": "MT-001",
-      "weight": 0.14,
-      "coactivations": 1,
-      "similarity": 0.5133,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
-      "from": "INT-003",
-      "to": "WP-002",
-      "weight": 0.14,
-      "coactivations": 1,
-      "similarity": 0.4625,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
-      "from": "INT-003",
-      "to": "WP-003",
-      "weight": 0.14,
-      "coactivations": 1,
-      "similarity": 0.4578,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
-      "from": "LT-001",
-      "to": "WP-002",
-      "weight": 0.14,
-      "coactivations": 1,
-      "similarity": 0.5483,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
-      "from": "LT-001",
-      "to": "WP-003",
-      "weight": 0.14,
-      "coactivations": 1,
-      "similarity": 0.4956,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
-      "from": "WP-001",
-      "to": "WP-002",
-      "weight": 0.14,
-      "coactivations": 1,
-      "similarity": 0.5191,
-      "origin": "hebbian_coactivation",
-      "provenance": "associative"
-    },
-    {
-      "from": "WP-001",
-      "to": "WP-003",
-      "weight": 0.14,
-      "coactivations": 1,
-      "similarity": 0.4475,
-      "origin": "hebbian_coactivation",
       "provenance": "associative"
     },
     {
       "from": "INT-002",
       "to": "KD-003",
-      "weight": 0.1339,
+      "weight": 0.135,
       "coactivations": 0,
       "similarity": 0.5,
       "origin": "cross_graph_seed",
@@ -1174,7 +1590,7 @@
     {
       "from": "INT-003",
       "to": "KD-001",
-      "weight": 0.1263,
+      "weight": 0.1273,
       "coactivations": 0,
       "similarity": 0.4898,
       "origin": "cross_graph_seed",
@@ -1183,10 +1599,28 @@
     {
       "from": "KD-001",
       "to": "KD-002",
-      "weight": 0.1259,
+      "weight": 0.1269,
       "coactivations": 0,
       "similarity": 0.4892,
       "origin": "semantic_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "INT-004",
+      "to": "KD-003",
+      "weight": 0.1165,
+      "coactivations": 0,
+      "similarity": 0.4754,
+      "origin": "cross_graph_seed",
+      "provenance": "associative"
+    },
+    {
+      "from": "INT-005",
+      "to": "KD-003",
+      "weight": 0.0941,
+      "coactivations": 0,
+      "similarity": 0.4455,
+      "origin": "cross_graph_seed",
       "provenance": "associative"
     }
   ]

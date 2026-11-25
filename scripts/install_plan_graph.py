@@ -15,7 +15,7 @@ from typing import Any, Sequence
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 BUNDLE_ROOT = SKILL_ROOT / "assets" / "plan-graph"
 SCHEMA_VERSION = "paths-to-modernity-plan-graph-v4"
-BUNDLE_VERSION = 2
+BUNDLE_VERSION = 3
 MANIFEST_VERSION = 1
 PLAN_RELATIVE = Path("_aiHumanInteract/plan")
 MANIFEST_RELATIVE = PLAN_RELATIVE / "install-manifest.json"

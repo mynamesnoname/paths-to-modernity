@@ -32,10 +32,14 @@ import build_graph as plan_build  # noqa: E402
 
 
 INTENT_SCHEMA = "paths-to-modernity-intent-graph-v1"
+SPEC_SCHEMA = "paths-to-modernity-spec-graph-v1"
 KD_SCHEMA = "paths-to-modernity-knowledge-debt-v1"
 SCRIPTS_SCHEMA = "paths-to-modernity-scripts-graph-v1"
 
 INTENT_STATUSES = {"exploring", "clarified", "crystallized", "reopened", "superseded"}
+SPEC_STATUSES = {"draft", "enforced", "deprecated", "superseded"}
+SPEC_KINDS = {"invariant", "glossary", "standard", "contract"}
+SPEC_ENFORCEMENTS = {"must", "must_not", "should", "canonical_term"}
 KD_STATUSES = {"open", "affirmed", "rejected"}
 KD_KINDS = {"concept", "reasoning_gap", "comparison_gap", "intuitive_doubt", "evidence_gap"}
 TRIAGE_MODES = {
@@ -46,6 +50,7 @@ TRIAGE_MODES = {
 }
 
 INTENT_ID_RE = re.compile(r"^INT-\d{3}$")
+SPEC_ID_RE = re.compile(r"^SPEC-\d{3}$")
 KD_ID_RE = re.compile(r"^KD-\d{3}$")
 PLAN_ID_RE = re.compile(r"^(LT|MT|ST|WP)-\d{3}$")
 
@@ -183,14 +188,20 @@ class IntentNode:
     raw_utterance: str
     utterance_ref: str | None
     parent: str | None
+    depends_on: tuple[str, ...]
+    enables: tuple[str, ...]
+    validates: tuple[str, ...]
+    supersedes: tuple[str, ...]
+    conflicts_with: tuple[str, ...]
+    alternative_of: str | None
     refines: tuple[str, ...]
     branches_from: tuple[str, ...]
     constrains: tuple[str, ...]
-    supersedes: tuple[str, ...]
     concepts: tuple[dict[str, Any], ...]
     implementation_alternatives: tuple[dict[str, Any], ...]
     plan_refs: tuple[str, ...]
     knowledge_debt_refs: tuple[str, ...]
+    spec_refs: tuple[str, ...]
     qualities: tuple[str, ...]
     source: str
     body: str
@@ -203,17 +214,24 @@ class IntentNode:
             "updated": self.updated,
             "raw_utterance": self.raw_utterance,
             "parent": self.parent,
+            "depends_on": list(self.depends_on),
+            "enables": list(self.enables),
+            "validates": list(self.validates),
+            "supersedes": list(self.supersedes),
+            "conflicts_with": list(self.conflicts_with),
             "refines": list(self.refines),
             "branches_from": list(self.branches_from),
             "constrains": list(self.constrains),
-            "supersedes": list(self.supersedes),
             "concepts": list(self.concepts),
             "implementation_alternatives": list(self.implementation_alternatives),
             "plan_refs": list(self.plan_refs),
             "knowledge_debt_refs": list(self.knowledge_debt_refs),
+            "spec_refs": list(self.spec_refs),
             "qualities": list(self.qualities),
             "source": self.source,
         }
+        if self.alternative_of:
+            payload["alternative_of"] = self.alternative_of
         if self.utterance_ref:
             payload["utterance_ref"] = self.utterance_ref
         return payload
@@ -287,6 +305,13 @@ def load_intent_graph(repo_root: Path) -> tuple[dict[str, IntentNode], list[dict
         if nid in nodes:
             raise PtmGraphError(f"duplicate intent ID {nid}")
 
+        alt_of_raw = meta.get("alternative_of")
+        alt_of: str | None = None
+        if alt_of_raw is not None:
+            alt_of = str(alt_of_raw).strip() or None
+            if alt_of and not INTENT_ID_RE.fullmatch(alt_of):
+                raise PtmGraphError(f"{rel}: invalid alternative_of intent ID {alt_of!r}")
+
         nodes[nid] = IntentNode(
             node_id=nid,
             title=title,
@@ -295,14 +320,20 @@ def load_intent_graph(repo_root: Path) -> tuple[dict[str, IntentNode], list[dict
             raw_utterance=raw_utt,
             utterance_ref=utt_ref,
             parent=parent,
+            depends_on=_id_tuple("depends_on"),
+            enables=_id_tuple("enables"),
+            validates=_id_tuple("validates"),
+            supersedes=_id_tuple("supersedes"),
+            conflicts_with=_id_tuple("conflicts_with"),
+            alternative_of=alt_of,
             refines=_id_tuple("refines"),
             branches_from=_id_tuple("branches_from"),
             constrains=_id_tuple("constrains"),
-            supersedes=_id_tuple("supersedes"),
             concepts=tuple(concepts),
             implementation_alternatives=tuple(impl_alts_raw),
             plan_refs=_id_tuple("plan_refs", PLAN_ID_RE),
             knowledge_debt_refs=_id_tuple("knowledge_debt_refs", KD_ID_RE),
+            spec_refs=_id_tuple("spec_refs", SPEC_ID_RE),
             qualities=qualities,
             source=rel,
             body=body,
@@ -310,6 +341,13 @@ def load_intent_graph(repo_root: Path) -> tuple[dict[str, IntentNode], list[dict
 
     edges: list[dict[str, Any]] = []
     hierarchy_adj: dict[str, list[str]] = defaultdict(list)
+    dep_adj: dict[str, list[str]] = defaultdict(list)
+    alt_adj: dict[str, list[str]] = defaultdict(list)
+    sup_adj: dict[str, list[str]] = defaultdict(list)
+    hard_dep_pairs = {
+        (dep, n.node_id) for n in nodes.values() for dep in n.depends_on
+    }
+
     for nid, node in sorted(nodes.items()):
         if node.parent:
             if node.parent not in nodes:
@@ -323,10 +361,39 @@ def load_intent_graph(repo_root: Path) -> tuple[dict[str, IntentNode], list[dict
                     "provenance": "declared",
                 }
             )
-        for rel_name in ("refines", "branches_from", "constrains", "supersedes"):
+        for prereq in node.depends_on:
+            if prereq == nid or prereq not in nodes:
+                raise PtmGraphError(f"{nid}: invalid or dangling depends_on target {prereq}")
+            dep_adj[nid].append(prereq)
+            edges.append(
+                {
+                    "from": prereq,
+                    "to": nid,
+                    "relationship": "prerequisite_for",
+                    "provenance": "declared",
+                }
+            )
+        for target in node.enables:
+            if target == nid or target not in nodes:
+                raise PtmGraphError(f"{nid}: invalid or dangling enables target {target}")
+            if (nid, target) in hard_dep_pairs:
+                raise PtmGraphError(
+                    f"{nid}: enables duplicates hard dependency declared by {target}"
+                )
+            edges.append(
+                {
+                    "from": nid,
+                    "to": target,
+                    "relationship": "enables",
+                    "provenance": "declared",
+                }
+            )
+        for rel_name in ("validates", "supersedes", "conflicts_with", "refines", "branches_from", "constrains"):
             for target in getattr(node, rel_name):
                 if target == nid or target not in nodes:
                     raise PtmGraphError(f"{nid}: invalid or dangling {rel_name} target {target}")
+                if rel_name == "supersedes":
+                    sup_adj[nid].append(target)
                 edges.append(
                     {
                         "from": nid,
@@ -335,9 +402,30 @@ def load_intent_graph(repo_root: Path) -> tuple[dict[str, IntentNode], list[dict
                         "provenance": "declared",
                     }
                 )
-    cyc = _find_cycle(hierarchy_adj)
-    if cyc:
-        raise PtmGraphError(f"intent parent cycle: {' -> '.join(cyc)}")
+        if node.alternative_of:
+            if node.alternative_of == nid or node.alternative_of not in nodes:
+                raise PtmGraphError(
+                    f"{nid}: invalid or dangling alternative_of target {node.alternative_of}"
+                )
+            alt_adj[nid].append(node.alternative_of)
+            edges.append(
+                {
+                    "from": nid,
+                    "to": node.alternative_of,
+                    "relationship": "alternative_of",
+                    "provenance": "declared",
+                }
+            )
+
+    for graph_label, adj in (
+        ("parent", hierarchy_adj),
+        ("dependency", dep_adj),
+        ("alternative", alt_adj),
+        ("supersession", sup_adj),
+    ):
+        cyc = _find_cycle(adj)
+        if cyc:
+            raise PtmGraphError(f"intent {graph_label} cycle: {' -> '.join(cyc)}")
 
     return nodes, edges
 
@@ -434,6 +522,447 @@ def build_intent_views(repo_root: Path) -> dict[str, Any]:
 
 
 # ============================================================================
+# 1B. SPEC GRAPH (_aiHumanInteract/specs/) — Standing Laws, Glossary & Contracts
+# ============================================================================
+
+
+@dataclass(frozen=True)
+class SpecNode:
+    node_id: str
+    title: str
+    kind: str
+    status: str
+    enforcement: str
+    updated: str
+    summary: str
+    parent: str | None
+    depends_on: tuple[str, ...]
+    enables: tuple[str, ...]
+    validates: tuple[str, ...]
+    supersedes: tuple[str, ...]
+    conflicts_with: tuple[str, ...]
+    alternative_of: str | None
+    canonical_term: str | None
+    forbidden_aliases: tuple[str, ...]
+    do_rules: tuple[str, ...]
+    dont_rules: tuple[str, ...]
+    signature_or_schema: str | None
+    postconditions: tuple[str, ...]
+    intent_refs: tuple[str, ...]
+    plan_refs: tuple[str, ...]
+    knowledge_debt_refs: tuple[str, ...]
+    governs_scripts: tuple[str, ...]
+    verified_by_scripts: tuple[str, ...]
+    source: str
+    body: str
+
+    def as_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "id": self.node_id,
+            "title": self.title,
+            "kind": self.kind,
+            "status": self.status,
+            "enforcement": self.enforcement,
+            "updated": self.updated,
+            "summary": self.summary,
+            "parent": self.parent,
+            "depends_on": list(self.depends_on),
+            "enables": list(self.enables),
+            "validates": list(self.validates),
+            "supersedes": list(self.supersedes),
+            "conflicts_with": list(self.conflicts_with),
+            "canonical_term": self.canonical_term,
+            "forbidden_aliases": list(self.forbidden_aliases),
+            "do_rules": list(self.do_rules),
+            "dont_rules": list(self.dont_rules),
+            "signature_or_schema": self.signature_or_schema,
+            "postconditions": list(self.postconditions),
+            "intent_refs": list(self.intent_refs),
+            "plan_refs": list(self.plan_refs),
+            "knowledge_debt_refs": list(self.knowledge_debt_refs),
+            "governs_scripts": list(self.governs_scripts),
+            "verified_by_scripts": list(self.verified_by_scripts),
+            "source": self.source,
+        }
+        if self.alternative_of:
+            payload["alternative_of"] = self.alternative_of
+        return payload
+
+
+def load_spec_graph(repo_root: Path) -> tuple[dict[str, SpecNode], list[dict[str, Any]]]:
+    """Load and validate all Spec Graph nodes if `_aiHumanInteract/specs/nodes` exists."""
+    repo_root = repo_root.resolve()
+    nodes_dir = repo_root / "_aiHumanInteract" / "specs" / "nodes"
+    if not nodes_dir.is_dir():
+        return {}, []
+
+    nodes: dict[str, SpecNode] = {}
+    for path in sorted(nodes_dir.glob("*.md")):
+        rel = path.relative_to(repo_root).as_posix()
+        meta, body = parse_front_matter(path)
+        nid = str(meta.get("id", "")).strip()
+        if not SPEC_ID_RE.fullmatch(nid):
+            raise PtmGraphError(f"{rel}: invalid spec ID {nid!r} (expected SPEC-###)")
+        if path.stem != nid:
+            raise PtmGraphError(f"{rel}: filename must match {nid}.md")
+        title = str(meta.get("title", "")).strip()
+        if not title:
+            raise PtmGraphError(f"{rel}: title must be non-empty")
+        kind = str(meta.get("kind", "")).strip()
+        if kind not in SPEC_KINDS:
+            raise PtmGraphError(f"{rel}: invalid spec kind {kind!r} (expected one of {sorted(SPEC_KINDS)})")
+        status = str(meta.get("status", "")).strip()
+        if status not in SPEC_STATUSES:
+            raise PtmGraphError(f"{rel}: invalid spec status {status!r}")
+        enforcement = str(meta.get("enforcement", "must")).strip()
+        if enforcement not in SPEC_ENFORCEMENTS:
+            raise PtmGraphError(f"{rel}: invalid enforcement {enforcement!r}")
+        updated = _check_iso_date(meta.get("updated"), rel)
+        summary = str(meta.get("summary", "")).strip()
+        if not summary:
+            raise PtmGraphError(f"{rel}: summary is required on Spec nodes")
+
+        parent = meta.get("parent")
+        if parent is not None:
+            parent = str(parent).strip() or None
+            if parent and not SPEC_ID_RE.fullmatch(parent):
+                raise PtmGraphError(f"{rel}: invalid parent spec ID {parent!r}")
+
+        alt_of_raw = meta.get("alternative_of")
+        alt_of: str | None = None
+        if alt_of_raw is not None:
+            alt_of = str(alt_of_raw).strip() or None
+            if alt_of and not SPEC_ID_RE.fullmatch(alt_of):
+                raise PtmGraphError(f"{rel}: invalid alternative_of spec ID {alt_of!r}")
+
+        def _str_tuple(key: str, pattern: re.Pattern[str] | None = None) -> tuple[str, ...]:
+            raw = meta.get(key, [])
+            if not isinstance(raw, list):
+                raise PtmGraphError(f"{rel}: {key} must be a list")
+            items = tuple(str(x).strip() for x in raw if str(x).strip())
+            if pattern:
+                for item in items:
+                    if not pattern.fullmatch(item):
+                        raise PtmGraphError(f"{rel}: invalid ID {item!r} in {key}")
+            return items
+
+        canon_term = meta.get("canonical_term")
+        sig_schema = meta.get("signature_or_schema")
+
+        if nid in nodes:
+            raise PtmGraphError(f"duplicate spec ID {nid}")
+
+        nodes[nid] = SpecNode(
+            node_id=nid,
+            title=title,
+            kind=kind,
+            status=status,
+            enforcement=enforcement,
+            updated=updated,
+            summary=summary,
+            parent=parent,
+            depends_on=_str_tuple("depends_on", SPEC_ID_RE),
+            enables=_str_tuple("enables", SPEC_ID_RE),
+            validates=_str_tuple("validates", SPEC_ID_RE),
+            supersedes=_str_tuple("supersedes", SPEC_ID_RE),
+            conflicts_with=_str_tuple("conflicts_with", SPEC_ID_RE),
+            alternative_of=alt_of,
+            canonical_term=str(canon_term).strip() if canon_term else None,
+            forbidden_aliases=_str_tuple("forbidden_aliases"),
+            do_rules=_str_tuple("do_rules"),
+            dont_rules=_str_tuple("dont_rules"),
+            signature_or_schema=str(sig_schema).strip() if sig_schema else None,
+            postconditions=_str_tuple("postconditions"),
+            intent_refs=_str_tuple("intent_refs", INTENT_ID_RE),
+            plan_refs=_str_tuple("plan_refs", PLAN_ID_RE),
+            knowledge_debt_refs=_str_tuple("knowledge_debt_refs", KD_ID_RE),
+            governs_scripts=_str_tuple("governs_scripts"),
+            verified_by_scripts=_str_tuple("verified_by_scripts"),
+            source=rel,
+            body=body,
+        )
+
+    edges: list[dict[str, Any]] = []
+    hierarchy_adj: dict[str, list[str]] = defaultdict(list)
+    dep_adj: dict[str, list[str]] = defaultdict(list)
+    alt_adj: dict[str, list[str]] = defaultdict(list)
+    sup_adj: dict[str, list[str]] = defaultdict(list)
+    hard_dep_pairs = {(dep, n.node_id) for n in nodes.values() for dep in n.depends_on}
+
+    for nid, node in sorted(nodes.items()):
+        if node.parent:
+            if node.parent not in nodes:
+                raise PtmGraphError(f"{nid}: dangling parent spec {node.parent}")
+            hierarchy_adj[node.parent].append(nid)
+            edges.append(
+                {
+                    "from": node.parent,
+                    "to": nid,
+                    "relationship": "decomposes_spec",
+                    "provenance": "declared",
+                }
+            )
+        for prereq in node.depends_on:
+            if prereq == nid or prereq not in nodes:
+                raise PtmGraphError(f"{nid}: invalid or dangling depends_on spec {prereq}")
+            dep_adj[nid].append(prereq)
+            edges.append(
+                {
+                    "from": prereq,
+                    "to": nid,
+                    "relationship": "prerequisite_for",
+                    "provenance": "declared",
+                }
+            )
+        for target in node.enables:
+            if target == nid or target not in nodes:
+                raise PtmGraphError(f"{nid}: invalid or dangling enables spec {target}")
+            if (nid, target) in hard_dep_pairs:
+                raise PtmGraphError(
+                    f"{nid}: enables duplicates hard dependency declared by {target}"
+                )
+            edges.append(
+                {
+                    "from": nid,
+                    "to": target,
+                    "relationship": "enables",
+                    "provenance": "declared",
+                }
+            )
+        for rel_name in ("validates", "supersedes", "conflicts_with"):
+            for target in getattr(node, rel_name):
+                if target == nid or target not in nodes:
+                    raise PtmGraphError(f"{nid}: invalid or dangling {rel_name} spec {target}")
+                if rel_name == "supersedes":
+                    sup_adj[nid].append(target)
+                    if nodes[target].status != "superseded":
+                        raise PtmGraphError(
+                            f"{nid}: supersedes target {target} must have status 'superseded'"
+                        )
+                edges.append(
+                    {
+                        "from": nid,
+                        "to": target,
+                        "relationship": rel_name,
+                        "provenance": "declared",
+                    }
+                )
+        if node.alternative_of:
+            if node.alternative_of == nid or node.alternative_of not in nodes:
+                raise PtmGraphError(
+                    f"{nid}: invalid or dangling alternative_of spec {node.alternative_of}"
+                )
+            alt_adj[nid].append(node.alternative_of)
+            edges.append(
+                {
+                    "from": nid,
+                    "to": node.alternative_of,
+                    "relationship": "alternative_of",
+                    "provenance": "declared",
+                }
+            )
+
+    for graph_label, adj in (
+        ("parent", hierarchy_adj),
+        ("dependency", dep_adj),
+        ("alternative", alt_adj),
+        ("supersession", sup_adj),
+    ):
+        cyc = _find_cycle(adj)
+        if cyc:
+            raise PtmGraphError(f"spec {graph_label} cycle: {' -> '.join(cyc)}")
+
+    return nodes, edges
+
+
+def compute_spec_impact(repo_root: Path, spec_id: str) -> dict[str, Any]:
+    """Compute cross-graph blast radius if `spec_id` is amended, deprecated, or superseded."""
+    repo_root = repo_root.resolve()
+    spec_nodes, _ = load_spec_graph(repo_root)
+    if spec_id not in spec_nodes:
+        raise PtmGraphError(f"unknown spec ID: {spec_id}")
+    spec = spec_nodes[spec_id]
+
+    intents, _ = load_intent_graph(repo_root)
+    kds, _ = load_knowledge_debt_graph(repo_root)
+
+    plan_root = repo_root / "_aiHumanInteract" / "plan"
+    plan_nodes: dict[str, plan_validate.PlanNode] = {}
+    if plan_root.is_dir() and any((plan_root / lvl).is_dir() for lvl in plan_validate.LEVELS):
+        loaded, errs = plan_validate.load_and_validate(plan_root, repo_root)
+        if not errs:
+            plan_nodes = loaded
+
+    # Transitive child & dependent specs
+    spec_downstream_adj: dict[str, list[str]] = defaultdict(list)
+    for sid, snode in spec_nodes.items():
+        if snode.parent:
+            spec_downstream_adj[snode.parent].append(sid)
+        for dep in snode.depends_on:
+            spec_downstream_adj[dep].append(sid)
+        for en in snode.enables:
+            spec_downstream_adj[sid].append(en)
+
+    dependent_specs: list[str] = []
+    q = [spec_id]
+    seen_specs = {spec_id}
+    while q:
+        cur = q.pop(0)
+        for nxt in sorted(set(spec_downstream_adj.get(cur, ()))):
+            if nxt not in seen_specs:
+                seen_specs.add(nxt)
+                dependent_specs.append(nxt)
+                q.append(nxt)
+
+    linked_intents = set(spec.intent_refs)
+    for iid, inode in intents.items():
+        if spec_id in inode.spec_refs:
+            linked_intents.add(iid)
+
+    linked_kds = set(spec.knowledge_debt_refs)
+    for kid, knode in kds.items():
+        if spec_id in knode.spec_refs:
+            linked_kds.add(kid)
+
+    direct_plans = set(spec.plan_refs)
+    for pid, pnode in plan_nodes.items():
+        for sref in pnode.links.get("spec", ()):
+            if Path(sref).stem == spec_id:
+                direct_plans.add(pid)
+
+    plan_dep_adj: dict[str, list[str]] = defaultdict(list)
+    for pid, pnode in plan_nodes.items():
+        for dep in pnode.depends_on:
+            plan_dep_adj[dep].append(pid)
+
+    downstream_plans: list[str] = []
+    pq = sorted(direct_plans)
+    seen_plans = set(pq)
+    while pq:
+        cur = pq.pop(0)
+        for nxt in sorted(plan_dep_adj.get(cur, ())):
+            if nxt not in seen_plans:
+                seen_plans.add(nxt)
+                downstream_plans.append(nxt)
+                pq.append(nxt)
+
+    return {
+        "spec_id": spec_id,
+        "title": spec.title,
+        "kind": spec.kind,
+        "status": spec.status,
+        "enforcement": spec.enforcement,
+        "dependent_specs": dependent_specs,
+        "originating_intents": sorted(linked_intents),
+        "implementing_plans": sorted(direct_plans),
+        "downstream_plans": downstream_plans,
+        "linked_knowledge_debt": sorted(linked_kds),
+        "governed_scripts": sorted(spec.governs_scripts),
+        "verification_scripts": sorted(spec.verified_by_scripts),
+    }
+
+
+def build_spec_views(repo_root: Path) -> dict[str, Any]:
+    """Validate and write Spec Graph generated views under `_aiHumanInteract/specs/structure/`."""
+    repo_root = repo_root.resolve()
+    nodes, edges = load_spec_graph(repo_root)
+    impacts = {sid: compute_spec_impact(repo_root, sid) for sid in sorted(nodes)}
+    payload = {
+        "schema_version": SPEC_SCHEMA,
+        "node_count": len(nodes),
+        "edge_count": len(edges),
+        "source_of_truth": ["_aiHumanInteract/specs/nodes/*.md"],
+        "nodes": [
+            {**nodes[k].as_payload(), "impact_preview": impacts[k]}
+            for k in sorted(nodes)
+        ],
+        "edges": edges,
+    }
+    if not nodes:
+        return payload
+
+    struct_dir = repo_root / "_aiHumanInteract" / "specs" / "structure"
+    struct_dir.mkdir(parents=True, exist_ok=True)
+    (struct_dir / "graph.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+
+    md_lines = [
+        "# Spec Graph (Standing Laws, Ubiquitous Language & Contracts)",
+        "",
+        "Generated by `scripts/ptm.py`; edit `_aiHumanInteract/specs/nodes/*.md` instead.",
+        "",
+        "```mermaid",
+        "flowchart LR",
+    ]
+    for sid in sorted(nodes):
+        s = nodes[sid]
+        safe_t = s.title.replace('"', "'")
+        md_lines.append(
+            f'    {sid.replace("-", "_")}["{sid}: {safe_t}<br/>({s.kind} · {s.enforcement} · {s.status})"]'
+        )
+    for e in edges:
+        u = e["from"].replace("-", "_")
+        v = e["to"].replace("-", "_")
+        conn = "-->" if e["relationship"] == "decomposes_spec" else "-.->"
+        md_lines.append(f'    {u} {conn}|{e["relationship"]}| {v}')
+    md_lines.extend(
+        [
+            "```",
+            "",
+            "## Normative Specifications",
+            "",
+            "| ID | Spec | Kind | Enforcement | Status | Intents | Plans | Governs Scripts | Verified By |",
+            "|---|---|---|---|---|---|---|---|---|",
+        ]
+    )
+    for sid in sorted(nodes):
+        s = nodes[sid]
+        md_lines.append(
+            f"| `{sid}` | [{s.title}](../nodes/{sid}.md) | `{s.kind}` | `{s.enforcement}` | `{s.status}` | "
+            f"{', '.join(s.intent_refs) or '—'} | {', '.join(s.plan_refs) or '—'} | "
+            f"{', '.join(s.governs_scripts) or '—'} | {', '.join(s.verified_by_scripts) or '—'} |"
+        )
+    md_lines.append("")
+    (struct_dir / "graph.md").write_text("\n".join(md_lines), encoding="utf-8")
+
+    canvas_nodes = [
+        {
+            "id": f"spec-{sid}",
+            "type": "text",
+            "x": (idx % 3) * 450,
+            "y": (idx // 3) * 280,
+            "width": 390,
+            "height": 220,
+            "color": "4" if nodes[sid].status == "enforced" else "2",
+            "text": (
+                f"## [[{nodes[sid].source}|{sid} · {nodes[sid].title}]]\n\n"
+                f"**{nodes[sid].kind.upper()}** (`{nodes[sid].enforcement}` · `{nodes[sid].status}`)\n\n"
+                f"{nodes[sid].summary}"
+            ),
+        }
+        for idx, sid in enumerate(sorted(nodes))
+    ]
+    canvas_edges = [
+        {
+            "id": f"spec-edge-{i}",
+            "fromNode": f"spec-{e['from']}",
+            "fromSide": "right",
+            "toNode": f"spec-{e['to']}",
+            "toSide": "left",
+            "label": e["relationship"],
+        }
+        for i, e in enumerate(edges)
+    ]
+    (struct_dir / "graph.canvas").write_text(
+        json.dumps({"nodes": canvas_nodes, "edges": canvas_edges}, ensure_ascii=False, indent=2)
+        + "\n",
+        encoding="utf-8",
+    )
+    return payload
+
+
+# ============================================================================
 # 2. KNOWLEDGE DEBT GRAPH & REORGANIZATION IMPACT (_aiHumanInteract/knowledge-debt/)
 # ============================================================================
 
@@ -447,6 +976,7 @@ class KnowledgeDebtNode:
     triage_mode: str
     updated: str
     intent_refs: tuple[str, ...]
+    spec_refs: tuple[str, ...]
     plan_refs: tuple[str, ...]
     script_refs: tuple[str, ...]
     revisit_when: str
@@ -464,6 +994,7 @@ class KnowledgeDebtNode:
             "triage_mode": self.triage_mode,
             "updated": self.updated,
             "intent_refs": list(self.intent_refs),
+            "spec_refs": list(self.spec_refs),
             "plan_refs": list(self.plan_refs),
             "script_refs": list(self.script_refs),
             "revisit_when": self.revisit_when,
@@ -507,6 +1038,7 @@ def load_knowledge_debt_graph(
             raise PtmGraphError(f"{rel}: revisit_when is required")
 
         intent_refs = tuple(str(x).strip() for x in meta.get("intent_refs", []) if str(x).strip())
+        spec_refs = tuple(str(x).strip() for x in meta.get("spec_refs", []) if str(x).strip())
         plan_refs = tuple(str(x).strip() for x in meta.get("plan_refs", []) if str(x).strip())
         script_refs = tuple(str(x).strip() for x in meta.get("script_refs", []) if str(x).strip())
         res_note = meta.get("resolution_note")
@@ -520,6 +1052,7 @@ def load_knowledge_debt_graph(
             triage_mode=triage_mode,
             updated=updated,
             intent_refs=intent_refs,
+            spec_refs=spec_refs,
             plan_refs=plan_refs,
             script_refs=script_refs,
             revisit_when=revisit_when,
@@ -534,6 +1067,15 @@ def load_knowledge_debt_graph(
                     "from": nid,
                     "to": iref,
                     "relationship": "bookmarks_intent",
+                    "provenance": "declared",
+                }
+            )
+        for spref in spec_refs:
+            edges.append(
+                {
+                    "from": nid,
+                    "to": spref,
+                    "relationship": "questions_spec",
                     "provenance": "declared",
                 }
             )
@@ -563,12 +1105,17 @@ def compute_kd_rejection_impact(
     kd_id: str,
     counterproposal: str | None = None,
 ) -> dict[str, Any]:
-    """Trace which Intent, Plan, and Script nodes require reorganization if `kd_id` is rejected."""
+    """Trace which Intent, Spec, Plan, and Script nodes require reorganization if `kd_id` is rejected."""
     repo_root = repo_root.resolve()
     kd_nodes, _ = load_knowledge_debt_graph(repo_root)
     if kd_id not in kd_nodes:
         raise PtmGraphError(f"unknown knowledge-debt ID: {kd_id}")
     kd = kd_nodes[kd_id]
+    spec_nodes, _ = load_spec_graph(repo_root)
+    review_specs = set(kd.spec_refs)
+    for sid, snode in spec_nodes.items():
+        if kd_id in snode.knowledge_debt_refs:
+            review_specs.add(sid)
 
     plan_root = repo_root / "_aiHumanInteract" / "plan"
     plan_nodes: dict[str, plan_validate.PlanNode] = {}
@@ -610,6 +1157,7 @@ def compute_kd_rejection_impact(
         "current_status": kd.status,
         "counterproposal": counterproposal or kd.counterproposal,
         "reopen_intents": list(kd.intent_refs),
+        "amend_or_review_specs": sorted(review_specs),
         "supersede_plans": direct_plans,
         "blocked_or_recheck_downstream_plans": downstream_plans,
         "affected_parent_scopes": governing_ancestors,
@@ -855,8 +1403,10 @@ def scan_scripts_graph(repo_root: Path) -> dict[str, Any]:
         if dotted:
             py_module_index[dotted] = rel
 
-    # Collect Plan Graph code/test links for cross-graph traceability
+    # Collect Plan Graph & Spec Graph code/test links for cross-graph traceability
     plan_coverage: dict[str, list[str]] = defaultdict(list)
+    spec_governance: dict[str, list[str]] = defaultdict(list)
+    spec_verification: dict[str, list[str]] = defaultdict(list)
     planned_targets: set[str] = set()
     plan_root = repo_root / "_aiHumanInteract" / "plan"
     if plan_root.is_dir() and any((plan_root / lvl).is_dir() for lvl in plan_validate.LEVELS):
@@ -871,6 +1421,22 @@ def scan_scripts_graph(repo_root: Path) -> dict[str, Any]:
                             plan_coverage[ref].append(pid)
                             if Path(ref).suffix.lower() in CODE_EXTENSIONS:
                                 planned_targets.add(ref)
+
+    try:
+        spec_nodes_for_scr, _ = load_spec_graph(repo_root)
+    except PtmGraphError:
+        spec_nodes_for_scr = {}
+    for sid, snode in spec_nodes_for_scr.items():
+        if snode.status in {"superseded", "deprecated"}:
+            continue
+        for ref in snode.governs_scripts:
+            spec_governance[ref].append(sid)
+            if Path(ref).suffix.lower() in CODE_EXTENSIONS:
+                planned_targets.add(ref)
+        for ref in snode.verified_by_scripts:
+            spec_verification[ref].append(sid)
+            if Path(ref).suffix.lower() in CODE_EXTENSIONS:
+                planned_targets.add(ref)
 
     annotations_path = repo_root / "_aiHumanInteract" / "scripts" / "annotations.json"
     annotations: dict[str, dict[str, Any]] = {}
@@ -961,10 +1527,12 @@ def scan_scripts_graph(repo_root: Path) -> dict[str, Any]:
             "classes": classes[:15],
             "functions": functions[:20],
             "is_entrypoint": is_entrypoint,
-            "governed_by_plans": sorted(plan_coverage.get(rel, [])),
+            "governed_by_plans": sorted(set(plan_coverage.get(rel, []))),
+            "governed_by_specs": sorted(set(spec_governance.get(rel, []))),
+            "verifies_specs": sorted(set(spec_verification.get(rel, []))),
         }
 
-    # Include planned-but-missing code targets so gaps between Plan and Scripts are visible
+    # Include planned-but-missing code targets so gaps between Plan/Spec and Scripts are visible
     for missing_rel in sorted(planned_targets - set(script_nodes)):
         script_nodes[missing_rel] = {
             "id": f"SCR:{missing_rel}",
@@ -975,13 +1543,15 @@ def scan_scripts_graph(repo_root: Path) -> dict[str, Any]:
             "role": "planned_target",
             "status": "planned_missing",
             "loc": 0,
-            "summary": "Planned in Plan Graph; file not yet created on disk.",
+            "summary": "Planned in Plan/Spec Graph; file not yet created on disk.",
             "inferred_note": None,
             "inferred_evidence": None,
             "classes": [],
             "functions": [],
             "is_entrypoint": False,
-            "governed_by_plans": sorted(plan_coverage.get(missing_rel, [])),
+            "governed_by_plans": sorted(set(plan_coverage.get(missing_rel, []))),
+            "governed_by_specs": sorted(set(spec_governance.get(missing_rel, []))),
+            "verifies_specs": sorted(set(spec_verification.get(missing_rel, []))),
         }
 
     def _resolve_py_module(importer_rel: str, mod_name: str | None, level: int) -> str | None:
@@ -1198,9 +1768,10 @@ def build_scripts_views(repo_root: Path) -> dict[str, Any]:
 
 
 def load_all_federated_graphs(repo_root: Path) -> dict[str, Any]:
-    """Load Intent, Plan (v4), Knowledge Debt, and Scripts graphs into one unified memory view."""
+    """Load Intent, Spec, Plan (v4), Knowledge Debt, and Scripts graphs into one unified memory view."""
     repo_root = repo_root.resolve()
     intents, intent_edges = load_intent_graph(repo_root)
+    specs, spec_edges = load_spec_graph(repo_root)
     kds, kd_edges = load_knowledge_debt_graph(repo_root)
 
     plan_payload: dict[str, Any] = {"nodes": [], "edges": []}
@@ -1211,53 +1782,73 @@ def load_all_federated_graphs(repo_root: Path) -> dict[str, Any]:
 
     scripts_payload = scan_scripts_graph(repo_root)
 
-    # Extract explicit cross-graph edges (`Declared`)
+    # Extract explicit cross-graph edges (`Declared`) without duplicates
     cross_edges: list[dict[str, Any]] = []
-    for iid, inode in sorted(intents.items()):
-        for pid in inode.plan_refs:
+    seen_cross: set[tuple[str, str, str]] = set()
+
+    def _add_cross(src: str, dst: str, rel: str) -> None:
+        key = (src, dst, rel)
+        if src != dst and key not in seen_cross:
+            seen_cross.add(key)
             cross_edges.append(
                 {
-                    "from": iid,
-                    "to": pid,
-                    "relationship": "seeds_plan",
+                    "from": src,
+                    "to": dst,
+                    "relationship": rel,
                     "provenance": "declared",
                 }
             )
+
+    for iid, inode in sorted(intents.items()):
+        for pid in inode.plan_refs:
+            _add_cross(iid, pid, "seeds_plan")
+        for sid in inode.spec_refs:
+            _add_cross(iid, sid, "crystallizes_into")
+
+    for sid, snode in sorted(specs.items()):
+        for iid in snode.intent_refs:
+            _add_cross(iid, sid, "crystallizes_into")
+        for pid in snode.plan_refs:
+            _add_cross(pid, sid, "implements_spec")
+        for kid in snode.knowledge_debt_refs:
+            _add_cross(kid, sid, "questions_spec")
+        for sref in snode.governs_scripts:
+            _add_cross(sid, f"SCR:{sref}", "governs_script")
+        for vref in snode.verified_by_scripts:
+            _add_cross(f"SCR:{vref}", sid, "verifies_spec")
+
     for pnode in plan_payload.get("nodes", []):
         pid = pnode["id"]
         for cat in ("code", "tests", "scripts"):
             for ref in pnode.get("links", {}).get(cat, []):
                 if not ref.startswith("external:"):
-                    cross_edges.append(
-                        {
-                            "from": pid,
-                            "to": f"SCR:{ref}",
-                            "relationship": "implements_in",
-                            "provenance": "declared",
-                        }
-                    )
+                    _add_cross(pid, f"SCR:{ref}", "implements_in")
         for ref in pnode.get("links", {}).get("intent", []):
             stem = Path(ref).stem
             if INTENT_ID_RE.fullmatch(stem):
-                pair = (stem, pid)
-                if not any(
-                    ce["from"] == pair[0] and ce["to"] == pair[1] for ce in cross_edges
-                ):
-                    cross_edges.append(
-                        {
-                            "from": stem,
-                            "to": pid,
-                            "relationship": "seeds_plan",
-                            "provenance": "declared",
-                        }
-                    )
+                _add_cross(stem, pid, "seeds_plan")
+        for ref in pnode.get("links", {}).get("spec", []):
+            stem = Path(ref).stem
+            if SPEC_ID_RE.fullmatch(stem):
+                _add_cross(pid, stem, "implements_spec")
 
-    cross_edges.extend(kd_edges)
+    for e in kd_edges:
+        _add_cross(e["from"], e["to"], e["relationship"])
 
     return {
         "intent": {
             "nodes": [intents[k].as_payload() for k in sorted(intents)],
             "edges": intent_edges,
+        },
+        "specs": {
+            "nodes": [
+                {
+                    **specs[k].as_payload(),
+                    "impact_preview": compute_spec_impact(repo_root, k),
+                }
+                for k in sorted(specs)
+            ],
+            "edges": spec_edges,
         },
         "plan": plan_payload,
         "knowledge_debt": {

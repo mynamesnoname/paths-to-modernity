@@ -93,10 +93,15 @@ updated: "2026-11-24"
 raw_utterance: "让科学 Agent 更快，不要每次分析都卡在人工点确认上。"
 utterance_ref: "_aiHumanInteract/intent/utterances/UTT-001.md"
 parent: null
+depends_on: []
+enables: []
+validates: []
+supersedes: []
+conflicts_with: []
+alternative_of: null
 refines: []
 branches_from: []
 constrains: []
-supersedes: []
 concepts: [{"name": "科学 Agent", "role": "subject", "status": "anchored", "definition": "光谱特征交互分析智能体"}, {"name": "更快", "role": "outcome", "status": "resolved", "selected_variant": "IV-3", "interpretive_variants": [{"id": "IV-1", "meaning": "降低单次推理端到端延迟"}, {"id": "IV-2", "meaning": "提高后台批处理吞吐"}, {"id": "IV-3", "meaning": "减少低信息量的人工审批中断"}]}]
 implementation_alternatives: [{"id": "IA-1", "approach": "可逆范围预授权 + 三态技术分拣面板", "selected": true, "prototype": "_aiHumanInteract/intent/prototypes/triage-demo.svg"}, {"id": "IA-2", "approach": "基于风险评分的全自动静默放行", "selected": false}]
 plan_refs: ["LT-001", "WP-001"]
@@ -113,11 +118,11 @@ qualities: ["直接操作科学对象而非反复弹窗审批"]
   - `crystallized` — backed by active or completed Plan Graph nodes and validated through prototype/use;
   - `reopened` — reopened because prototype feedback or a rejected Knowledge Debt invalidated an earlier reading;
   - `superseded` — replaced by a newer intent node (preserving history).
-- **Declared intent edges:**
-  - `parent` / `refines` — hierarchical intent decomposition;
-  - `branches_from` — nonlinear parallel exploration of a perspective (as in DesignerlyLoop);
-  - `constrains` — cross-intent boundary constraint;
-  - `supersedes` — replaces an earlier intent while retaining provenance.
+- **Declared intent edges (aligned with Plan Graph's agent-maintained relations):**
+  - `parent` (`decomposes_intent`) — hierarchical parent/children shown directly on the graph canvas;
+  - `depends_on` (`prerequisite_for`), `enables`, `validates` — directional dependencies, capabilities, and validations inspected in the node detail sidebar;
+  - `supersedes`, `conflicts_with`, `alternative_of` — lifecycle replacement, incompatibility, and alternative framing stamped via icon badges/watermarks on counterpart cards and listed in the sidebar;
+  - `refines`, `branches_from`, `constrains` — optional epistemic aliases preserved for nonlinear exploration.
 
 ### Body sections
 

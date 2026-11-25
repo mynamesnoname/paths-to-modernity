@@ -1,0 +1,144 @@
+{
+  "nodes": [
+    {
+      "id": "spec-SPEC-001",
+      "type": "text",
+      "x": 0,
+      "y": 0,
+      "width": 390,
+      "height": 220,
+      "color": "4",
+      "text": "## [[_aiHumanInteract/specs/nodes/SPEC-001.md|SPEC-001 · 核心光谱画布零模态阻塞与显式授权铁律]]\n\n**INVARIANT** (`must_not` · `enforced`)\n\n光谱分析主画布严禁弹出阻断式技术确认弹窗，且沉默或超时绝不视同技术授权。"
+    },
+    {
+      "id": "spec-SPEC-002",
+      "type": "text",
+      "x": 450,
+      "y": 0,
+      "width": 390,
+      "height": 220,
+      "color": "4",
+      "text": "## [[_aiHumanInteract/specs/nodes/SPEC-002.md|SPEC-002 · 统一谱峰可寻址标识词典 (PeakHandle)]]\n\n**GLOSSARY** (`canonical_term` · `enforced`)\n\n全栈代码、持久化存储与人机对话统一使用 PeakHandle (PK-###) 指代可寻址谱峰，严禁同义词混用。"
+    },
+    {
+      "id": "spec-SPEC-003",
+      "type": "text",
+      "x": 900,
+      "y": 0,
+      "width": 390,
+      "height": 220,
+      "color": "4",
+      "text": "## [[_aiHumanInteract/specs/nodes/SPEC-003.md|SPEC-003 · 建筑极简柔和视觉与模块单向解耦开发标准]]\n\n**STANDARD** (`must` · `enforced`)\n\n界面遵循暖灰纸感低视觉疲劳色板，后端存储模块与分拣模块保持单向零循环依赖。"
+    },
+    {
+      "id": "spec-SPEC-004",
+      "type": "text",
+      "x": 0,
+      "y": 280,
+      "width": 390,
+      "height": 220,
+      "color": "4",
+      "text": "## [[_aiHumanInteract/specs/nodes/SPEC-004.md|SPEC-004 · 三态技术分拣闸门与知识债状态机契约]]\n\n**CONTRACT** (`must` · `enforced`)\n\n规定 classify_disclosure 输入输出契约及知识债 open -> affirmed | rejected 状态流转后置条件。"
+    },
+    {
+      "id": "spec-SPEC-005",
+      "type": "text",
+      "x": 450,
+      "y": 280,
+      "width": 390,
+      "height": 220,
+      "color": "2",
+      "text": "## [[_aiHumanInteract/specs/nodes/SPEC-005.md|SPEC-005 · 废止旧规范：按内部风险分静默省略技术披露]]\n\n**STANDARD** (`should` · `superseded`)\n\n早期草拟标准：允许 Agent 自行评估风险低于阈值时跳过全部技术栈说明（因违背知情权废止）。"
+    }
+  ],
+  "edges": [
+    {
+      "id": "spec-edge-0",
+      "fromNode": "spec-SPEC-001",
+      "fromSide": "right",
+      "toNode": "spec-SPEC-002",
+      "toSide": "left",
+      "label": "decomposes_spec"
+    },
+    {
+      "id": "spec-edge-1",
+      "fromNode": "spec-SPEC-002",
+      "fromSide": "right",
+      "toNode": "spec-SPEC-003",
+      "toSide": "left",
+      "label": "enables"
+    },
+    {
+      "id": "spec-edge-2",
+      "fromNode": "spec-SPEC-001",
+      "fromSide": "right",
+      "toNode": "spec-SPEC-003",
+      "toSide": "left",
+      "label": "decomposes_spec"
+    },
+    {
+      "id": "spec-edge-3",
+      "fromNode": "spec-SPEC-003",
+      "fromSide": "right",
+      "toNode": "spec-SPEC-005",
+      "toSide": "left",
+      "label": "supersedes"
+    },
+    {
+      "id": "spec-edge-4",
+      "fromNode": "spec-SPEC-001",
+      "fromSide": "right",
+      "toNode": "spec-SPEC-004",
+      "toSide": "left",
+      "label": "decomposes_spec"
+    },
+    {
+      "id": "spec-edge-5",
+      "fromNode": "spec-SPEC-002",
+      "fromSide": "right",
+      "toNode": "spec-SPEC-004",
+      "toSide": "left",
+      "label": "prerequisite_for"
+    },
+    {
+      "id": "spec-edge-6",
+      "fromNode": "spec-SPEC-004",
+      "fromSide": "right",
+      "toNode": "spec-SPEC-001",
+      "toSide": "left",
+      "label": "validates"
+    },
+    {
+      "id": "spec-edge-7",
+      "fromNode": "spec-SPEC-004",
+      "fromSide": "right",
+      "toNode": "spec-SPEC-005",
+      "toSide": "left",
+      "label": "conflicts_with"
+    },
+    {
+      "id": "spec-edge-8",
+      "fromNode": "spec-SPEC-001",
+      "fromSide": "right",
+      "toNode": "spec-SPEC-005",
+      "toSide": "left",
+      "label": "decomposes_spec"
+    },
+    {
+      "id": "spec-edge-9",
+      "fromNode": "spec-SPEC-005",
+      "fromSide": "right",
+      "toNode": "spec-SPEC-004",
+      "toSide": "left",
+      "label": "conflicts_with"
+    },
+    {
+      "id": "spec-edge-10",
+      "fromNode": "spec-SPEC-005",
+      "fromSide": "right",
+      "toNode": "spec-SPEC-003",
+      "toSide": "left",
+      "label": "alternative_of"
+    }
+  ]
+}

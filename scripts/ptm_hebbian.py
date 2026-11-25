@@ -192,7 +192,13 @@ class TieredEmbedder:
         digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:24]
         return f"{self.effective_model_id}:{digest}"
 
-    def embed_many(self, texts: Sequence[str], *, is_query: bool = False) -> list[list[float]]:
+    def embed_many(
+        self,
+        texts: Sequence[str],
+        *,
+        is_query: bool = False,
+        persist_cache: bool = True,
+    ) -> list[list[float]]:
         formatted = [
             (QUERY_INSTRUCTION + t if (is_query and self.active_backend == "mlx") else t)
             for t in texts
@@ -226,10 +232,20 @@ class TieredEmbedder:
             else:
                 computed = [_stdlib_hash_embed(t) for t in missing_texts]
 
+            ephemeral: dict[int, list[float]] = {}
             for idx, vec in zip(missing_indices, computed):
-                self._cache[keys[idx]] = vec
-            self._dirty = True
-            self.save_cache()
+                if persist_cache:
+                    self._cache[keys[idx]] = vec
+                    self._dirty = True
+                else:
+                    ephemeral[idx] = vec
+            if persist_cache:
+                self.save_cache()
+            else:
+                return [
+                    self._cache[k] if k in self._cache else ephemeral[i]
+                    for i, k in enumerate(keys)
+                ]
 
         return [self._cache[k] for k in keys]
 
@@ -274,6 +290,38 @@ def _unified_nodes_from_federated(federated: Mapping[str, Any]) -> list[dict[str
                 "updated": n.get("updated", ""),
                 "text": text,
                 "keywords": sorted(_extract_keywords(text)),
+            }
+        )
+
+    for n in federated.get("specs", {}).get("nodes", []):
+        aliases = ", ".join(n.get("forbidden_aliases") or [])
+        dos = "; ".join(n.get("do_rules") or [])
+        donts = "; ".join(n.get("dont_rules") or [])
+        posts = "; ".join(n.get("postconditions") or [])
+        text = (
+            f"[Spec {n['id']} ({n['kind']} · {n['enforcement']})] {n['title']}. "
+            f"Summary: {n['summary']} "
+            f"Canonical term: {n.get('canonical_term') or ''}. "
+            f"Forbidden aliases: {aliases}. "
+            f"DO: {dos}. DO NOT: {donts}. "
+            f"Contract/Schema: {n.get('signature_or_schema') or ''}. "
+            f"Postconditions: {posts}."
+        )
+        kws = _extract_keywords(text)
+        if n.get("canonical_term"):
+            kws |= _extract_keywords(str(n["canonical_term"]))
+        for fa in n.get("forbidden_aliases") or []:
+            kws.add(str(fa).strip().lower())
+            kws |= _extract_keywords(str(fa))
+        unified.append(
+            {
+                "id": n["id"],
+                "graph": "specs",
+                "title": n["title"],
+                "status": n["status"],
+                "updated": n.get("updated", ""),
+                "text": text,
+                "keywords": sorted(kws),
             }
         )
 
@@ -397,7 +445,9 @@ class HebbianAssociativeEngine:
             self.synapses[u][v] = dict(rec)
             self.synapses[v][u] = dict(rec)
 
-    def sync_federated(self, federated: Mapping[str, Any]) -> dict[str, Any]:
+    def sync_federated(
+        self, federated: Mapping[str, Any], *, persist: bool = True
+    ) -> dict[str, Any]:
         """Embed all current nodes across the 4 graphs and seed/prune associative synapses."""
         unified = _unified_nodes_from_federated(federated)
         self.nodes = {item["id"]: item for item in unified}
@@ -417,13 +467,15 @@ class HebbianAssociativeEngine:
             return self.export_payload()
 
         vecs = self.embedder.embed_many(
-            [self.nodes[nid]["text"] for nid in ordered_ids], is_query=False
+            [self.nodes[nid]["text"] for nid in ordered_ids],
+            is_query=False,
+            persist_cache=persist,
         )
         self.vectors = dict(zip(ordered_ids, vecs))
 
         # Collect structural pairs so we distinguish novel associative bridges from declared links
         declared_pairs: set[tuple[str, str]] = set()
-        for gname in ("intent", "plan", "knowledge_debt", "scripts"):
+        for gname in ("intent", "specs", "plan", "knowledge_debt", "scripts"):
             for e in federated.get(gname, {}).get("edges", []):
                 declared_pairs.add((e["from"], e["to"]))
                 declared_pairs.add((e["to"], e["from"]))
@@ -478,7 +530,7 @@ class HebbianAssociativeEngine:
                 self.synapses[u][v] = dict(rec)
                 self.synapses[v][u] = dict(rec)
 
-        return self.save()
+        return self.save() if persist else self.export_payload()
 
     def reinforce_cluster(
         self,
@@ -552,6 +604,20 @@ class HebbianAssociativeEngine:
             self.synapses[u].pop(v, None)
             self.synapses[v].pop(u, None)
 
+    def resolve_node_id(self, candidate: str) -> str | None:
+        """Resolve an exact or case-insensitive node ID or script path (e.g. 'WP-002' or 'src/a.py')."""
+        cand = candidate.strip()
+        if not cand:
+            return None
+        if cand in self.nodes:
+            return cand
+        if f"SCR:{cand}" in self.nodes:
+            return f"SCR:{cand}"
+        upper = cand.upper()
+        if upper in self.nodes:
+            return upper
+        return None
+
     def query(
         self,
         query_text: str,
@@ -566,8 +632,15 @@ class HebbianAssociativeEngine:
             return {"query": query_text, "results": [], "hubs": []}
 
         ref_date = ref_date or date.today()
-        q_vec = self.embedder.embed_many([query_text], is_query=True)[0]
-        q_kws = _extract_keywords(query_text)
+        anchor_nid = self.resolve_node_id(query_text)
+        if anchor_nid and anchor_nid in self.vectors:
+            q_vec = self.vectors[anchor_nid]
+            q_kws = set(self.nodes[anchor_nid].get("keywords", []))
+        else:
+            q_vec = self.embedder.embed_many(
+                [query_text], is_query=True, persist_cache=reinforce
+            )[0]
+            q_kws = _extract_keywords(query_text)
 
         base_scores: dict[str, float] = {}
         sem_scores: dict[str, float] = {}
@@ -606,8 +679,9 @@ class HebbianAssociativeEngine:
                     }
                 )
 
-        base_ranked = sorted(self.nodes, key=lambda nid: (-base_scores[nid], nid))
-        spread_ranked = sorted(self.nodes, key=lambda nid: (-spread_scores[nid], nid))
+        candidate_ids = [nid for nid in self.nodes if nid != anchor_nid]
+        base_ranked = sorted(candidate_ids, key=lambda nid: (-base_scores[nid], nid))
+        spread_ranked = sorted(candidate_ids, key=lambda nid: (-spread_scores[nid], nid))
 
         base_selected = base_ranked[:top_k]
         base_set = set(base_selected)
@@ -661,13 +735,17 @@ class HebbianAssociativeEngine:
 
         reinforced = 0
         if reinforce and len(results) >= 2:
+            cluster_ids = [r["id"] for r in results[: min(8, len(results))]]
+            if anchor_nid:
+                cluster_ids = [anchor_nid, *cluster_ids[:7]]
             reinforced = self.reinforce_cluster(
-                [r["id"] for r in results[: min(8, len(results))]],
+                cluster_ids,
                 reason=f"query:{query_text[:60]}",
             )
 
-        return {
+        out_payload: dict[str, Any] = {
             "query": query_text,
+            "resolved_anchor_node": anchor_nid,
             "embedding_backend": self.embedder.active_backend,
             "embedding_model": self.embedder.effective_model_id,
             "base_count": len(base_selected),
@@ -675,6 +753,222 @@ class HebbianAssociativeEngine:
             "pairs_reinforced": reinforced,
             "results": results,
             "hubs": self.detect_hubs()[:6],
+        }
+        return out_payload
+
+    def related(
+        self,
+        federated: Mapping[str, Any],
+        *,
+        node_id: str | None = None,
+        draft_file: Path | None = None,
+        draft_text: str | None = None,
+        per_graph: int = 4,
+        novel_top_k: int = 8,
+        reinforce: bool = False,
+    ) -> dict[str, Any]:
+        """Agent-facing cross-graph relevance & neighborhood inspector.
+
+        Supports inspecting:
+        1. An existing node ID (`WP-002`, `INT-003`, `KD-001`, `src/workbench_api.py`), reusing its
+           full rich embedding vector and contrasting `declared` links vs. `novel_discovery` matches;
+        2. An uncommitted draft file (`--draft-file /path/to/draft_WP.md`), encoding it in symmetric
+           document space without mutating any graph or cache;
+        3. Free draft text (`--text "..."`), ranking candidate intents, plans, KDs, and scripts.
+        """
+        if not self.nodes:
+            return {"error": "empty_graph", "by_graph": {}}
+
+        declared_by_target: dict[str, list[str]] = defaultdict(list)
+        anchor_info: dict[str, Any]
+        anchor_nid: str | None = None
+
+        if node_id:
+            resolved = self.resolve_node_id(node_id)
+            if not resolved:
+                raise ValueError(
+                    f"Unknown node ID {node_id!r}. Available examples: "
+                    + ", ".join(sorted(self.nodes)[:8])
+                )
+            anchor_nid = resolved
+            anode = self.nodes[anchor_nid]
+            anchor_vec = self.vectors[anchor_nid]
+            anchor_kws = set(anode.get("keywords", []))
+            anchor_info = {
+                "mode": "node",
+                "id": anchor_nid,
+                "graph": anode["graph"],
+                "title": anode["title"],
+                "status": anode["status"],
+            }
+            # Collect all explicit/observed links touching `anchor_nid`
+            all_edges = [
+                *federated.get("intent", {}).get("edges", []),
+                *federated.get("specs", {}).get("edges", []),
+                *federated.get("plan", {}).get("edges", []),
+                *federated.get("knowledge_debt", {}).get("edges", []),
+                *federated.get("scripts", {}).get("edges", []),
+                *federated.get("cross_edges", []),
+            ]
+            for e in all_edges:
+                u, v, rel = e.get("from"), e.get("to"), e.get("relationship", "linked")
+                if u == anchor_nid and v and v != anchor_nid:
+                    tag = f"{rel} (->)"
+                    if tag not in declared_by_target[v]:
+                        declared_by_target[v].append(tag)
+                elif v == anchor_nid and u and u != anchor_nid:
+                    tag = f"{rel} (<-)"
+                    if tag not in declared_by_target[u]:
+                        declared_by_target[u].append(tag)
+        elif draft_file is not None:
+            raw_content = draft_file.read_text(encoding="utf-8", errors="replace").strip()
+            if not raw_content:
+                raise ValueError(f"Draft file is empty: {draft_file}")
+            compact = re.sub(r"\s+", " ", raw_content)[:3200]
+            desc = f"[Draft {draft_file.name}] {compact}"
+            anchor_vec = self.embedder.embed_many(
+                [desc], is_query=False, persist_cache=False
+            )[0]
+            anchor_kws = _extract_keywords(compact)
+            anchor_info = {
+                "mode": "draft_file",
+                "path": str(draft_file),
+                "preview": compact[:140],
+            }
+        elif draft_text and draft_text.strip():
+            clean_txt = draft_text.strip()
+            anchor_vec = self.embedder.embed_many(
+                [clean_txt], is_query=True, persist_cache=False
+            )[0]
+            anchor_kws = _extract_keywords(clean_txt)
+            anchor_info = {
+                "mode": "draft_text",
+                "text": clean_txt[:200],
+            }
+        else:
+            raise ValueError("Provide one of node_id, draft_file, or draft_text.")
+
+        # Score every node across all 4 graphs (no Top-4 static truncation!)
+        scored_items: list[dict[str, Any]] = []
+        direct_syns = self.synapses.get(anchor_nid, {}) if anchor_nid else {}
+
+        # First pass: compute raw cosine + keyword overlap so we can also compute 1-hop spreading for drafts
+        raw_sims: dict[str, float] = {}
+        base_vals: dict[str, float] = {}
+        kw_vals: dict[str, float] = {}
+        for nid, node in self.nodes.items():
+            if nid == anchor_nid:
+                continue
+            vec = self.vectors.get(nid)
+            sim = _dot(anchor_vec, vec) if vec else 0.0
+            raw_sims[nid] = sim
+            norm_sim = (
+                max(0.0, (sim + 1.0) / 2.0)
+                if self.embedder.active_backend == "mlx"
+                else max(0.0, sim)
+            )
+            nkws = set(node.get("keywords", []))
+            kw_ov = (
+                len(anchor_kws & nkws) / max(1, len(anchor_kws))
+                if anchor_kws and nkws
+                else 0.0
+            )
+            kw_vals[nid] = kw_ov
+            base_vals[nid] = norm_sim + 0.25 * kw_ov
+
+        # 1-hop spreading activation (from anchor if node mode, else only from top-4 base seeds so hubs don't drown specific leaves)
+        spread_boosts: dict[str, float] = defaultdict(float)
+        spread_via: dict[str, str] = {}
+        if anchor_nid:
+            for dst_id, syn in direct_syns.items():
+                if dst_id != anchor_nid:
+                    b = self.spreading_beta * syn["weight"]
+                    spread_boosts[dst_id] = min(0.25, spread_boosts[dst_id] + b)
+                    spread_via[dst_id] = anchor_nid
+        else:
+            top_seeds = sorted(
+                base_vals.items(), key=lambda kv: (-kv[1], kv[0])
+            )[:4]
+            best_edge_boost: dict[str, float] = defaultdict(float)
+            for src_id, bscore in top_seeds:
+                if bscore < self.spreading_threshold:
+                    continue
+                for dst_id, syn in self.synapses.get(src_id, {}).items():
+                    b = 0.16 * bscore * syn["weight"]
+                    if b > best_edge_boost[dst_id]:
+                        best_edge_boost[dst_id] = b
+                        spread_via[dst_id] = src_id
+                    spread_boosts[dst_id] = min(0.22, spread_boosts[dst_id] + b)
+
+        for nid, node in self.nodes.items():
+            if nid == anchor_nid:
+                continue
+            syn_rec = direct_syns.get(nid)
+            syn_w = round(float(syn_rec["weight"]), 4) if syn_rec else 0.0
+            syn_co = int(syn_rec["coactivations"]) if syn_rec else 0
+            decl_rels = declared_by_target.get(nid, [])
+            combined = round(base_vals[nid] + spread_boosts[nid] + 0.18 * syn_w, 4)
+            entry: dict[str, Any] = {
+                "id": nid,
+                "graph": node["graph"],
+                "title": node["title"],
+                "status": node["status"],
+                "relation_status": "declared" if decl_rels else "novel_discovery",
+                "declared_relations": decl_rels,
+                "semantic_similarity": round(raw_sims[nid], 4),
+                "keyword_overlap": round(kw_vals[nid], 4),
+                "synapse_weight": syn_w,
+                "coactivations": syn_co,
+                "combined_score": combined,
+            }
+            if nid in spread_via and spread_via[nid] != anchor_nid:
+                entry["spread_via"] = spread_via[nid]
+            scored_items.append(entry)
+
+        scored_items.sort(key=lambda x: (-x["combined_score"], -x["semantic_similarity"], x["id"]))
+
+        by_graph: dict[str, list[dict[str, Any]]] = {
+            "intent": [],
+            "specs": [],
+            "plan": [],
+            "knowledge_debt": [],
+            "scripts": [],
+        }
+        for item in scored_items:
+            g = item["graph"]
+            if g in by_graph and len(by_graph[g]) < per_graph:
+                by_graph[g].append(item)
+
+        novel_top = [
+            item for item in scored_items if item["relation_status"] == "novel_discovery"
+        ][:novel_top_k]
+
+        declared_summary = [
+            {
+                "id": tid,
+                "graph": self.nodes[tid]["graph"] if tid in self.nodes else "external",
+                "title": self.nodes[tid]["title"] if tid in self.nodes else tid,
+                "relations": rels,
+                "semantic_similarity": round(raw_sims.get(tid, 0.0), 4),
+            }
+            for tid, rels in sorted(declared_by_target.items())
+        ]
+
+        reinforced = 0
+        if reinforce and scored_items:
+            top_ids = [x["id"] for x in scored_items[:6]]
+            if anchor_nid:
+                top_ids = [anchor_nid, *top_ids]
+            reinforced = self.reinforce_cluster(top_ids, reason=f"related:{anchor_nid or 'draft'}")
+
+        return {
+            "anchor": anchor_info,
+            "embedding_backend": self.embedder.active_backend,
+            "embedding_model": self.embedder.effective_model_id,
+            "pairs_reinforced": reinforced,
+            "declared_links": declared_summary,
+            "novel_discoveries": novel_top,
+            "by_graph": by_graph,
         }
 
     def detect_hubs(self) -> list[dict[str, Any]]:

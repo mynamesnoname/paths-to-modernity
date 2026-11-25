@@ -1,5 +1,5 @@
 <!-- paths-to-modernity:protocol:start -->
-<!-- schema-version: paths-to-modernity-protocol-v3 -->
+<!-- schema-version: paths-to-modernity-protocol-v4 -->
 ## Paths to Modernity
 
 This project is planned and governed with the Paths to Modernity infrastructure.
@@ -27,11 +27,12 @@ Invariants that hold whether or not the skill loads:
 Recovery entry routes under `_aiHumanInteract/`:
 
 - `intent/nodes/` (`intent/structure/graph.json`) — Intent Graph & concepts (epistemic)
+- `specs/nodes/` (`specs/structure/graph.json`) — Spec Graph: standing invariants, glossary, standards & contracts
 - `plan/` (`plan/structure/graph.json`) — Plan Graph v4 sources & views (pragmatic)
 - `knowledge-debt/nodes/` (`knowledge-debt/structure/graph.json`) — Knowledge-debt bookmarks
-- `scripts/structure/graph.json` — Scripts Graph AST dependencies & plan coverage
+- `scripts/structure/graph.json` — Scripts Graph AST dependencies & plan/spec coverage
 - `hebbian/associations.json` — Embedding + Hebbian associative memory & hubs
-- `studio/index.html` — Self-contained interactive four-graph studio
+- `studio/index.html` — Self-contained interactive three-stratum five-graph studio
 - `state/active.md` — Active session checkpoint for recovery after compaction
 
 After compaction, or in a new session, read the Project Portrait block (if

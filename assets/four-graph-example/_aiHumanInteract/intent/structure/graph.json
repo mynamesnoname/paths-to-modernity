@@ -1,7 +1,7 @@
 {
   "schema_version": "paths-to-modernity-intent-graph-v1",
-  "node_count": 3,
-  "edge_count": 6,
+  "node_count": 5,
+  "edge_count": 16,
   "source_of_truth": [
     "_aiHumanInteract/intent/nodes/*.md"
   ],
@@ -13,10 +13,14 @@
       "updated": "2026-11-24",
       "raw_utterance": "我想让这个科学光谱 Agent 更快，像在实验台上直接拨动旋钮看谱线一样顺手。",
       "parent": null,
+      "depends_on": [],
+      "enables": [],
+      "validates": [],
+      "supersedes": [],
+      "conflicts_with": [],
       "refines": [],
       "branches_from": [],
       "constrains": [],
-      "supersedes": [],
       "concepts": [
         {
           "name": "科学光谱 Agent",
@@ -70,6 +74,10 @@
       "knowledge_debt_refs": [
         "KD-003"
       ],
+      "spec_refs": [
+        "SPEC-001",
+        "SPEC-003"
+      ],
       "qualities": [
         "操作科学对象应像拨动实体仪器一样直接连贯，不退化为管理弹窗"
       ],
@@ -83,12 +91,20 @@
       "updated": "2026-11-24",
       "raw_utterance": "遇到我不懂的底层算法别让我一直盲目点 Agree，先记下来把原型跑通，等我看到效果再决定留不留。",
       "parent": "INT-001",
+      "depends_on": [],
+      "enables": [
+        "INT-003"
+      ],
+      "validates": [],
+      "supersedes": [
+        "INT-004"
+      ],
+      "conflicts_with": [],
       "refines": [
         "INT-001"
       ],
       "branches_from": [],
       "constrains": [],
-      "supersedes": [],
       "concepts": [
         {
           "name": "非完全技术能力责任人",
@@ -128,6 +144,10 @@
       "knowledge_debt_refs": [
         "KD-001"
       ],
+      "spec_refs": [
+        "SPEC-001",
+        "SPEC-004"
+      ],
       "qualities": [
         "诚实记录未知，绝不把沉默或顺从伪装成技术背书"
       ],
@@ -141,6 +161,13 @@
       "updated": "2026-11-24",
       "raw_utterance": "下周回来继续看同一组光谱时，不管是键盘快捷键还是 Agent 都要能直接指到同一个谱峰特征。",
       "parent": "INT-001",
+      "depends_on": [],
+      "enables": [],
+      "validates": [],
+      "supersedes": [],
+      "conflicts_with": [
+        "INT-004"
+      ],
       "refines": [
         "INT-001"
       ],
@@ -150,7 +177,6 @@
       "constrains": [
         "INT-002"
       ],
-      "supersedes": [],
       "concepts": [
         {
           "name": "同一谱峰可寻址身份",
@@ -184,10 +210,89 @@
       "knowledge_debt_refs": [
         "KD-002"
       ],
+      "spec_refs": [
+        "SPEC-002"
+      ],
       "qualities": [
         "恢复上下文轻快透明，不引入笨重的运维负担"
       ],
       "source": "_aiHumanInteract/intent/nodes/INT-003.md"
+    },
+    {
+      "id": "INT-004",
+      "title": "备选意图：对用户完全隐藏底层算法与数据策略",
+      "status": "superseded",
+      "updated": "2026-11-24",
+      "raw_utterance": "干脆什么技术词都别给我看，全让 Agent 自己黑盒做主行不行？",
+      "parent": "INT-001",
+      "depends_on": [],
+      "enables": [],
+      "validates": [],
+      "supersedes": [],
+      "conflicts_with": [
+        "INT-003"
+      ],
+      "refines": [],
+      "branches_from": [],
+      "constrains": [],
+      "concepts": [
+        {
+          "name": "全黑盒免打扰代理",
+          "role": "mechanism",
+          "status": "resolved",
+          "definition": "跳过所有技术架构声明，由 Agent 单方面决定存储与检索策略"
+        }
+      ],
+      "implementation_alternatives": [],
+      "plan_refs": [
+        "WP-003"
+      ],
+      "knowledge_debt_refs": [],
+      "spec_refs": [],
+      "qualities": [
+        "短期零操作成本，但丧失后续审计与推翻锚点"
+      ],
+      "source": "_aiHumanInteract/intent/nodes/INT-004.md",
+      "alternative_of": "INT-002"
+    },
+    {
+      "id": "INT-005",
+      "title": "实证检验直接画布与书签流是否消除伪同意摩擦",
+      "status": "clarified",
+      "updated": "2026-11-24",
+      "raw_utterance": "做完第一版后我们要跑一遍真实标注回放，确认真的不用点弹窗也不会漏掉关键技术债。",
+      "parent": "INT-001",
+      "depends_on": [
+        "INT-002"
+      ],
+      "enables": [],
+      "validates": [
+        "INT-001",
+        "INT-002"
+      ],
+      "supersedes": [],
+      "conflicts_with": [],
+      "refines": [],
+      "branches_from": [],
+      "constrains": [],
+      "concepts": [
+        {
+          "name": "零弹窗回放验收",
+          "role": "validation",
+          "status": "resolved",
+          "definition": "通过端到端会话测试验证谱峰直选与 KD 书签挂起闭环"
+        }
+      ],
+      "implementation_alternatives": [],
+      "plan_refs": [
+        "WP-006"
+      ],
+      "knowledge_debt_refs": [],
+      "spec_refs": [],
+      "qualities": [
+        "用可运行原型和回归用例说话"
+      ],
+      "source": "_aiHumanInteract/intent/nodes/INT-005.md"
     }
   ],
   "edges": [
@@ -195,6 +300,18 @@
       "from": "INT-001",
       "to": "INT-002",
       "relationship": "decomposes_intent",
+      "provenance": "declared"
+    },
+    {
+      "from": "INT-002",
+      "to": "INT-003",
+      "relationship": "enables",
+      "provenance": "declared"
+    },
+    {
+      "from": "INT-002",
+      "to": "INT-004",
+      "relationship": "supersedes",
       "provenance": "declared"
     },
     {
@@ -207,6 +324,12 @@
       "from": "INT-001",
       "to": "INT-003",
       "relationship": "decomposes_intent",
+      "provenance": "declared"
+    },
+    {
+      "from": "INT-003",
+      "to": "INT-004",
+      "relationship": "conflicts_with",
       "provenance": "declared"
     },
     {
@@ -225,6 +348,48 @@
       "from": "INT-003",
       "to": "INT-002",
       "relationship": "constrains",
+      "provenance": "declared"
+    },
+    {
+      "from": "INT-001",
+      "to": "INT-004",
+      "relationship": "decomposes_intent",
+      "provenance": "declared"
+    },
+    {
+      "from": "INT-004",
+      "to": "INT-003",
+      "relationship": "conflicts_with",
+      "provenance": "declared"
+    },
+    {
+      "from": "INT-004",
+      "to": "INT-002",
+      "relationship": "alternative_of",
+      "provenance": "declared"
+    },
+    {
+      "from": "INT-001",
+      "to": "INT-005",
+      "relationship": "decomposes_intent",
+      "provenance": "declared"
+    },
+    {
+      "from": "INT-002",
+      "to": "INT-005",
+      "relationship": "prerequisite_for",
+      "provenance": "declared"
+    },
+    {
+      "from": "INT-005",
+      "to": "INT-001",
+      "relationship": "validates",
+      "provenance": "declared"
+    },
+    {
+      "from": "INT-005",
+      "to": "INT-002",
+      "relationship": "validates",
       "provenance": "declared"
     }
   ]

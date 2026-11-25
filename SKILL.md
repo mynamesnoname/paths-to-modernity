@@ -48,6 +48,7 @@ implementation.
 | [Planning model](references/model.md) | Defining a plan's objective, context, decomposition, qualities, or review perspectives |
 | [Alternatives](references/alternatives.md) | Consequential implementation alternatives need comparison under a shared outcome and evaluation baseline |
 | [Knowledge debt & technical triage](references/knowledge-debt.md) | Declaring technical choices before pragmatic execution (3-way triage), recording `KD-###` bookmarks, or reorganizing graphs when a bookmark is resolved |
+| [Spec Graph](references/spec-graph.md) | Crystallizing standing invariants (*Do / Do NOT*), canonical domain glossary terms, development standards, or verifiable contracts under `_aiHumanInteract/specs/`, or checking spec blast radius (`ptm.py spec impact`) |
 | [Plan Graph](references/plan-graph.md) | Working with `_aiHumanInteract/plan/structure/graph.json` (`paths-to-modernity-plan-graph-v4`) or installing/upgrading pragmatic plan infrastructure |
 | [Scripts Graph](references/scripts-graph.md) | Extracting AST/import/call codebase dependencies and plan coverage under `_aiHumanInteract/scripts/` |
 | [Associative memory & portraits](references/hebbian-memory.md) | Running on-device embeddings + Hebbian spreading retrieval (`_aiHumanInteract/hebbian/`) or refreshing the subagent recovery portrait in `AGENTS.md` |
@@ -78,11 +79,17 @@ Use the depth needed for the next commitment; omit ceremony on small tasks.
    - *Not understood, proceed with reversible prototype* → provisional acceptance
      plus a linked `KD-###` bookmark in `_aiHumanInteract/knowledge-debt/`;
    - *Disagreed, propose counter-view* → revise the plan before executing.
-5. **Execute pragmatic plans and maintain federated graphs.** Decompose approved
-   intents into pragmatic Plan Graph nodes (`LT/MT/ST/WP`), execute code changes,
-   and let deterministic CLI tooling (`scripts/ptm.py`) validate links, scan the
-   Scripts Graph, update Hebbian co-activation weights, and render the multi-graph
-   Studio (`_aiHumanInteract/studio/index.html`).
+5. **Crystallize standing specs, execute pragmatic plans, and maintain federated graphs.**
+   Promote durable invariants (*Do / Do NOT*), ubiquitous glossary terms,
+   standards, and verifiable contracts into `_aiHumanInteract/specs/nodes/SPEC-###.md`
+   so standing rules survive after one-off work packages close. Before authoring a
+   new Intent, Spec, or Plan node (or when inspecting an existing one), probe
+   cross-graph relevance via `scripts/ptm.py related <repo> <node-id|draft-file|text>`
+   (and `scripts/ptm.py spec impact <repo> <SPEC-ID>` before amending an active
+   spec). Then decompose approved intents into pragmatic Plan Graph nodes
+   (`LT/MT/ST/WP`), execute code changes, and let `scripts/ptm.py build` validate
+   links, scan the Scripts Graph, update Hebbian co-activation weights, and render
+   the 3-stratum 5-graph Studio (`_aiHumanInteract/studio/index.html`).
 6. **Revisit bookmarks and reorganize when understanding matures.** When practice
    clarifies an open `KD-###` bookmark, resolve it as `affirmed` (closing the
    gap) or `rejected` (computing impact across linked Plan and Intent nodes to

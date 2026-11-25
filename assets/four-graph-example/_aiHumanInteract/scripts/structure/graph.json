@@ -13,7 +13,7 @@
       "role": "planned_target",
       "status": "planned_missing",
       "loc": 0,
-      "summary": "Planned in Plan Graph; file not yet created on disk.",
+      "summary": "Planned in Plan/Spec Graph; file not yet created on disk.",
       "inferred_note": null,
       "inferred_evidence": null,
       "classes": [],
@@ -24,6 +24,8 @@
         "ST-002",
         "WP-005"
       ],
+      "governed_by_specs": [],
+      "verifies_specs": [],
       "centrality": 0.5405
     },
     {
@@ -48,6 +50,11 @@
         "ST-002",
         "WP-004"
       ],
+      "governed_by_specs": [
+        "SPEC-002",
+        "SPEC-003"
+      ],
+      "verifies_specs": [],
       "centrality": 0.9655
     },
     {
@@ -70,8 +77,14 @@
       "governed_by_plans": [
         "MT-001",
         "ST-001",
-        "WP-002"
+        "WP-002",
+        "WP-006"
       ],
+      "governed_by_specs": [
+        "SPEC-003",
+        "SPEC-004"
+      ],
+      "verifies_specs": [],
       "centrality": 0.9655
     },
     {
@@ -95,8 +108,14 @@
       "is_entrypoint": true,
       "governed_by_plans": [
         "LT-001",
-        "WP-001"
+        "WP-001",
+        "WP-006"
       ],
+      "governed_by_specs": [
+        "SPEC-001",
+        "SPEC-004"
+      ],
+      "verifies_specs": [],
       "centrality": 1.0
     },
     {
@@ -118,7 +137,14 @@
       "is_entrypoint": false,
       "governed_by_plans": [
         "WP-001",
-        "WP-004"
+        "WP-004",
+        "WP-006"
+      ],
+      "governed_by_specs": [],
+      "verifies_specs": [
+        "SPEC-001",
+        "SPEC-002",
+        "SPEC-004"
       ],
       "centrality": 0.5405
     },
@@ -142,6 +168,12 @@
         "ST-001",
         "WP-001"
       ],
+      "governed_by_specs": [
+        "SPEC-001",
+        "SPEC-002",
+        "SPEC-003"
+      ],
+      "verifies_specs": [],
       "centrality": 0.5405
     }
   ],

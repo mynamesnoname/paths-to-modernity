@@ -8,7 +8,7 @@
       "width": 350,
       "height": 190,
       "color": "1",
-      "text": "## `src/event_replay_audit.py`\n\n**Role:** `planned_target` · **LOC:** 0 · **Hub:** 0.54\n\nPlanned in Plan Graph; file not yet created on disk."
+      "text": "## `src/event_replay_audit.py`\n\n**Role:** `planned_target` · **LOC:** 0 · **Hub:** 0.54\n\nPlanned in Plan/Spec Graph; file not yet created on disk."
     },
     {
       "id": "SCR-src_spectral_store.py",

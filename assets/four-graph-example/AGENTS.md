@@ -1,5 +1,5 @@
 <!-- paths-to-modernity:protocol:start -->
-<!-- schema-version: paths-to-modernity-protocol-v3 -->
+<!-- schema-version: paths-to-modernity-protocol-v4 -->
 ## Paths to Modernity
 
 This project is planned and governed with the Paths to Modernity infrastructure.
@@ -27,11 +27,12 @@ Invariants that hold whether or not the skill loads:
 Recovery entry routes under `_aiHumanInteract/`:
 
 - `intent/nodes/` (`intent/structure/graph.json`) — Intent Graph & concepts (epistemic)
+- `specs/nodes/` (`specs/structure/graph.json`) — Spec Graph: standing invariants, glossary, standards & contracts
 - `plan/` (`plan/structure/graph.json`) — Plan Graph v4 sources & views (pragmatic)
 - `knowledge-debt/nodes/` (`knowledge-debt/structure/graph.json`) — Knowledge-debt bookmarks
-- `scripts/structure/graph.json` — Scripts Graph AST dependencies & plan coverage
+- `scripts/structure/graph.json` — Scripts Graph AST dependencies & plan/spec coverage
 - `hebbian/associations.json` — Embedding + Hebbian associative memory & hubs
-- `studio/index.html` — Self-contained interactive four-graph studio
+- `studio/index.html` — Self-contained interactive three-stratum five-graph studio
 - `state/active.md` — Active session checkpoint for recovery after compaction
 
 After compaction, or in a new session, read the Project Portrait block (if
@@ -152,7 +153,15 @@ namespace and connect them only through links.
 <!-- generated: 2026-11-24 | synthesizer: subagent-llm:deepseek-flash -->
 ### Project Recovery Portrait (Generated — Do Not Hand-Edit)
 
-- **意图画像 (
+- **意图画像 (Intent Portrait):** INT-001（已结晶）要科学光谱 Agent 像"拨动实体旋钮"般直接连贯，"更快"已定型为 IV-3；INT-002（已澄清）要求未懂技术走三态分拣＋知识债书签，选 IV-1"先记下来跑通原型"，绝不把沉默当背书。
+  INT-003（探索中）跨会话同一谱峰可寻址与历史审计，概念"历史状态回放粒度"仍 ambiguous（IV-1）；INT-004 全黑盒代理已 superseded（保留 WP-003 为反例锚点）；INT-005 要求零弹窗回放验收（WP-006）。
+- **常驻规范与术语 (Spec & Glossary Portrait):** SPEC-001 must_not：主画布禁阻断式技术弹窗，沉默/超时≠技术授权；SPEC-002 强制统一术语 `PeakHandle (PK-###)`，禁用 WaveItem/LineCursor/PeakIdx 同义词。
+  SPEC-003 must：暖灰纸感低疲劳色板＋存储模块与分拣模块单向零循环依赖；SPEC-004 must：`classify_disclosure` 输入输出契约与知识债 open→affirmed|rejected 状态机后置条件。
+- **规划与执行画像 (Plan & Scripts Portrait):** 计数 done 3 / in_progress 4 / ready 1 / proposed 2 / superseded 1；进行中 LT-001、MT-001、ST-001、ST-002，ready 为 WP-002（三态分拣闸门接知识债）。
+  已完成 WP-001（谱峰直选画布+会话入口）、WP-004（轻量 KV 谱峰持久化）、WP-006（端到端契约验证）；核心代码枢纽 `src/workbench_api.py`(1.0)、`src/spectral_store.py`、`src/triage_gate.py`(0.9655)，测试 `tests/test_workbench.py`(0.5405)。
+  缺口：`src/event_replay_audit.py` 仍为 planned_target（0.5405）未落地，对应 WP-005 不在活跃/完成列表。
+- **认知书签与关联枢纽 (Epistemic Watchlist & Hubs):** KD-001 Hebbian 双路激活（open，not_understood_prototype）—触发：多跳召回噪声过多或固化突触衰减超参；KD-002 Append-Only 事件溯源（open）—触发：JSON 快照撑不住多协作者冲突回溯或动手写 `src/event_replay_audit.py`。
+  KD-003 MLX 4-bit 端侧量化嵌入已 affirmed，触发：迁移无 Metal 的 Linux 容器时验降级通路。Hebbian 枢纽：WP-001(3.54)、SPEC-001(3.48)、SPEC-004(3.31)、MT-001(3.15)、WP-006(3.01)。
 
-- **快速恢复入口 (Quick Routes):** 意图 `_aiHumanInteract/intent/structure/graph.json` · 规划 `_aiHumanInteract/plan/structure/graph.json` · 知识债 `_aiHumanInteract/knowledge-debt/structure/graph.json` · 脚本 `_aiHumanInteract/scripts/structure/graph.json` · 工作台 `_aiHumanInteract/studio/index.html` · 会话断点 `_aiHumanInteract/state/active.md`
+- **快速恢复入口 (Quick Routes):** 意图 `_aiHumanInteract/intent/structure/graph.json` · 规范 `_aiHumanInteract/specs/structure/graph.json` · 规划 `_aiHumanInteract/plan/structure/graph.json` · 知识债 `_aiHumanInteract/knowledge-debt/structure/graph.json` · 脚本 `_aiHumanInteract/scripts/structure/graph.json` · 工作台 `_aiHumanInteract/studio/index.html` · 会话断点 `_aiHumanInteract/state/active.md`
 <!-- paths-to-modernity:portrait:end -->

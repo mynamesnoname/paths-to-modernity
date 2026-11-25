@@ -1,7 +1,7 @@
 {
   "schema_version": "paths-to-modernity-knowledge-debt-v1",
   "node_count": 3,
-  "edge_count": 11,
+  "edge_count": 12,
   "source_of_truth": [
     "_aiHumanInteract/knowledge-debt/nodes/*.md"
   ],
@@ -15,6 +15,9 @@
       "updated": "2026-11-24",
       "intent_refs": [
         "INT-002"
+      ],
+      "spec_refs": [
+        "SPEC-004"
       ],
       "plan_refs": [
         "WP-002"
@@ -34,6 +37,9 @@
         "counterproposal": null,
         "reopen_intents": [
           "INT-002"
+        ],
+        "amend_or_review_specs": [
+          "SPEC-004"
         ],
         "supersede_plans": [
           "WP-002"
@@ -60,6 +66,7 @@
       "intent_refs": [
         "INT-003"
       ],
+      "spec_refs": [],
       "plan_refs": [
         "WP-005"
       ],
@@ -78,6 +85,9 @@
         "counterproposal": null,
         "reopen_intents": [
           "INT-003"
+        ],
+        "amend_or_review_specs": [
+          "SPEC-004"
         ],
         "supersede_plans": [
           "WP-005"
@@ -104,6 +114,7 @@
       "intent_refs": [
         "INT-001"
       ],
+      "spec_refs": [],
       "plan_refs": [
         "WP-001"
       ],
@@ -122,11 +133,13 @@
         "reopen_intents": [
           "INT-001"
         ],
+        "amend_or_review_specs": [],
         "supersede_plans": [
           "WP-001"
         ],
         "blocked_or_recheck_downstream_plans": [
-          "WP-002"
+          "WP-002",
+          "WP-006"
         ],
         "affected_parent_scopes": [
           "LT-001",
@@ -144,6 +157,12 @@
       "from": "KD-001",
       "to": "INT-002",
       "relationship": "bookmarks_intent",
+      "provenance": "declared"
+    },
+    {
+      "from": "KD-001",
+      "to": "SPEC-004",
+      "relationship": "questions_spec",
       "provenance": "declared"
     },
     {

@@ -24,7 +24,7 @@ CARD_W = 264
 CARD_H = 78
 GAP_X = 56
 GAP_Y = 66
-LEAF_GAP = 18
+LEAF_GAP = 24
 
 LEVEL_Z = {"long-term": 36, "mid-term": 24, "short-term": 12, "work-package": 0}
 DEPTH_X = 0.34
@@ -46,12 +46,20 @@ ROLE_BADGE = {
 
 GRAPH_ACCENT = {
     "intent": "#6E5DC6",
+    "specs": "#2C6B67",
     "plan_lt": "#7766A6",
     "plan_mt": "#6487AD",
     "plan_st": "#6F9DA2",
     "plan_wp": "#9AA5B1",
     "knowledge_debt": "#C88A2E",
     "scripts": "#3B7A8C",
+}
+
+SPEC_KIND_TAG = {
+    "invariant": "INVARIANT",
+    "glossary": "GLOSSARY",
+    "standard": "STANDARD",
+    "contract": "CONTRACT",
 }
 
 STATUS_PALETTE = {
@@ -65,6 +73,9 @@ STATUS_PALETTE = {
     "clarified": ("#EDF6FA", "#A5CBE0", "#23516B"),
     "crystallized": ("#EDF7F0", "#A7CEB4", "#234B36"),
     "reopened": ("#FFF2EC", "#E6B098", "#8A4224"),
+    "enforced": ("#EBF6F4", "#8EC4BA", "#184A43"),
+    "draft": ("#F2F5F8", "#BCC6D2", "#3E4C59"),
+    "deprecated": ("#F5F2EE", "#D3C5B4", "#6E5A44"),
     "open": ("#FDF6E7", "#E2C285", "#7A5213"),
     "affirmed": ("#EDF7F0", "#A7CEB4", "#234B36"),
     "rejected": ("#FCEEEE", "#DF9F9F", "#873535"),
@@ -116,6 +127,8 @@ def _wrap(text: str, max_w: float = 234, max_lines: int = 2) -> list[str]:
 
 def _layout_tree(
     items: list[TreeItem],
+    *,
+    stack_threshold: int = 3,
 ) -> tuple[dict[str, tuple[float, float]], float, float, set[str]]:
     """Stepped architectural tree layout; also returns IDs placed inside vertical leaf stacks."""
     by_id = {it.nid: it for it in items}
@@ -144,7 +157,7 @@ def _layout_tree(
             while j < len(node.children) and not node.children[j].children:
                 j += 1
             run = node.children[i:j]
-            if len(run) >= 3:
+            if len(run) >= stack_threshold:
                 groups.append(run)
                 for lf in run:
                     stacked_ids.add(lf.nid)
@@ -154,7 +167,7 @@ def _layout_tree(
 
         blocks: list[tuple[float, float, list[tuple[str, float, float]], float]] = []
         for grp in groups:
-            if len(grp) >= 3:
+            if len(grp) >= stack_threshold:
                 h = len(grp) * CARD_H + (len(grp) - 1) * LEAF_GAP
                 pts = [(lf.nid, 0.0, k * (CARD_H + LEAF_GAP)) for k, lf in enumerate(grp)]
                 blocks.append((CARD_W, h, pts, 0.0))
@@ -230,6 +243,7 @@ def _layout_scripts(script_nodes: list[dict[str, Any]]) -> tuple[dict[str, tuple
 
 def _compute_all_layouts(federated: Mapping[str, Any]) -> tuple[dict[str, Any], set[str]]:
     intent_nodes = federated.get("intent", {}).get("nodes", [])
+    spec_nodes = federated.get("specs", {}).get("nodes", [])
     plan_nodes = federated.get("plan", {}).get("nodes", [])
     kd_nodes = federated.get("knowledge_debt", {}).get("nodes", [])
     script_nodes = federated.get("scripts", {}).get("nodes", [])
@@ -237,13 +251,22 @@ def _compute_all_layouts(federated: Mapping[str, Any]) -> tuple[dict[str, Any], 
     int_items = [
         TreeItem(
             nid=n["id"],
-            parent=n.get("parent")
-            or (n["branches_from"][0] if n.get("branches_from") else None),
+            parent=n.get("parent"),
             level="intent",
         )
         for n in intent_nodes
     ]
-    int_pos, int_w, int_h, int_stacked = _layout_tree(int_items)
+    int_pos, int_w, int_h, int_stacked = _layout_tree(int_items, stack_threshold=3)
+
+    spec_items = [
+        TreeItem(
+            nid=n["id"],
+            parent=n.get("parent"),
+            level="spec",
+        )
+        for n in spec_nodes
+    ]
+    spec_pos, spec_w, spec_h, spec_stacked = _layout_tree(spec_items, stack_threshold=5)
 
     kd_pos: dict[str, tuple[float, float]] = {}
     cols_kd = max(1, min(3, len(kd_nodes)))
@@ -257,7 +280,7 @@ def _compute_all_layouts(federated: Mapping[str, Any]) -> tuple[dict[str, Any], 
         TreeItem(nid=n["id"], parent=n.get("parent"), level=n["level"])
         for n in plan_nodes
     ]
-    plan_base_pos, plan_w, plan_h, plan_stacked = _layout_tree(plan_items)
+    plan_base_pos, plan_w, plan_h, plan_stacked = _layout_tree(plan_items, stack_threshold=3)
     # Note: apply 2.5D vertical lift (`y - z`), keeping horizontal `x` aligned so parent->child vertical stems stay 100% plumb without 4px kinks!
     plan_pos: dict[str, tuple[float, float]] = {}
     for n in plan_nodes:
@@ -269,16 +292,23 @@ def _compute_all_layouts(federated: Mapping[str, Any]) -> tuple[dict[str, Any], 
 
     margin = 86.0
     band_gap_x = 124.0
-    stratum_gap_y = 148.0
+    stratum_gap_y = 124.0
 
     epistemic_w = int_w + (band_gap_x + kd_w if kd_w > 0 and int_w > 0 else kd_w)
     epistemic_h = max(int_h, kd_h, CARD_H)
+    normative_w = max(spec_w, CARD_W) if spec_nodes else 0.0
+    normative_h = max(spec_h, CARD_H) if spec_nodes else 0.0
     pragmatic_w = plan_w + (band_gap_x + scr_w if scr_w > 0 and plan_w > 0 else scr_w)
     pragmatic_h = max(plan_h + 44, scr_h, CARD_H)
 
-    overview_inner_w = max(epistemic_w, pragmatic_w, 720.0)
+    overview_inner_w = max(epistemic_w, normative_w, pragmatic_w, 720.0)
     epistemic_top = margin + 48.0
-    pragmatic_top = epistemic_top + epistemic_h + stratum_gap_y
+    if spec_nodes:
+        normative_top = epistemic_top + epistemic_h + stratum_gap_y
+        pragmatic_top = normative_top + normative_h + stratum_gap_y
+    else:
+        normative_top = epistemic_top
+        pragmatic_top = epistemic_top + epistemic_h + stratum_gap_y
 
     overview_pos: dict[str, tuple[float, float]] = {}
     ep_start_x = margin + (overview_inner_w - epistemic_w) / 2
@@ -287,6 +317,11 @@ def _compute_all_layouts(federated: Mapping[str, Any]) -> tuple[dict[str, Any], 
     kd_offset_x = ep_start_x + (int_w + band_gap_x if int_w > 0 else 0.0)
     for nid, (x, y) in kd_pos.items():
         overview_pos[nid] = (round(kd_offset_x + x, 1), round(epistemic_top + y, 1))
+
+    if spec_nodes:
+        nm_start_x = margin + (overview_inner_w - normative_w) / 2
+        for nid, (x, y) in spec_pos.items():
+            overview_pos[nid] = (round(nm_start_x + x, 1), round(normative_top + 18.0 + y, 1))
 
     pr_start_x = margin + (overview_inner_w - pragmatic_w) / 2
     for nid, (x, y) in plan_pos.items():
@@ -306,57 +341,175 @@ def _compute_all_layouts(federated: Mapping[str, Any]) -> tuple[dict[str, Any], 
             "height": round(max(h, 300.0) + pad * 2 + 40.0, 1),
         }
 
+    strata_dict: dict[str, Any] = {
+        "epistemic": {
+            "x": round(margin - 32, 1),
+            "y": round(margin, 1),
+            "w": round(overview_inner_w + 64, 1),
+            "h": round(epistemic_h + 78, 1),
+        },
+        "pragmatic": {
+            "x": round(margin - 32, 1),
+            "y": round(pragmatic_top - 30, 1),
+            "w": round(overview_inner_w + 64, 1),
+            "h": round(pragmatic_h + 76, 1),
+        },
+    }
+    if spec_nodes:
+        strata_dict["normative"] = {
+            "x": round(margin - 32, 1),
+            "y": round(normative_top - 26, 1),
+            "w": round(overview_inner_w + 64, 1),
+            "h": round(normative_h + 70, 1),
+        }
+
     layouts = {
         "overview": {
             "positions": {k: [v[0], v[1]] for k, v in overview_pos.items()},
             "width": round(overview_inner_w + margin * 2, 1),
             "height": round(pragmatic_top + pragmatic_h + margin, 1),
-            "strata": {
-                "epistemic": {
-                    "x": round(margin - 32, 1),
-                    "y": round(margin, 1),
-                    "w": round(overview_inner_w + 64, 1),
-                    "h": round(epistemic_h + 78, 1),
-                },
-                "pragmatic": {
-                    "x": round(margin - 32, 1),
-                    "y": round(pragmatic_top - 30, 1),
-                    "w": round(overview_inner_w + 64, 1),
-                    "h": round(pragmatic_h + 76, 1),
-                },
-            },
+            "strata": strata_dict,
         },
         "intent": _shift(int_pos, int_w, int_h),
+        "specs": _shift(spec_pos, spec_w, spec_h),
         "plan": _shift(plan_pos, plan_w, plan_h + 44),
         "knowledge_debt": _shift(kd_pos, kd_w, kd_h),
         "scripts": _shift(scr_pos, scr_w, scr_h),
     }
-    return layouts, (int_stacked | plan_stacked)
+    return layouts, (int_stacked | spec_stacked | plan_stacked)
 
 
 def _deduplicate_structural_edges(edges: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Merge parallel structural edges (e.g. `imports` + `invokes`, or `decomposes_intent` + `refines`)."""
+    """Keep ONLY Parent/Children tree edges on Intent, Spec & Plan canvases, plus AST imports/invokes on Scripts."""
+    canvas_rels = {"decomposes_to", "decomposes_intent", "decomposes_spec", "imports", "invokes"}
     priority = {
         "decomposes_to": 1,
         "decomposes_intent": 1,
+        "decomposes_spec": 1,
         "imports": 1,
         "invokes": 2,
-        "prerequisite_for": 2,
-        "branches_from": 2,
-        "refines": 3,
-        "constrains": 3,
-        "enables": 4,
-        "supersedes": 4,
-        "alternative_of": 4,
     }
     grouped: dict[tuple[str, str], dict[str, Any]] = {}
     for e in edges:
+        rel = e["relationship"]
+        if rel not in canvas_rels:
+            continue
         u, v = e["from"], e["to"]
         pair = (u, v)
-        rel = e["relationship"]
         if pair not in grouped or priority.get(rel, 9) < priority.get(grouped[pair]["relationship"], 9):
             grouped[pair] = dict(e)
     return list(grouped.values())
+
+
+def _build_explicit_relations(federated: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+    """Build bidirectional agent-curated relation records for every Intent, Spec, and Plan node."""
+    relations: dict[str, dict[str, Any]] = {}
+    for graph_key in ("intent", "specs", "plan"):
+        gnodes = federated.get(graph_key, {}).get("nodes", [])
+        gedges = federated.get(graph_key, {}).get("edges", [])
+        for n in gnodes:
+            relations[n["id"]] = {
+                "parent": n.get("parent"),
+                "children": [],
+                "depends_on": [],
+                "required_by": [],
+                "enables": [],
+                "enabled_by": [],
+                "validates": [],
+                "validated_by": [],
+                "supersedes": [],
+                "superseded_by": [],
+                "conflicts_with": [],
+                "alternative_of": [],
+                "has_alternative": [],
+                "refines": [],
+                "constrains": [],
+            }
+        for n in gnodes:
+            p = n.get("parent")
+            if p and p in relations:
+                relations[p]["children"].append(n["id"])
+        for e in gedges:
+            rel = e.get("relationship")
+            u, v = e.get("from"), e.get("to")
+            if u not in relations or v not in relations:
+                continue
+            if rel == "prerequisite_for":
+                relations[v]["depends_on"].append(u)
+                relations[u]["required_by"].append(v)
+            elif rel == "enables":
+                relations[u]["enables"].append(v)
+                relations[v]["enabled_by"].append(u)
+            elif rel == "validates":
+                relations[u]["validates"].append(v)
+                relations[v]["validated_by"].append(u)
+            elif rel == "supersedes":
+                relations[u]["supersedes"].append(v)
+                relations[v]["superseded_by"].append(u)
+            elif rel == "conflicts_with":
+                relations[u]["conflicts_with"].append(v)
+                relations[v]["conflicts_with"].append(u)
+            elif rel == "alternative_of":
+                relations[u]["alternative_of"].append(v)
+                relations[v]["has_alternative"].append(u)
+            elif rel in ("refines", "constrains"):
+                relations[u][rel].append(v)
+
+    for entry in relations.values():
+        for k, val in list(entry.items()):
+            if isinstance(val, list):
+                entry[k] = sorted(set(val))
+    return relations
+
+
+def _passive_icon_badges(rel_entry: Mapping[str, Any] | None) -> list[dict[str, str]]:
+    """Compact corner micro-stamps for Supersedes/Superseded, Conflicts, and Alternatives."""
+    if not rel_entry:
+        return []
+    badges: list[dict[str, str]] = []
+    sup_out = rel_entry.get("supersedes") or []
+    sup_in = rel_entry.get("superseded_by") or []
+    if sup_out or sup_in:
+        if sup_out and not sup_in:
+            badges.append({
+                "glyph": "↑",
+                "tone": "sup-up",
+                "tip": f"替代 (Supersedes): {', '.join(sup_out)}",
+            })
+        elif sup_in and not sup_out:
+            badges.append({
+                "glyph": "↓",
+                "tone": "sup-down",
+                "tip": f"被替代于 (Superseded by): {', '.join(sup_in)}",
+            })
+        else:
+            badges.append({
+                "glyph": "↕",
+                "tone": "sup-up",
+                "tip": f"替代 {', '.join(sup_out)} · 被替代于 {', '.join(sup_in)}",
+            })
+    conf = rel_entry.get("conflicts_with") or []
+    if conf:
+        badges.append({
+            "glyph": "✕",
+            "tone": "conflict",
+            "tip": f"冲突 (Conflicts with): {', '.join(conf)}",
+        })
+    alt_of = rel_entry.get("alternative_of") or []
+    has_alt = rel_entry.get("has_alternative") or []
+    if alt_of or has_alt:
+        glyph = "◎" if has_alt and not alt_of else "⇄"
+        parts = []
+        if alt_of:
+            parts.append(f"备选基线: {', '.join(alt_of)}")
+        if has_alt:
+            parts.append(f"拥有备选: {', '.join(has_alt)}")
+        badges.append({
+            "glyph": glyph,
+            "tone": "alt",
+            "tip": " · ".join(parts),
+        })
+    return badges
 
 
 def _collect_prototype_svgs(repo_root: Path, intent_nodes: list[dict[str, Any]]) -> dict[str, str]:
@@ -613,8 +766,86 @@ STUDIO_HTML = r"""<!DOCTYPE html>
   .chip-link.hebb { border-color: #EAD29E; background: #FDF9F0; color: #7A5213; }
   .chip-meta { font-size: 10.5px; font-family: ui-monospace, SFMono-Regular, monospace; opacity: 0.78; white-space: nowrap; flex-shrink: 0; }
 
+  /* Agent-Curated Explicit Relations Table & Summary */
+  .rel-summary {
+    margin-top: 7px; font-size: 10.5px; color: #4A5562;
+    display: flex; flex-wrap: wrap; gap: 4px 8px;
+  }
+  .rel-summary span {
+    background: rgba(255,255,255,0.68); border: 1px solid rgba(130,145,160,0.28);
+    border-radius: 999px; padding: 1px 7px;
+  }
+  .rel-summary b { font-weight: 700; color: #1F2933; }
+  .rel-summary span.hebb-cnt { border-color: #E2C285; background: #FDF6E7; color: #7A5213; }
+
+  .rel-card {
+    border: 1px solid #E2E7EC; border-radius: 9px; padding: 8px 11px;
+    background: #FAFBFD; margin-top: 5px;
+  }
+  .rel-group-sep {
+    height: 1px; background: #EBEEF2; margin: 6px 0;
+  }
+  .rel-row {
+    display: flex; align-items: flex-start; gap: 8px; margin: 3.5px 0;
+    font-size: 11.5px; line-height: 1.48;
+  }
+  .rel-label {
+    flex: none; width: 108px; color: #6E7A86; font-size: 11px; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .rel-ico {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 15px; height: 15px; border-radius: 4px; font-size: 10px; font-weight: 800;
+    flex: none;
+  }
+  .rel-ico.sup-down { background: #ECEFF2; color: #36414C; border: 1px solid #BFC6CE; }
+  .rel-ico.sup-up { background: #E6F0FA; color: #1E4976; border: 1px solid #9EC0E2; }
+  .rel-ico.conflict { background: #FDECEC; color: #9B2C2C; border: 1px solid #E5A1A1; }
+  .rel-ico.alt { background: #F1EEFC; color: #44338A; border: 1px solid #BEB3EC; }
+  .rel-values { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px 6px; }
+  .rel-empty { color: #B0BAC4; font-size: 11px; }
+  .rel-graph-hint { color: #52606D; font-size: 11px; }
+  .rel-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 1.5px 7px; border-radius: 5px; border: 1px solid #DCE3EA;
+    background: #FFFFFF; color: #24476B; text-decoration: none; font-size: 11px;
+    cursor: pointer; max-width: 100%;
+  }
+  .rel-pill:hover { background: #EDF3FA; border-color: #9EC0E2; }
+  .rel-pill .p-txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .s-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; border: 1px solid rgba(0,0,0,0.12); }
+
+  /* Spec Graph 4-Pillar Inspector Cards */
+  .rule-list { display: flex; flex-direction: column; gap: 5px; margin-top: 5px; }
+  .rule-row {
+    padding: 5.5px 9px; border-radius: 7px; font-size: 11.5px; line-height: 1.45;
+    display: flex; align-items: flex-start; gap: 6px;
+  }
+  .rule-row.do { background: #EDF7F0; border: 1px solid #B5DAC0; color: #1E462E; }
+  .rule-row.dont { background: #FDEEEE; border: 1px solid #E6B0B0; color: #802828; }
+  .rule-tag { font-weight: 800; font-size: 10px; white-space: nowrap; margin-top: 1px; }
+  .alias-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .term-canon {
+    display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px;
+    border-radius: 6px; background: #EBF6F4; border: 1px solid #8EC4BA;
+    color: #184A43; font-weight: 700; font-size: 11.5px; font-family: ui-monospace, SFMono-Regular, monospace;
+  }
+  .term-forbid {
+    display: inline-flex; align-items: center; gap: 4px; padding: 2.5px 8px;
+    border-radius: 6px; background: #FDEEEE; border: 1px solid #E5A6A6;
+    color: #8A2C2C; font-size: 11px; text-decoration: line-through;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+  }
+  .contract-sig {
+    margin-top: 5px; padding: 8px 10px; border-radius: 7px;
+    background: #F4F6F8; border: 1px solid #CFD7DF; color: #1F2933;
+    font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; line-height: 1.5;
+    word-break: break-word;
+  }
+
   /* SVG Scene Styling */
   .stratum-box { fill: rgba(255,255,255,0.48); stroke: #DDDAD2; stroke-width: 1.2; stroke-dasharray: 6 4; }
+  .stratum-box.normative { fill: rgba(235, 246, 244, 0.42); stroke: #B6D4CE; }
   .stratum-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; fill: #6E7A86; }
   .stratum-sub { font-size: 10.5px; fill: #9AA5B1; }
 
@@ -623,6 +854,7 @@ STUDIO_HTML = r"""<!DOCTYPE html>
   .hebb-edge { fill: none; stroke: #C88A2E; stroke-dasharray: 2 4; opacity: 0.0; pointer-events: none; transition: opacity .15s ease; }
   .hebb-edge.backbone { opacity: 0.20; }
   .hebb-edge.mesh-all { opacity: 0.34; }
+  .card-mark { pointer-events: none; }
 
   .edge-hot { stroke: #3B66A8 !important; stroke-width: 2.25 !important; opacity: 0.96 !important; }
   .edge-hebb-hot { stroke: #C07415 !important; opacity: 0.92 !important; stroke-dasharray: none !important; }
@@ -641,6 +873,8 @@ STUDIO_HTML = r"""<!DOCTYPE html>
   .n-tag { font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; }
   .n-title { font-size: 12.5px; font-weight: 600; }
   .n-sub { font-size: 10px; fill: #616E7C; }
+  .micro-glyph-txt { font-size: 9.5px; font-weight: 800; pointer-events: none; }
+  .stamp-pill-txt { font-size: 10px; font-weight: 700; letter-spacing: 0.02em; }
 </style>
 </head>
 <body>
@@ -652,11 +886,12 @@ STUDIO_HTML = r"""<!DOCTYPE html>
       <span class="brand-badge">{embed_badge}</span>
     </div>
     <span class="sep"></span>
-    <button class="lens-btn active" data-lens="overview">0 · 双层总览 <span class="cnt">{total_count}</span></button>
+    <button class="lens-btn active" data-lens="overview">0 · 三层总览 <span class="cnt">{total_count}</span></button>
     <button class="lens-btn" data-lens="intent">1 · 意图图谱 <span class="cnt">{intent_count}</span></button>
-    <button class="lens-btn" data-lens="plan">2 · 规划树 2.5D <span class="cnt">{plan_count}</span></button>
-    <button class="lens-btn" data-lens="knowledge_debt">3 · 知识债书签 <span class="cnt">{kd_count}</span></button>
-    <button class="lens-btn" data-lens="scripts">4 · 脚本依赖图 <span class="cnt">{scripts_count}</span></button>
+    <button class="lens-btn" data-lens="specs">2 · 规范契约 <span class="cnt">{spec_count}</span></button>
+    <button class="lens-btn" data-lens="plan">3 · 规划树 2.5D <span class="cnt">{plan_count}</span></button>
+    <button class="lens-btn" data-lens="knowledge_debt">4 · 知识债书签 <span class="cnt">{kd_count}</span></button>
+    <button class="lens-btn" data-lens="scripts">5 · 脚本依赖图 <span class="cnt">{scripts_count}</span></button>
   </div>
   <div class="bar-cluster">
     <button id="toggle-cross" class="toggle-pill cross-on" type="button">跨域溯源连线</button>
@@ -665,9 +900,10 @@ STUDIO_HTML = r"""<!DOCTYPE html>
 </div>
 
 <div id="legend">
-  <span class="leg-item"><span class="leg-line"></span>Declared / Observed 结构边</span>
+  <span class="leg-item"><span class="leg-line"></span>Parent / Children 树结构线</span>
+  <span class="leg-item"><span class="rel-ico alt">⇄</span><span class="rel-ico sup-down">↓</span><span class="rel-ico conflict">✕</span>备选·替代·冲突印章</span>
   <span id="leg-cross" class="leg-item"><span class="leg-line cross"></span>跨域溯源边</span>
-  <span class="leg-item"><span class="leg-line hebb"></span>Hebbian 突触 (悬停/选中展开全邻域)</span>
+  <span class="leg-item"><span class="leg-line hebb"></span>Hebbian 突触 (悬停/选中展开)</span>
 </div>
 
 <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
@@ -686,6 +922,7 @@ STUDIO_HTML = r"""<!DOCTYPE html>
     <g id="cross-layer"></g>
     <g id="struct-layer"></g>
     <g id="node-layer"></g>
+    <g id="card-mark-layer"></g>
   </g>
 </svg>
 
@@ -712,6 +949,7 @@ STUDIO_HTML = r"""<!DOCTYPE html>
     <div id="p-kicker" class="p-kicker"></div>
     <h2 id="p-title"></h2>
     <div id="p-meta" class="p-meta"></div>
+    <div id="p-rel-summary" class="rel-summary"></div>
     <div id="p-actions" class="p-actions"></div>
   </div>
   <div id="panel-body"></div>
@@ -727,10 +965,26 @@ const hebbLayer = document.getElementById('hebbian-layer');
 const crossLayer = document.getElementById('cross-layer');
 const structLayer = document.getElementById('struct-layer');
 const nodeLayer = document.getElementById('node-layer');
+const cardMarkLayer = document.getElementById('card-mark-layer');
 const panelEl = document.getElementById('panel');
 
 const CARD_W = 264, CARD_H = 78;
 const STACKED_IDS = new Set(DATA.stacked_ids || []);
+const RELATIONS = DATA.relations || {};
+
+const STAMP_SPECS = {
+  supersedes:      { glyph: '↓', label: '↓ 被替代',   fill: '#ECEFF2', stroke: '#7B8794', text: '#2E3842', wm: '#3E4C59' },
+  superseded_by:   { glyph: '↑', label: '↑ 替代方',   fill: '#E6F0FA', stroke: '#4A80B8', text: '#1A4473', wm: '#2B5B8E' },
+  conflicts_with:  { glyph: '✕', label: '✕ 冲突',     fill: '#FDECEC', stroke: '#D65A5A', text: '#962828', wm: '#B83232' },
+  alternative_of:  { glyph: '◎', label: '◎ 对照基线', fill: '#F1EEFC', stroke: '#8470D6', text: '#3F2E88', wm: '#5B46B2' },
+  has_alternative: { glyph: '⇄', label: '⇄ 备选方案', fill: '#F1EEFC', stroke: '#8470D6', text: '#3F2E88', wm: '#5B46B2' }
+};
+const MICRO_TONES = {
+  'sup-up':   { fill: '#E6F0FA', stroke: '#9EC0E2', text: '#1E4976' },
+  'sup-down': { fill: '#ECEFF2', stroke: '#BFC6CE', text: '#36414C' },
+  'conflict': { fill: '#FDECEC', stroke: '#E5A1A1', text: '#9B2C2C' },
+  'alt':      { fill: '#F1EEFC', stroke: '#BEB3EC', text: '#44338A' }
+};
 let currentLens = 'overview';
 let hebbianMode = 'focus'; // 'focus' | 'all' | 'off'
 let showCross = true;
@@ -777,7 +1031,7 @@ function routeStructuralEdge(e, p1, p2) {
   const z1 = (srcNode && srcNode.z) ? srcNode.z : 0;
 
   // Case 1: Child is in a vertical leaf stack -> route along clean left spine channel (`x2 - 16`)
-  if ((e.relationship === 'decomposes_to' || e.relationship === 'decomposes_intent') && STACKED_IDS.has(e.to)) {
+  if ((e.relationship === 'decomposes_to' || e.relationship === 'decomposes_intent' || e.relationship === 'decomposes_spec') && STACKED_IDS.has(e.to)) {
     const sx = x1 + CARD_W / 2, sy = y1 + CARD_H + z1;
     const spineX = x2 - 16;
     const midY = y1 + CARD_H + 30;
@@ -833,6 +1087,7 @@ function renderScene() {
   crossLayer.replaceChildren();
   structLayer.replaceChildren();
   nodeLayer.replaceChildren();
+  cardMarkLayer.replaceChildren();
 
   const layout = DATA.layouts[currentLens] || DATA.layouts.overview;
   const pos = layout.positions;
@@ -843,11 +1098,21 @@ function renderScene() {
 
   if (currentLens === 'overview' && layout.strata) {
     const ep = layout.strata.epistemic;
+    const nm = layout.strata.normative;
     const pr = layout.strata.pragmatic;
     stratumLayer.append(
       svgEl('rect', { x: ep.x, y: ep.y, width: ep.w, height: ep.h, rx: 14, class: 'stratum-box' }),
       svgEl('text', { x: ep.x + 18, y: ep.y + 24, class: 'stratum-label' }, 'EPISTEMIC LAYER · 认知探索层（Intent 意图与概念拆解  +  Knowledge Debt 认知书签）'),
-      svgEl('text', { x: ep.x + ep.w - 18, y: ep.y + 24, 'text-anchor': 'end', class: 'stratum-sub' }, 'Kirsh & Maglio Epistemic Actions · DesignerlyLoop Intent Canvas'),
+      svgEl('text', { x: ep.x + ep.w - 18, y: ep.y + 24, 'text-anchor': 'end', class: 'stratum-sub' }, 'Kirsh & Maglio Epistemic Actions · DesignerlyLoop Intent Canvas')
+    );
+    if (nm) {
+      stratumLayer.append(
+        svgEl('rect', { x: nm.x, y: nm.y, width: nm.w, height: nm.h, rx: 14, class: 'stratum-box normative' }),
+        svgEl('text', { x: nm.x + 18, y: nm.y + 24, class: 'stratum-label', fill: '#225753' }, 'NORMATIVE CONSTITUTION LAYER · 常驻规范契约层（Spec Graph: Invariant 红线 · Glossary 统一术语 · Standard 开发标准 · Contract 契约）'),
+        svgEl('text', { x: nm.x + nm.w - 18, y: nm.y + 24, 'text-anchor': 'end', class: 'stratum-sub' }, 'Standing Law · Ubiquitous Language · Verifiable Postconditions')
+      );
+    }
+    stratumLayer.append(
       svgEl('rect', { x: pr.x, y: pr.y, width: pr.w, height: pr.h, rx: 14, class: 'stratum-box' }),
       svgEl('text', { x: pr.x + 18, y: pr.y + 24, class: 'stratum-label' }, 'PRAGMATIC & ARTIFACT LAYER · 实践执行与代码层（Plan Graph v4 2.5D  +  Scripts AST 依赖图）'),
       svgEl('text', { x: pr.x + pr.w - 18, y: pr.y + 24, 'text-anchor': 'end', class: 'stratum-sub' }, 'Agent-Driven Execution · Deterministic AST Verification')
@@ -880,7 +1145,7 @@ function renderScene() {
       d, class: 'struct-edge', 'data-from': e.from, 'data-to': e.to,
       'data-rel': e.relationship, 'marker-end': 'url(#arr-struct)'
     });
-    if (!['decomposes_to', 'decomposes_intent', 'imports'].includes(e.relationship)) {
+    if (!['decomposes_to', 'decomposes_intent', 'decomposes_spec', 'imports'].includes(e.relationship)) {
       path.setAttribute('stroke-dasharray', '4 3');
     }
     structLayer.append(path);
@@ -942,9 +1207,17 @@ function renderScene() {
     if (!p) continue;
     const [x, y] = p;
     const g = svgEl('g', { class: 'g-node', 'data-id': n.id });
+    const bgAttrs = {
+      class: 'card-bg',
+      d: cardPath(x, y, CARD_W, CARD_H),
+      fill: n.palette[0],
+      stroke: n.palette[1],
+      'stroke-width': 1.35
+    };
+    if (n.status === 'superseded') bgAttrs['stroke-dasharray'] = '5 3';
     g.append(
       svgEl('rect', { class: 'halo-ring', x: x - 6, y: y - 6, width: CARD_W + 12, height: CARD_H + 12, rx: 10 }),
-      svgEl('path', { class: 'card-bg', d: cardPath(x, y, CARD_W, CARD_H), fill: n.palette[0], stroke: n.palette[1], 'stroke-width': 1.35 }),
+      svgEl('path', bgAttrs),
       svgEl('rect', { x, y, width: 6.5, height: CARD_H, fill: n.accent }),
       svgEl('path', { class: 'card-sel', d: cardPath(x, y, CARD_W, CARD_H) }),
       svgEl('text', { x: x + 14, y: y + 18, class: 'n-id' }, n.short_id),
@@ -955,6 +1228,22 @@ function renderScene() {
     });
     if (n.subtitle) {
       g.append(svgEl('text', { x: x + 14, y: y + 70, class: 'n-sub' }, n.subtitle));
+    }
+    if (Array.isArray(n.passive_icons) && n.passive_icons.length) {
+      let rx = x + CARD_W - 8;
+      for (let i = n.passive_icons.length - 1; i >= 0; i--) {
+        const b = n.passive_icons[i];
+        const tone = MICRO_TONES[b.tone] || MICRO_TONES.alt;
+        const bx = rx - 16, by = y + 57;
+        const mg = svgEl('g', { class: 'micro-glyph' });
+        mg.append(
+          svgEl('title', {}, b.tip),
+          svgEl('rect', { x: bx, y: by, width: 16, height: 15, rx: 4, fill: tone.fill, stroke: tone.stroke, 'stroke-width': 1 }),
+          svgEl('text', { x: bx + 8, y: by + 8.2, 'text-anchor': 'middle', 'dominant-baseline': 'central', class: 'micro-glyph-txt', fill: tone.text }, b.glyph)
+        );
+        g.append(mg);
+        rx -= 20;
+      }
     }
     g.addEventListener('mouseenter', () => { hoveredId = n.id; if (!probeActive && !blastKdId) reapplyHighlights(); });
     g.addEventListener('mouseleave', () => { hoveredId = null; if (!probeActive && !blastKdId) reapplyHighlights(); });
@@ -967,6 +1256,74 @@ function renderScene() {
   }
 
   reapplyHighlights();
+}
+
+function estimateLabelWidth(str) {
+  let w = 0;
+  for (const ch of str) w += ch.charCodeAt(0) > 0x2E80 ? 10.6 : 6.4;
+  return Math.max(48, Math.ceil(w + 15));
+}
+
+function renderCardMarks(ownerId) {
+  cardMarkLayer.replaceChildren();
+  if (!ownerId) return;
+  const rel = RELATIONS[ownerId];
+  if (!rel) return;
+  const pos = activePositions();
+  const byTarget = new Map();
+  const pushMark = (targetId, kind) => {
+    if (!pos[targetId]) return;
+    if (!byTarget.has(targetId)) byTarget.set(targetId, []);
+    byTarget.get(targetId).push(kind);
+  };
+  (rel.supersedes || []).forEach(t => pushMark(t, 'supersedes'));
+  (rel.superseded_by || []).forEach(t => pushMark(t, 'superseded_by'));
+  (rel.conflicts_with || []).forEach(t => pushMark(t, 'conflicts_with'));
+  (rel.alternative_of || []).forEach(t => pushMark(t, 'alternative_of'));
+  (rel.has_alternative || []).forEach(t => pushMark(t, 'has_alternative'));
+
+  for (const [targetId, kinds] of byTarget.entries()) {
+    const [tx, ty] = pos[targetId];
+    const primary = STAMP_SPECS[kinds[0]] || STAMP_SPECS.has_alternative;
+    const grp = svgEl('g', {
+      class: 'card-mark',
+      'data-owner': ownerId,
+      'data-target': targetId,
+      'data-relations': kinds.join(',')
+    });
+    grp.append(
+      svgEl('rect', {
+        x: tx - 3, y: ty - 3, width: CARD_W + 6, height: CARD_H + 6, rx: 9,
+        fill: 'none', stroke: primary.stroke, 'stroke-width': 2.1, 'stroke-dasharray': '5 3'
+      }),
+      svgEl('text', {
+        x: tx + CARD_W - 30, y: ty + 43,
+        'text-anchor': 'middle', 'dominant-baseline': 'central',
+        fill: primary.wm, 'fill-opacity': 0.14,
+        'font-size': 40, 'font-weight': 800
+      }, primary.glyph)
+    );
+    let rightEdge = tx + CARD_W - 4;
+    for (let i = kinds.length - 1; i >= 0; i--) {
+      const spec = STAMP_SPECS[kinds[i]];
+      if (!spec) continue;
+      const pw = estimateLabelWidth(spec.label);
+      const px = rightEdge - pw, py = ty - 13;
+      grp.append(
+        svgEl('rect', {
+          x: px, y: py, width: pw, height: 18, rx: 9,
+          fill: spec.fill, stroke: spec.stroke, 'stroke-width': 1.35
+        }),
+        svgEl('text', {
+          x: px + pw / 2, y: py + 9.3,
+          'text-anchor': 'middle', 'dominant-baseline': 'central',
+          class: 'stamp-pill-txt', fill: spec.text
+        }, spec.label)
+      );
+      rightEdge = px - 5;
+    }
+    cardMarkLayer.append(grp);
+  }
 }
 
 function applyTransform() {
@@ -1009,12 +1366,31 @@ function reapplyHighlights() {
     if (target) target.classList.add('selected');
   }
   if (focusId && !probeActive && !blastKdId) {
-    [...structLayer.children, ...crossLayer.children].forEach(p => {
+    const lineagePairs = new Set();
+    let cursor = focusId;
+    while (cursor && RELATIONS[cursor] && RELATIONS[cursor].parent) {
+      const p = RELATIONS[cursor].parent;
+      lineagePairs.add(p + '->' + cursor);
+      cursor = p;
+    }
+    if (RELATIONS[focusId]) {
+      (RELATIONS[focusId].children || []).forEach(ch => lineagePairs.add(focusId + '->' + ch));
+    }
+    [...structLayer.children].forEach(p => {
+      const key = p.dataset.from + '->' + p.dataset.to;
+      if (lineagePairs.has(key) || p.dataset.from === focusId || p.dataset.to === focusId) {
+        p.classList.add('edge-hot');
+      }
+    });
+    [...crossLayer.children].forEach(p => {
       if (p.dataset.from === focusId || p.dataset.to === focusId) p.classList.add('edge-hot');
     });
     [...hebbLayer.children].forEach(p => {
       if (p.dataset.from === focusId || p.dataset.to === focusId) p.classList.add('edge-hebb-hot');
     });
+    renderCardMarks(focusId);
+  } else {
+    cardMarkLayer.replaceChildren();
   }
   if (blastKdId) triggerBlastRadius(blastKdId, true);
 }
@@ -1084,25 +1460,42 @@ function runSpreadingProbe(seedQueryOrId, fromNode = false) {
   ];
 }
 
-function triggerBlastRadius(kdId, keepState = false) {
-  const kd = nodesById.get(kdId);
-  if (!kd || !kd.raw.impact_preview) return;
-  if (!keepState && blastKdId === kdId) {
+function triggerBlastRadius(targetId, keepState = false) {
+  const node = nodesById.get(targetId);
+  if (!node || !node.raw.impact_preview) return;
+  if (!keepState && blastKdId === targetId) {
     clearProbeAndBlast();
     reapplyHighlights();
     return;
   }
   clearProbeAndBlast();
-  blastKdId = kdId;
-  const imp = kd.raw.impact_preview;
-  const affected = new Set([
-    kdId,
-    ...(imp.reopen_intents || []),
-    ...(imp.supersede_plans || []),
-    ...(imp.blocked_or_recheck_downstream_plans || []),
-    ...(imp.affected_parent_scopes || []),
-    ...(imp.affected_scripts || []).map(s => 'SCR:' + s)
-  ]);
+  blastKdId = targetId;
+  const imp = node.raw.impact_preview;
+  let affected, bannerMsg;
+  if (node.graph === 'specs') {
+    affected = new Set([
+      targetId,
+      ...(imp.dependent_specs || []),
+      ...(imp.originating_intents || []),
+      ...(imp.implementing_plans || []),
+      ...(imp.downstream_plans || []),
+      ...(imp.linked_knowledge_debt || []),
+      ...(imp.governed_scripts || []).map(s => 'SCR:' + s),
+      ...(imp.verification_scripts || []).map(s => 'SCR:' + s)
+    ]);
+    bannerMsg = `规范修订影响半径 (${targetId})：子规范 ${(imp.dependent_specs || []).length} · 计划 ${(imp.implementing_plans || []).length + (imp.downstream_plans || []).length} · 管辖/验证脚本 ${(imp.governed_scripts || []).length + (imp.verification_scripts || []).length}`;
+  } else {
+    affected = new Set([
+      targetId,
+      ...(imp.reopen_intents || []),
+      ...(imp.amend_or_review_specs || []),
+      ...(imp.supersede_plans || []),
+      ...(imp.blocked_or_recheck_downstream_plans || []),
+      ...(imp.affected_parent_scopes || []),
+      ...(imp.affected_scripts || []).map(s => 'SCR:' + s)
+    ]);
+    bannerMsg = `重审否定影响半径 (${targetId})：重开意图 ${(imp.reopen_intents || []).length} · 复核规范 ${(imp.amend_or_review_specs || []).length} · 重组计划 ${(imp.supersede_plans || []).length + (imp.blocked_or_recheck_downstream_plans || []).length}`;
+  }
 
   nodeLayer.querySelectorAll('.g-node').forEach(g => {
     if (affected.has(g.dataset.id)) g.classList.add('blast-hit');
@@ -1112,8 +1505,7 @@ function triggerBlastRadius(kdId, keepState = false) {
     if (affected.has(p.dataset.from) && affected.has(p.dataset.to)) p.classList.add('edge-blast');
   });
   const banner = document.getElementById('probe-banner');
-  document.getElementById('probe-label').textContent =
-    `重审否定影响半径 (${kdId})：重开意图 ${(imp.reopen_intents || []).length} · 重组计划 ${(imp.supersede_plans || []).length + (imp.blocked_or_recheck_downstream_plans || []).length}`;
+  document.getElementById('probe-label').textContent = bannerMsg;
   banner.classList.add('on');
 }
 
@@ -1129,6 +1521,117 @@ function makeChip(targetId, metaRight = '', extra = '') {
     selectNode(targetId);
   });
   return a;
+}
+
+function makeRelationPill(targetId) {
+  const target = nodesById.get(targetId);
+  const pill = htmlEl('a', 'rel-pill');
+  pill.href = '#' + encodeURIComponent(targetId);
+  const dot = htmlEl('span', 's-dot');
+  dot.style.background = target ? target.palette[1] : '#C9CDD2';
+  const txt = htmlEl('span', 'p-txt', target ? `${target.short_id} · ${target.title}` : targetId);
+  pill.append(dot, txt);
+  pill.addEventListener('mouseenter', () => {
+    hoveredId = targetId;
+    if (!probeActive && !blastKdId) reapplyHighlights();
+  });
+  pill.addEventListener('mouseleave', () => {
+    hoveredId = null;
+    if (!probeActive && !blastKdId) reapplyHighlights();
+  });
+  pill.addEventListener('click', (e) => {
+    e.preventDefault();
+    hoveredId = null;
+    if (!activePositions()[targetId]) setLens('overview');
+    selectNode(targetId);
+  });
+  return pill;
+}
+
+function renderHeaderRelSummary(id) {
+  const box = document.getElementById('p-rel-summary');
+  box.replaceChildren();
+  const rel = RELATIONS[id];
+  const synCnt = (synapsesByNode.get(id) || []).length;
+  if (rel) {
+    const counts = [
+      ['parent', (rel.parent ? 1 : 0) + (rel.children || []).length],
+      ['depends', (rel.depends_on || []).length + (rel.required_by || []).length],
+      ['enables', (rel.enables || []).length + (rel.enabled_by || []).length],
+      ['validates', (rel.validates || []).length + (rel.validated_by || []).length],
+      ['supersedes', (rel.supersedes || []).length + (rel.superseded_by || []).length],
+      ['conflicts', (rel.conflicts_with || []).length],
+      ['alternative', (rel.alternative_of || []).length + (rel.has_alternative || []).length]
+    ];
+    for (const [label, cnt] of counts) {
+      if (!cnt) continue;
+      const item = htmlEl('span', null, label + ' ');
+      item.append(htmlEl('b', null, String(cnt)));
+      box.append(item);
+    }
+  }
+  if (synCnt > 0) {
+    const hItem = htmlEl('span', 'hebb-cnt', '⚡ hebbian ');
+    hItem.append(htmlEl('b', null, String(synCnt)));
+    box.append(hItem);
+  }
+}
+
+function renderDeclaredRelations(id) {
+  const rel = RELATIONS[id];
+  if (!rel) return null;
+  const wrap = htmlEl('div');
+  wrap.append(htmlEl('div', 'sec-title', 'Agent 显式维护关系 (Declared Relations)'));
+  const card = htmlEl('div', 'rel-card');
+
+  const addRow = (labelText, targets, icoSpec = null, emptyText = '—') => {
+    const row = htmlEl('div', 'rel-row');
+    const lbl = htmlEl('span', 'rel-label');
+    if (icoSpec) {
+      lbl.append(htmlEl('span', 'rel-ico ' + icoSpec.cls, icoSpec.glyph));
+    }
+    lbl.append(document.createTextNode(labelText));
+    const vals = htmlEl('span', 'rel-values');
+    if (!targets || !targets.length) {
+      vals.append(htmlEl('span', 'rel-empty', emptyText));
+    } else {
+      targets.forEach(t => vals.append(makeRelationPill(t)));
+    }
+    row.append(lbl, vals);
+    card.append(row);
+  };
+
+  // 1. Parent / Children -> explicitly note it is drawn on the graph canvas, plus quick links
+  const pcRow = htmlEl('div', 'rel-row');
+  pcRow.append(htmlEl('span', 'rel-label', 'Parent / children'));
+  const pcVals = htmlEl('span', 'rel-values');
+  pcVals.append(htmlEl('span', 'rel-graph-hint', '见图谱树连线 (see the graph)'));
+  if (rel.parent) pcVals.append(makeRelationPill(rel.parent));
+  (rel.children || []).forEach(ch => pcVals.append(makeRelationPill(ch)));
+  pcRow.append(pcVals);
+  card.append(pcRow);
+
+  card.append(htmlEl('div', 'rel-group-sep'));
+
+  // 2. Sidebar-primary execution & verification relations
+  addRow('Depends on', rel.depends_on);
+  addRow('Required by', rel.required_by);
+  addRow('Enables', rel.enables);
+  addRow('Enabled by', rel.enabled_by);
+  addRow('Validates', rel.validates);
+  addRow('Validated by', rel.validated_by);
+
+  card.append(htmlEl('div', 'rel-group-sep'));
+
+  // 3. Icon-stamped counterpart relations (also shown via stamps/watermarks on canvas)
+  addRow('Supersedes', rel.supersedes, { glyph: '↓', cls: 'sup-down' });
+  addRow('Superseded by', rel.superseded_by, { glyph: '↑', cls: 'sup-up' });
+  addRow('Conflicts with', rel.conflicts_with, { glyph: '✕', cls: 'conflict' });
+  addRow('Alternative of', rel.alternative_of, { glyph: '◎', cls: 'alt' });
+  addRow('Has alternative', rel.has_alternative, { glyph: '⇄', cls: 'alt' });
+
+  wrap.append(card);
+  return wrap;
 }
 
 function selectNode(id) {
@@ -1149,6 +1652,7 @@ function selectNode(id) {
   document.getElementById('p-kicker').textContent = `${n.graph_label} · ${n.status}`;
   document.getElementById('p-title').textContent = `${n.short_id} · ${n.inspector_title || n.title}`;
   document.getElementById('p-meta').textContent = n.source ? `真源: ${n.source}` : '';
+  renderHeaderRelSummary(id);
 
   const actions = document.getElementById('p-actions');
   actions.replaceChildren();
@@ -1156,8 +1660,9 @@ function selectNode(id) {
   probeBtn.addEventListener('click', () => runSpreadingProbe(id, true));
   actions.append(probeBtn);
 
-  if (n.graph === 'knowledge_debt') {
-    const blastBtn = htmlEl('button', 'p-btn warn' + (blastKdId === id ? ' active' : ''), '预演「否定并重组」影响半径');
+  if (n.graph === 'knowledge_debt' || n.graph === 'specs') {
+    const labelTxt = n.graph === 'specs' ? '预演「修订规范」影响半径' : '预演「否定并重组」影响半径';
+    const blastBtn = htmlEl('button', 'p-btn warn' + (blastKdId === id ? ' active' : ''), labelTxt);
     blastBtn.addEventListener('click', () => {
       triggerBlastRadius(id);
       blastBtn.classList.toggle('active', blastKdId === id);
@@ -1167,6 +1672,11 @@ function selectNode(id) {
 
   body.replaceChildren();
   const raw = n.raw;
+
+  if (n.graph === 'intent' || n.graph === 'specs' || n.graph === 'plan') {
+    const relSection = renderDeclaredRelations(id);
+    if (relSection) body.append(relSection);
+  }
 
   if (n.graph === 'intent') {
     body.append(htmlEl('div', 'sec-title', '原始表达副本 (Verbatim Utterance)'));
@@ -1215,11 +1725,69 @@ function selectNode(id) {
       body.append(ul);
     }
 
-    if ((raw.plan_refs || []).length || (raw.knowledge_debt_refs || []).length) {
-      body.append(htmlEl('div', 'sec-title', '实践层与书签映射 (Pragmatic & Bookmark Links)'));
+    if ((raw.spec_refs || []).length || (raw.plan_refs || []).length || (raw.knowledge_debt_refs || []).length) {
+      body.append(htmlEl('div', 'sec-title', '规范固化、实践层与书签映射 (Spec, Pragmatic & Bookmark Links)'));
       const wrap = htmlEl('div', 'chip-wrap');
+      (raw.spec_refs || []).forEach(sid => wrap.append(makeChip(sid, 'SPEC')));
       (raw.plan_refs || []).forEach(pid => wrap.append(makeChip(pid, 'PLAN')));
       (raw.knowledge_debt_refs || []).forEach(kid => wrap.append(makeChip(kid, 'BOOKMARK')));
+      body.append(wrap);
+    }
+  } else if (n.graph === 'specs') {
+    body.append(htmlEl('div', 'sec-title', `常驻规范陈述 (${raw.kind.toUpperCase()} · ${raw.enforcement.toUpperCase()})`));
+    body.append(htmlEl('div', 'quote-box', raw.summary));
+
+    if (raw.canonical_term || (raw.forbidden_aliases || []).length) {
+      body.append(htmlEl('div', 'sec-title', '统一领域术语与禁用别名 (Ubiquitous Language)'));
+      const aw = htmlEl('div', 'alias-wrap');
+      if (raw.canonical_term) {
+        aw.append(htmlEl('span', 'term-canon', `✓ 标准词: ${raw.canonical_term}`));
+      }
+      (raw.forbidden_aliases || []).forEach(fa => {
+        aw.append(htmlEl('span', 'term-forbid', `✕ 禁用: ${fa}`));
+      });
+      body.append(aw);
+    }
+
+    if ((raw.do_rules || []).length || (raw.dont_rules || []).length) {
+      body.append(htmlEl('div', 'sec-title', '强制性红线与执行标准 (Do / Do NOT Guardrails)'));
+      const rl = htmlEl('div', 'rule-list');
+      (raw.do_rules || []).forEach(r => {
+        const row = htmlEl('div', 'rule-row do');
+        row.append(htmlEl('span', 'rule-tag', '✓ DO'), htmlEl('span', null, r));
+        rl.append(row);
+      });
+      (raw.dont_rules || []).forEach(r => {
+        const row = htmlEl('div', 'rule-row dont');
+        row.append(htmlEl('span', 'rule-tag', '✕ DO NOT'), htmlEl('span', null, r));
+        rl.append(row);
+      });
+      body.append(rl);
+    }
+
+    if (raw.signature_or_schema || (raw.postconditions || []).length) {
+      body.append(htmlEl('div', 'sec-title', '可验证契约与后置条件 (Verifiable Contract)'));
+      if (raw.signature_or_schema) {
+        body.append(htmlEl('div', 'contract-sig', raw.signature_or_schema));
+      }
+      if ((raw.postconditions || []).length) {
+        const ul = htmlEl('ul');
+        raw.postconditions.forEach(p => ul.append(htmlEl('li', null, p)));
+        body.append(ul);
+      }
+    }
+
+    const hasCross = (raw.intent_refs || []).length || (raw.plan_refs || []).length ||
+                     (raw.governs_scripts || []).length || (raw.verified_by_scripts || []).length ||
+                     (raw.knowledge_debt_refs || []).length;
+    if (hasCross) {
+      body.append(htmlEl('div', 'sec-title', '五图咬合链路 (Cross-Graph Bindings)'));
+      const wrap = htmlEl('div', 'chip-wrap');
+      (raw.intent_refs || []).forEach(iid => wrap.append(makeChip(iid, '源自 INTENT')));
+      (raw.plan_refs || []).forEach(pid => wrap.append(makeChip(pid, '落地 PLAN')));
+      (raw.governs_scripts || []).forEach(s => wrap.append(makeChip('SCR:' + s, '管辖源码')));
+      (raw.verified_by_scripts || []).forEach(s => wrap.append(makeChip('SCR:' + s, '守门测试')));
+      (raw.knowledge_debt_refs || []).forEach(kid => wrap.append(makeChip(kid, '关联 KD')));
       body.append(wrap);
     }
   } else if (n.graph === 'plan') {
@@ -1237,10 +1805,12 @@ function selectNode(id) {
         body.append(ul);
       }
     }
+    const specLinks = ((raw.links || {}).spec || []).map(s => s.split('/').pop().replace(/\.md$/, ''));
     const codeRefs = [...((raw.links || {}).code || []), ...((raw.links || {}).tests || [])];
-    if (codeRefs.length) {
-      body.append(htmlEl('div', 'sec-title', '关联代码脚本 (Scripts Graph)'));
+    if (specLinks.length || codeRefs.length) {
+      body.append(htmlEl('div', 'sec-title', '遵循规范与关联脚本 (Specs & Scripts)'));
       const wrap = htmlEl('div', 'chip-wrap');
+      specLinks.forEach(sid => wrap.append(makeChip(sid, '遵循 SPEC')));
       codeRefs.forEach(r => wrap.append(makeChip('SCR:' + r, 'SCRIPT')));
       body.append(wrap);
     }
@@ -1274,6 +1844,7 @@ function selectNode(id) {
     body.append(htmlEl('div', 'sec-title', '关联节点与重组影响范围'));
     const wrap = htmlEl('div', 'chip-wrap');
     (imp.reopen_intents || []).forEach(x => wrap.append(makeChip(x, '重开 INTENT')));
+    (imp.amend_or_review_specs || []).forEach(x => wrap.append(makeChip(x, '复核 SPEC')));
     (imp.supersede_plans || []).forEach(x => wrap.append(makeChip(x, '替代 PLAN')));
     (imp.blocked_or_recheck_downstream_plans || []).forEach(x => wrap.append(makeChip(x, '下游复核')));
     (imp.affected_scripts || []).forEach(x => wrap.append(makeChip('SCR:' + x, '触及脚本')));
@@ -1287,10 +1858,12 @@ function selectNode(id) {
       body.append(htmlEl('div', 'sec-title', '导出符号 (Classes & Functions)'));
       body.append(htmlEl('p', null, [...(raw.classes || []), ...(raw.functions || []).map(f => f + '()')].join(', ')));
     }
-    if ((raw.governed_by_plans || []).length) {
-      body.append(htmlEl('div', 'sec-title', '所属执行计划 (Governed by Plans)'));
+    if ((raw.governed_by_specs || []).length || (raw.verifies_specs || []).length || (raw.governed_by_plans || []).length) {
+      body.append(htmlEl('div', 'sec-title', '所属常驻规范与执行计划 (Specs & Plans)'));
       const wrap = htmlEl('div', 'chip-wrap');
-      raw.governed_by_plans.forEach(pid => wrap.append(makeChip(pid, 'PLAN')));
+      (raw.governed_by_specs || []).forEach(sid => wrap.append(makeChip(sid, '受辖 SPEC')));
+      (raw.verifies_specs || []).forEach(sid => wrap.append(makeChip(sid, '验证 SPEC')));
+      (raw.governed_by_plans || []).forEach(pid => wrap.append(makeChip(pid, '所属 PLAN')));
       body.append(wrap);
     }
   }
@@ -1430,8 +2003,8 @@ document.addEventListener('keydown', (e) => {
     if (!searchSurface.hidden) { syncSearchTop(); renderSearchDropdown(); searchInput.focus(); }
     return;
   }
-  if (document.activeElement !== searchInput && ['0','1','2','3','4'].includes(e.key)) {
-    const map = { '0': 'overview', '1': 'intent', '2': 'plan', '3': 'knowledge_debt', '4': 'scripts' };
+  if (document.activeElement !== searchInput && ['0','1','2','3','4','5'].includes(e.key)) {
+    const map = { '0': 'overview', '1': 'intent', '2': 'specs', '3': 'plan', '4': 'knowledge_debt', '5': 'scripts' };
     setLens(map[e.key]);
   }
   if (e.key === 'Escape') {
@@ -1472,6 +2045,7 @@ def build_studio_html(
 ) -> str:
     repo_root = repo_root.resolve()
     layouts, stacked_ids = _compute_all_layouts(federated)
+    explicit_relations = _build_explicit_relations(federated)
     prototypes = _collect_prototype_svgs(
         repo_root, federated.get("intent", {}).get("nodes", [])
     )
@@ -1481,6 +2055,12 @@ def build_studio_html(
     for n in federated.get("intent", {}).get("nodes", []):
         c_names = " · ".join(c.get("name", "") for c in n.get("concepts", [])[:3])
         blob = json.dumps(n, ensure_ascii=False).lower()
+        rel_info = explicit_relations.get(n["id"]) or {}
+        p_icons = _passive_icon_badges(rel_info)
+        sub_limit = 22 if p_icons else 34
+        raw_sub = f"概念: {c_names}" if c_names else ""
+        sub_txt = (raw_sub[:sub_limit] + "…") if len(raw_sub) > sub_limit else raw_sub
+        intent_z = 18 if rel_info.get("children") else 0
         ui_nodes.append(
             {
                 "id": n["id"],
@@ -1491,13 +2071,48 @@ def build_studio_html(
                 "title": n["title"],
                 "inspector_title": n["title"],
                 "wrapped_title": _wrap(n["title"]),
-                "subtitle": f"概念: {c_names}"[:36] if c_names else "",
+                "subtitle": sub_txt,
+                "passive_icons": p_icons,
                 "status": n["status"],
                 "source": n.get("source", ""),
-                "z": 16,
+                "z": intent_z,
                 "accent": GRAPH_ACCENT["intent"],
                 "palette": list(
                     STATUS_PALETTE.get(n["status"], STATUS_PALETTE["exploring"])
+                ),
+                "search_blob": blob,
+                "raw": n,
+            }
+        )
+
+    for n in federated.get("specs", {}).get("nodes", []):
+        blob = json.dumps(n, ensure_ascii=False).lower()
+        rel_info = explicit_relations.get(n["id"]) or {}
+        p_icons = _passive_icon_badges(rel_info)
+        k_tag = SPEC_KIND_TAG.get(n["kind"], n["kind"].upper())
+        enf_str = n["enforcement"].replace("_", " ")
+        raw_sub = f"{n['canonical_term']}" if n.get("canonical_term") else f"{enf_str} · {n['status']}"
+        sub_limit = 22 if p_icons else 34
+        sub_txt = (raw_sub[:sub_limit] + "…") if len(raw_sub) > sub_limit else raw_sub
+        spec_z = 16 if rel_info.get("children") else 0
+        ui_nodes.append(
+            {
+                "id": n["id"],
+                "short_id": n["id"],
+                "graph": "specs",
+                "graph_label": f"Spec Graph ({n['kind']})",
+                "badge": f"SPEC · {k_tag}",
+                "title": n["title"],
+                "inspector_title": n["title"],
+                "wrapped_title": _wrap(n["title"]),
+                "subtitle": sub_txt,
+                "passive_icons": p_icons,
+                "status": n["status"],
+                "source": n.get("source", ""),
+                "z": spec_z,
+                "accent": GRAPH_ACCENT["specs"],
+                "palette": list(
+                    STATUS_PALETTE.get(n["status"], STATUS_PALETTE["enforced"])
                 ),
                 "search_blob": blob,
                 "raw": n,
@@ -1513,6 +2128,7 @@ def build_studio_html(
     for n in federated.get("plan", {}).get("nodes", []):
         tag, acc = level_badge.get(n["level"], ("PLAN", GRAPH_ACCENT["plan_wp"]))
         blob = json.dumps(n, ensure_ascii=False).lower()
+        p_icons = _passive_icon_badges(explicit_relations.get(n["id"]))
         ui_nodes.append(
             {
                 "id": n["id"],
@@ -1524,6 +2140,7 @@ def build_studio_html(
                 "inspector_title": n["title"],
                 "wrapped_title": _wrap(n["title"]),
                 "subtitle": n["status"].replace("_", " "),
+                "passive_icons": p_icons,
                 "status": n["status"],
                 "source": n.get("source", ""),
                 "z": LEVEL_Z.get(n["level"], 0),
@@ -1592,6 +2209,7 @@ def build_studio_html(
     structural_edges = _deduplicate_structural_edges(
         [
             *federated.get("intent", {}).get("edges", []),
+            *federated.get("specs", {}).get("edges", []),
             *federated.get("plan", {}).get("edges", []),
             *federated.get("scripts", {}).get("edges", []),
         ]
@@ -1600,6 +2218,7 @@ def build_studio_html(
     synapses = hebbian_payload.get("synapses", [])[:80]
     studio_payload = {
         "nodes": ui_nodes,
+        "relations": explicit_relations,
         "structural_edges": structural_edges,
         "cross_edges": federated.get("cross_edges", []),
         "synapses": synapses,
@@ -1618,6 +2237,7 @@ def build_studio_html(
         .replace("{embed_badge}", html.escape(short_model))
         .replace("{total_count}", str(len(ui_nodes)))
         .replace("{intent_count}", str(len(federated.get("intent", {}).get("nodes", []))))
+        .replace("{spec_count}", str(len(federated.get("specs", {}).get("nodes", []))))
         .replace("{plan_count}", str(len(federated.get("plan", {}).get("nodes", []))))
         .replace("{kd_count}", str(len(federated.get("knowledge_debt", {}).get("nodes", []))))
         .replace("{scripts_count}", str(len(federated.get("scripts", {}).get("nodes", []))))

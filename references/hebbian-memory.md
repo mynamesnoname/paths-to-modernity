@@ -50,6 +50,49 @@ governed by three rules:
    - **Hub detection:** Nodes whose cumulative synaptic strength
      $D(v_i) = \sum_j w_{ij} > \delta_{\text{hub}}$ are surfaced as cross-project
      conceptual hubs for consolidation and portrait synthesis.
+4. **Deterministic lexical & structured anchors (why PtM omits per-turn LLM keyword calls):**
+   - *HeLa-Mem* (§3.1.1 / §3.4) pairs `all-MiniLM-L6-v2` with an online LLM call
+     (`llm_extract_keywords`) on every write and every query to compensate for
+     weak proper-noun recall. PtM intentionally **keeps the lexical bonus term**
+     $\alpha \cdot \text{keyword\_match}$ inside $S_{\text{base}}$ (for exact
+     code symbols, IDs, and abbreviations that dense vectors blur), **but drops
+     per-turn LLM keyword extraction**:
+     1. Calling a remote LLM on every `query`/`related` probe would add seconds
+        of network latency, break offline operation, and fail across bilingual
+        synonyms (e.g., `"Event Sourcing"` vs. `"事件溯源"`), which
+        `Qwen3-Embedding-0.6B` already aligns natively;
+     2. Unlike unstructured chat transcripts, PtM's federated graphs already
+        expose curated high-signal anchors at zero API cost: **Intent
+        `concepts[].name`**, **Knowledge Debt `term`**, and **Scripts AST
+        `classes` / `functions`**.
+
+## Agent-facing reverse lookup (`ptm.py related` & `ptm.py query`)
+
+Agents can inspect embedding similarity and Hebbian associations directly via
+`scripts/ptm.py` (read-only by default unless `--reinforce` is passed):
+
+```bash
+# 1. Inspect an existing Plan, Intent, KD bookmark, or Script (reuses full cached vector)
+python3 -B scripts/ptm.py related /path/to/repo WP-002
+python3 -B scripts/ptm.py related /path/to/repo --node INT-003 --per-graph 5
+
+# 2. Probe an uncommitted draft file BEFORE writing it into _aiHumanInteract/plan/
+python3 -B scripts/ptm.py related /path/to/repo --draft-file /tmp/draft_WP007.md
+
+# 3. Probe a draft idea in plain text to discover candidate dependencies, conflicts, KDs, and scripts
+python3 -B scripts/ptm.py related /path/to/repo --text "实现轻量 JSON 谱峰快照导出替代事件溯源"
+
+# 4. Run Dual-Path Retrieval (also auto-resolves exact node IDs)
+python3 -B scripts/ptm.py query /path/to/repo "谱峰标注无弹窗交互" --no-reinforce
+```
+
+`ptm.py related` returns:
+- `declared_links`: relationships already explicitly recorded in source files;
+- `novel_discoveries`: top unlinked nodes surfaced by embedding similarity and
+  Hebbian spreading activation (candidate `depends_on`, `conflicts_with`,
+  `alternative_of`, `knowledge_debt`, or `links.code` targets);
+- `by_graph`: top ranked matches grouped cleanly into `intent`, `plan`,
+  `knowledge_debt`, and `scripts`.
 
 ## Subagent portrait and `AGENTS.md` recovery
 

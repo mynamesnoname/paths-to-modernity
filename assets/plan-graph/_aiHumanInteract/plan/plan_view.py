@@ -270,45 +270,75 @@ def edge_markup(
 
 
 CARD_MARK_STYLE = {
-    "supersedes": ("↓", 56),
-    "conflicts_with": ("✕", 48),
-    "alternative_of": ("→", 48),
+    "supersedes": ("↓", "↓ superseded", "#ECEFF2", "#7B8794", "#2E3842"),
+    "superseded_by": ("↑", "↑ supersedes", "#E6F0FA", "#4A80B8", "#1A4473"),
+    "conflicts_with": ("✕", "✕ conflict", "#FDECEC", "#D65A5A", "#962828"),
+    "alternative_of": ("◎", "◎ canonical", "#F1EEFC", "#8470D6", "#3F2E88"),
+    "has_alternative": ("⇄", "⇄ alt", "#F1EEFC", "#8470D6", "#3F2E88"),
 }
-CARD_MARK_FILL = "#212529"
-CARD_MARK_OPACITY = 0.18
+CARD_MARK_OPACITY = 0.15
 
 
 def card_mark_markup(
     placed: list[tuple[PlanNode, float, float, float]], edges: list[dict]
 ) -> str:
-    """Large watermark marks on the referenced card, shown with its owner."""
+    """Bidirectional counterpart stamps + subtle watermark, shown when owner is selected."""
     pos = {node.node_id: (x, y) for node, x, y, _ in placed}
-    parts: list[str] = []
+    pair_marks: dict[tuple[str, str], list[str]] = {}
+
+    def _add(owner: str, target: str, kind: str) -> None:
+        if owner not in pos or target not in pos or owner == target:
+            return
+        lst = pair_marks.setdefault((owner, target), [])
+        if kind not in lst:
+            lst.append(kind)
+
     for edge in edges:
         relation = edge.get("relationship")
-        if relation not in CARD_MARK_STYLE:
-            continue
         source, target = edge.get("from"), edge.get("to")
-        if source not in pos or target not in pos:
+        if not source or not target:
             continue
+        if relation == "supersedes":
+            _add(source, target, "supersedes")
+            _add(target, source, "superseded_by")
+        elif relation == "conflicts_with":
+            _add(source, target, "conflicts_with")
+            _add(target, source, "conflicts_with")
+        elif relation == "alternative_of":
+            _add(source, target, "alternative_of")
+            _add(target, source, "has_alternative")
+
+    parts: list[str] = []
+    for (owner, target), kinds in sorted(pair_marks.items()):
         tx, ty = pos[target]
-        cx = tx + NODE_W / 2
-        cy = ty + NODE_H / 2
-        glyph, size = CARD_MARK_STYLE[relation]
-        body = (
-            f'<text x="{cx:.1f}" y="{cy:.1f}" text-anchor="middle" '
-            f'dominant-baseline="central" fill="{CARD_MARK_FILL}" fill-opacity="{CARD_MARK_OPACITY}" '
-            f'font-size="{size}" font-weight="700">{glyph}</text>'
-        )
-        if relation == "alternative_of":
-            body += (
-                f'<text x="{cx:.1f}" y="{cy + 30:.1f}" text-anchor="middle" '
-                f'fill="{CARD_MARK_FILL}" fill-opacity="{CARD_MARK_OPACITY}" font-size="10" '
-                f'font-weight="600">alt</text>'
+        p_glyph, _, _, p_stroke, p_text = CARD_MARK_STYLE[kinds[0]]
+        sub: list[str] = [
+            f'<rect x="{tx - 2.5:.1f}" y="{ty - 2.5:.1f}" width="{NODE_W + 5:.1f}" '
+            f'height="{NODE_H + 5:.1f}" rx="7" fill="none" stroke="{p_stroke}" '
+            f'stroke-width="1.9" stroke-dasharray="5 3"/>',
+            f'<text x="{tx + NODE_W - 28:.1f}" y="{ty + NODE_H / 2 + 4:.1f}" '
+            f'text-anchor="middle" dominant-baseline="central" fill="{p_text}" '
+            f'fill-opacity="{CARD_MARK_OPACITY}" font-size="40" font-weight="800">{p_glyph}</text>',
+        ]
+        right_x = tx + NODE_W - 4
+        for kind in reversed(kinds):
+            _, pill_txt, p_fill, stroke, text_col = CARD_MARK_STYLE[kind]
+            pw = max(48.0, len(pill_txt) * 6.6 + 14.0)
+            px = right_x - pw
+            py = ty - 10.5
+            sub.append(
+                f'<rect x="{px:.1f}" y="{py:.1f}" width="{pw:.1f}" height="18" rx="9" '
+                f'fill="{p_fill}" stroke="{stroke}" stroke-width="1.25"/>'
+                f'<text x="{px + pw / 2:.1f}" y="{py + 9.2:.1f}" text-anchor="middle" '
+                f'dominant-baseline="central" fill="{text_col}" font-size="10" '
+                f'font-weight="700">{html.escape(pill_txt)}</text>'
             )
+            right_x = px - 5.0
         parts.append(
-            f'<g class="card-mark" data-owner="{source}" data-target="{target}" '
-            f'data-relation="{relation}" style="display:none">{body}</g>'
+            f'<g class="card-mark" data-owner="{html.escape(owner)}" '
+            f'data-target="{html.escape(target)}" '
+            f'data-relation="{html.escape(",".join(kinds))}" style="display:none">'
+            f'{"".join(sub)}</g>'
         )
     return '<g id="card-mark-layer">' + "".join(parts) + "</g>"
 
@@ -914,13 +944,14 @@ HTML = """<!DOCTYPE html>
 
   function relationCounts(rel) {
     const count = (list, type) => (list || []).filter(item => item.type === type).length;
+    const targets = (list, type) => (list || []).filter(item => item.type === type).map(item => item.target);
     return {
       parent: (rel.parent ? 1 : 0) + (rel.children || []).length,
       depends: count(rel.in, 'prerequisite_for') + count(rel.out, 'prerequisite_for'),
       enables: count(rel.in, 'enables') + count(rel.out, 'enables'),
       validates: count(rel.in, 'validates') + count(rel.out, 'validates'),
       supersedes: count(rel.in, 'supersedes') + count(rel.out, 'supersedes'),
-      conflicts: count(rel.in, 'conflicts_with') + count(rel.out, 'conflicts_with'),
+      conflicts: new Set([...targets(rel.in, 'conflicts_with'), ...targets(rel.out, 'conflicts_with')]).size,
       alternative: count(rel.in, 'alternative_of') + count(rel.out, 'alternative_of'),
     };
   }
@@ -1164,9 +1195,13 @@ HTML = """<!DOCTYPE html>
   }}
   function overview() {{
     const r = svg.getBoundingClientRect();
-    k = Math.min(1, (r.width - 40) / W, (r.height - 40) / H);
-    tx = (r.width - W * k) / 2;
-    ty = Math.max(20, (r.height - H * k) / 2);
+    const pW = panel.hidden ? 0 : panel.getBoundingClientRect().width;
+    const availW = Math.max(280, r.width - pW - 40);
+    const topPad = 104;
+    const availH = Math.max(220, r.height - topPad - 52);
+    k = Math.min(1, availW / W, availH / H);
+    tx = Math.max(20, (availW - W * k) / 2 + 20);
+    ty = Math.max(topPad, topPad + (availH - H * k) / 2);
     apply();
   }}
   svg.addEventListener('wheel', (event) => {{

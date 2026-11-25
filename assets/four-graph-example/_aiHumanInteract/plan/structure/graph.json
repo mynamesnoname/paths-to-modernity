@@ -1,5 +1,5 @@
 {
-  "edge_count": 14,
+  "edge_count": 21,
   "edges": [
     {
       "declared_on": "WP-003",
@@ -7,6 +7,20 @@
       "relationship": "alternative_of",
       "source_field": "alternative_of",
       "to": "WP-002"
+    },
+    {
+      "declared_on": "WP-003",
+      "from": "WP-003",
+      "relationship": "conflicts_with",
+      "source_field": "conflicts_with",
+      "to": "WP-005"
+    },
+    {
+      "declared_on": "WP-005",
+      "from": "WP-005",
+      "relationship": "conflicts_with",
+      "source_field": "conflicts_with",
+      "to": "WP-003"
     },
     {
       "declared_on": "MT-001",
@@ -58,6 +72,13 @@
       "to": "WP-003"
     },
     {
+      "declared_on": "WP-006",
+      "from": "ST-001",
+      "relationship": "decomposes_to",
+      "source_field": "parent",
+      "to": "WP-006"
+    },
+    {
       "declared_on": "WP-004",
       "from": "ST-002",
       "relationship": "decomposes_to",
@@ -79,11 +100,25 @@
       "to": "MT-002"
     },
     {
+      "declared_on": "WP-001",
+      "from": "WP-001",
+      "relationship": "enables",
+      "source_field": "enables",
+      "to": "WP-004"
+    },
+    {
       "declared_on": "WP-002",
       "from": "WP-001",
       "relationship": "prerequisite_for",
       "source_field": "depends_on",
       "to": "WP-002"
+    },
+    {
+      "declared_on": "WP-006",
+      "from": "WP-001",
+      "relationship": "prerequisite_for",
+      "source_field": "depends_on",
+      "to": "WP-006"
     },
     {
       "declared_on": "WP-005",
@@ -98,6 +133,20 @@
       "relationship": "supersedes",
       "source_field": "supersedes",
       "to": "WP-003"
+    },
+    {
+      "declared_on": "WP-006",
+      "from": "WP-006",
+      "relationship": "validates",
+      "source_field": "validates",
+      "to": "WP-001"
+    },
+    {
+      "declared_on": "WP-006",
+      "from": "WP-006",
+      "relationship": "validates",
+      "source_field": "validates",
+      "to": "WP-002"
     }
   ],
   "levels": [
@@ -106,7 +155,7 @@
     "short-term",
     "work-package"
   ],
-  "node_count": 10,
+  "node_count": 11,
   "nodes": [
     {
       "acceptance": [
@@ -304,7 +353,9 @@
         "`src/workbench_api.py` 会话入口"
       ],
       "depends_on": [],
-      "enables": [],
+      "enables": [
+        "WP-004"
+      ],
       "evidence": [
         "src/workbench_api.py",
         "tests/test_workbench.py"
@@ -324,6 +375,10 @@
         ],
         "prototype": [
           "_aiHumanInteract/intent/prototypes/direct-canvas.svg"
+        ],
+        "spec": [
+          "_aiHumanInteract/specs/nodes/SPEC-001.md",
+          "_aiHumanInteract/specs/nodes/SPEC-003.md"
         ],
         "tests": [
           "tests/test_workbench.py"
@@ -375,6 +430,10 @@
         ],
         "plan": [
           "_aiHumanInteract/plan/work-package/WP-002.md"
+        ],
+        "spec": [
+          "_aiHumanInteract/specs/nodes/SPEC-001.md",
+          "_aiHumanInteract/specs/nodes/SPEC-004.md"
         ]
       },
       "objective": "在不强迫非完全技术能力责任人盲目点 Agree 的前提下维护技术知情权。",
@@ -395,7 +454,9 @@
       ],
       "alternative_of": "WP-002",
       "approach": "模型内部估算风险分，低于阈值时完全隐藏技术栈声明",
-      "conflicts_with": [],
+      "conflicts_with": [
+        "WP-005"
+      ],
       "context": {
         "invariants": [
           "不把沉默或顺从当作执行授权"
@@ -455,6 +516,9 @@
         "plan": [
           "_aiHumanInteract/plan/work-package/WP-004.md"
         ],
+        "spec": [
+          "_aiHumanInteract/specs/nodes/SPEC-002.md"
+        ],
         "tests": [
           "tests/test_workbench.py"
         ]
@@ -472,7 +536,9 @@
       "acceptance": [
         "支持按时间戳重放任意历史谱峰状态"
       ],
-      "conflicts_with": [],
+      "conflicts_with": [
+        "WP-003"
+      ],
       "deliverables": [
         "`src/event_replay_audit.py`"
       ],
@@ -502,6 +568,55 @@
       "title": "构建追加式事件溯源回放审计器（受 KD-002 书签约束）",
       "updated": "2026-11-24",
       "validates": []
+    },
+    {
+      "acceptance": [
+        "执行单元测试通过并确认 `not_understood_prototype` 自动挂起书签"
+      ],
+      "conflicts_with": [],
+      "deliverables": [
+        "`tests/test_workbench.py` 端到端契约测试"
+      ],
+      "depends_on": [
+        "WP-001"
+      ],
+      "enables": [],
+      "evidence": [
+        "tests/test_workbench.py"
+      ],
+      "id": "WP-006",
+      "level": "work-package",
+      "links": {
+        "code": [
+          "src/workbench_api.py",
+          "src/triage_gate.py"
+        ],
+        "intent": [
+          "_aiHumanInteract/intent/nodes/INT-005.md"
+        ],
+        "plan": [
+          "_aiHumanInteract/plan/work-package/WP-006.md"
+        ],
+        "spec": [
+          "_aiHumanInteract/specs/nodes/SPEC-001.md",
+          "_aiHumanInteract/specs/nodes/SPEC-004.md"
+        ],
+        "tests": [
+          "tests/test_workbench.py"
+        ]
+      },
+      "objective": "通过自动化回归用例验证直接谱峰标记与知识债书签触发行为。",
+      "parent": "ST-001",
+      "source": "_aiHumanInteract/plan/work-package/WP-006.md",
+      "source_requirement": "_aiHumanInteract/intent/nodes/INT-005.md",
+      "status": "done",
+      "supersedes": [],
+      "title": "端到端验证直接画布会话与三态分拣契约",
+      "updated": "2026-11-24",
+      "validates": [
+        "WP-001",
+        "WP-002"
+      ]
     }
   ],
   "schema_version": "paths-to-modernity-plan-graph-v4",

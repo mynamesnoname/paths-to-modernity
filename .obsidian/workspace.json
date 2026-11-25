@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "references/alternatives.md",
+                "file": "reviews/2026-11-10-skill-design-vs-grilling.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "alternatives"
+              "title": "2026-11-10-skill-design-vs-grilling"
             }
           }
         ]
@@ -41,7 +41,9 @@
               "type": "file-explorer",
               "state": {
                 "sortOrder": "alphabetical",
-                "autoReveal": false
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
               },
               "icon": "lucide-folder-closed",
               "title": "文件列表"
@@ -74,7 +76,8 @@
               "title": "书签"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
@@ -183,45 +186,52 @@
       "bases:新建数据库": false
     }
   },
-  "active": "141314e75896600a",
+  "active": "1bf91bd3471e8c75",
   "lastOpenFiles": [
-    "skill-evaluation.md",
-    "references/migration.md",
-    "REVIEW-first-load-agent-perspective.md",
-    "assets/plan-graph/example/_plan/structure/review.md",
+    "assets/four-graph-example/_aiHumanInteract/studio/index.html",
+    "assets/four-graph-example/_aiHumanInteract/studio",
+    "assets/four-graph-example/_aiHumanInteract/hebbian/associations.json",
+    "assets/four-graph-example/_aiHumanInteract/hebbian",
+    "assets/four-graph-example/_aiHumanInteract/scripts/structure/graph.md",
+    "assets/four-graph-example/_aiHumanInteract/scripts/structure/graph.json",
+    "assets/four-graph-example/_aiHumanInteract/scripts/structure/graph.canvas",
+    "assets/four-graph-example/_aiHumanInteract/scripts/structure",
+    "assets/four-graph-example/_aiHumanInteract/scripts",
+    "assets/four-graph-example/_aiHumanInteract/knowledge-debt/structure/graph.md",
+    "assets/four-graph-example/_aiHumanInteract/knowledge-debt/structure/graph.json",
+    "assets/four-graph-example/_aiHumanInteract/knowledge-debt/structure/graph.canvas",
+    "assets/four-graph-example/_aiHumanInteract/knowledge-debt/structure",
+    "assets/four-graph-example/_aiHumanInteract/specs/structure/graph.md",
+    "assets/four-graph-example/_aiHumanInteract/specs/structure/graph.json",
+    "assets/four-graph-example/_aiHumanInteract/specs/structure/graph.canvas",
+    "assets/four-graph-example/_aiHumanInteract/specs/structure",
+    "assets/four-graph-example/_aiHumanInteract/intent/structure/graph.md",
+    "assets/four-graph-example/_aiHumanInteract/intent/structure/graph.canvas",
+    "assets/four-graph-example/_aiHumanInteract/plan/structure/review.md",
+    "assets/four-graph-example/_aiHumanInteract/plan/structure/graph.canvas",
+    "assets/four-graph-example/_aiHumanInteract/plan/structure/graph.md",
+    "assets/four-graph-example/_aiHumanInteract/specs/nodes/SPEC-005.md",
+    "assets/four-graph-example/_aiHumanInteract/specs/nodes/SPEC-004.md",
+    "assets/four-graph-example/_aiHumanInteract/specs/nodes/SPEC-003.md",
+    "assets/four-graph-example/_aiHumanInteract/specs/nodes/SPEC-002.md",
+    "assets/four-graph-example/_aiHumanInteract/specs/nodes/SPEC-001.md",
+    "references/spec-graph.md",
+    "assets/four-graph-example/_aiHumanInteract/plan/short-term/ST-002.md",
+    "assets/four-graph-example/_aiHumanInteract/plan/short-term/ST-001.md",
+    "assets/four-graph-example/_aiHumanInteract/plan/long-term/LT-001.md",
+    "assets/four-graph-example/_aiHumanInteract/plan/evaluations/EVAL-001.md",
+    "assets/four-graph-example/_aiHumanInteract/plan/work-package/WP-006.md",
+    "assets/four-graph-example/_aiHumanInteract/intent/nodes/INT-005.md",
+    "assets/four-graph-example/_aiHumanInteract/intent/nodes/INT-004.md",
+    "assets/four-graph-example/_aiHumanInteract/plan/work-package/WP-005.md",
+    "assets/four-graph-example/_aiHumanInteract/plan/work-package/WP-004.md",
+    "assets/four-graph-example/_aiHumanInteract/plan/work-package/WP-003.md",
+    "assets/four-graph-example/_aiHumanInteract/plan/work-package/WP-002.md",
+    "assets/four-graph-example/_aiHumanInteract/plan/work-package/WP-001.md",
+    "assets/four-graph-example/_aiHumanInteract/plan/mid-term/MT-002.md",
+    "assets/four-graph-example/_aiHumanInteract/intent/prototypes/modal-queue.svg",
+    "assets/four-graph-example/_aiHumanInteract/intent/prototypes/direct-canvas.svg",
     "assets/plan-graph/example/_plan/structure/graph.canvas",
-    "assets/plan-graph/example/_plan/structure/graph.md",
-    "assets/plan-graph/example/_plan/structure/graph.json",
-    "assets/plan-graph/example/_plan/structure",
-    "scripts/test_plan_graph_bundle.py",
-    "references/alternatives.md",
-    "assets/plan-graph/example/_plan/work-package/WP-002.md",
-    "assets/plan-graph/example/_plan/work-package/WP-001.md",
-    "assets/plan-graph/example/_plan/work-package",
-    "assets/plan-graph/example/_plan/short-term/ST-001.md",
-    "assets/plan-graph/example/_plan/short-term",
-    "assets/plan-graph/example/_plan/mid-term/MT-001.md",
-    "assets/plan-graph/example/_plan/mid-term",
-    "assets/plan-graph/example/_plan/long-term/LT-001.md",
-    "assets/plan-graph/example/_plan/long-term",
-    "assets/plan-graph/example/_plan/requirements/REQ-001.md",
-    "assets/plan-graph/example/_plan/requirements",
-    "assets/plan-graph/example/_plan",
-    "assets/plan-graph/example/README.md",
-    "assets/plan-graph/example",
-    "assets/plan-graph/_plan/README.md",
-    "assets/plan-graph/AGENTS.plan-management.md",
-    "README.md",
-    "AGENTS.md",
-    "SKILL.md",
-    "first-load-review.md",
-    "assets/mounted-plan-graph/example/_plan/work-package/WP-002.md",
-    "assets/mounted-plan-graph/example/_plan/work-package/WP-001.md",
-    "references/plan-graph.md",
-    "review-first-load.md",
-    "assets/mounted-plan-graph/example/_plan/mid-term/MT-001.md",
-    "assets/mounted-plan-graph/example/_plan/structure/graph.md",
-    "assets/mounted-plan-graph/example/_plan/structure/graph.canvas",
-    "assets/mounted-plan-graph/example/_plan/structure/atelier.md"
+    "assets/mounted-plan-graph/example/_plan/structure/graph.canvas"
   ]
 }

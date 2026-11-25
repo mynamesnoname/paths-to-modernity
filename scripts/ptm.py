@@ -2,9 +2,11 @@
 """Unified CLI for Paths to Modernity (PtM) Four-Graph Infrastructure.
 
 Commands:
-  ptm.py build <repo>       Validate & build Intent, Plan (v4), Knowledge Debt, Scripts, Hebbian & Studio
-  ptm.py status <repo>      Print compact project neighborhood status across all four graphs
+  ptm.py build <repo>       Validate & build Intent, Spec, Plan (v4), Knowledge Debt, Scripts, Hebbian & Studio
+  ptm.py status <repo>      Print compact project neighborhood status across all five graphs
   ptm.py query <repo> <q>   Run Dual-Path Retrieval (Base + Hebbian Spreading Flip) & reinforce cluster
+  ptm.py related <repo> ... Agent-facing reverse lookup by existing node ID, draft file, or draft text
+  ptm.py spec impact <repo> <SPEC-ID>     Preview cross-graph blast radius if a Spec is amended
   ptm.py triage <repo> ...  Record a 3-way technical disclosure choice (creating KD bookmark if needed)
   ptm.py kd impact <repo> <KD-ID>         Preview reorganization blast radius if KD is rejected
   ptm.py kd resolve <repo> <KD-ID> ...    Affirm or reject a KD bookmark & propagate reorganization
@@ -31,7 +33,9 @@ from ptm_core import (  # noqa: E402
     build_intent_views,
     build_knowledge_debt_views,
     build_scripts_views,
+    build_spec_views,
     compute_kd_rejection_impact,
+    compute_spec_impact,
     format_front_matter,
     load_all_federated_graphs,
     load_knowledge_debt_graph,
@@ -67,6 +71,7 @@ def cmd_build(args: argparse.Namespace) -> int:
     repo = Path(args.repo).resolve()
     _rebuild_plan_if_present(repo)
     intent_p = build_intent_views(repo)
+    spec_p = build_spec_views(repo)
     kd_p = build_knowledge_debt_views(repo)
     scripts_p = build_scripts_views(repo)
     federated = load_all_federated_graphs(repo)
@@ -76,8 +81,9 @@ def cmd_build(args: argparse.Namespace) -> int:
     studio_path = build_studio_html(repo, federated, heb_p, title=args.title)
 
     print(
-        f"[PtM] Built 4-graph ecosystem in {repo}\n"
+        f"[PtM] Built 5-graph ecosystem in {repo}\n"
         f"  Intent Graph    : {intent_p['node_count']} nodes, {intent_p['edge_count']} edges\n"
+        f"  Spec Graph      : {spec_p['node_count']} specs, {spec_p['edge_count']} edges\n"
         f"  Plan Graph (v4) : {len(federated['plan'].get('nodes', []))} nodes, {len(federated['plan'].get('edges', []))} edges\n"
         f"  Knowledge Debt  : {kd_p['node_count']} bookmarks\n"
         f"  Scripts Graph   : {scripts_p['node_count']} modules, {scripts_p['edge_count']} AST edges\n"
@@ -108,7 +114,7 @@ def cmd_query(args: argparse.Namespace) -> int:
     repo = Path(args.repo).resolve()
     federated = load_all_federated_graphs(repo)
     engine = HebbianAssociativeEngine(repo, backend=args.embedding_backend)
-    engine.sync_federated(federated)
+    engine.sync_federated(federated, persist=not args.no_reinforce)
     res = engine.query(
         args.query,
         top_k=args.top_k,
@@ -116,6 +122,45 @@ def cmd_query(args: argparse.Namespace) -> int:
         reinforce=not args.no_reinforce,
     )
     if not args.no_reinforce and (repo / "_aiHumanInteract" / "studio").is_dir():
+        build_studio_html(repo, federated, engine.export_payload(), title="Project Architecture Studio")
+    print(json.dumps(res, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_related(args: argparse.Namespace) -> int:
+    repo = Path(args.repo).resolve()
+    federated = load_all_federated_graphs(repo)
+    engine = HebbianAssociativeEngine(repo, backend=args.embedding_backend)
+    engine.sync_federated(federated, persist=args.reinforce)
+
+    node_id = args.node
+    draft_file = Path(args.draft_file).resolve() if args.draft_file else None
+    draft_text = args.text
+
+    # Smart auto-detection when positional `target` is passed without explicit mode flags
+    if args.target and not (node_id or draft_file or draft_text):
+        raw_t = args.target.strip()
+        resolved_nid = engine.resolve_node_id(raw_t)
+        if resolved_nid:
+            node_id = resolved_nid
+        else:
+            cand_paths = [Path(raw_t), repo / raw_t]
+            found_path = next((cp.resolve() for cp in cand_paths if cp.is_file()), None)
+            if found_path is not None:
+                draft_file = found_path
+            else:
+                draft_text = raw_t
+
+    res = engine.related(
+        federated,
+        node_id=node_id,
+        draft_file=draft_file,
+        draft_text=draft_text,
+        per_graph=args.per_graph,
+        novel_top_k=args.novel_top_k,
+        reinforce=args.reinforce,
+    )
+    if args.reinforce and (repo / "_aiHumanInteract" / "studio").is_dir():
         build_studio_html(repo, federated, engine.export_payload(), title="Project Architecture Studio")
     print(json.dumps(res, ensure_ascii=False, indent=2))
     return 0
@@ -138,6 +183,7 @@ def cmd_triage(args: argparse.Namespace) -> int:
     choice = args.choice
     today = date.today().isoformat()
     intents = [x.strip() for x in (args.intents or "").split(",") if x.strip()]
+    specs = [x.strip() for x in (args.specs or "").split(",") if x.strip()]
     plans = [x.strip() for x in (args.plans or "").split(",") if x.strip()]
     scripts = [x.strip() for x in (args.scripts or "").split(",") if x.strip()]
 
@@ -185,6 +231,7 @@ def cmd_triage(args: argparse.Namespace) -> int:
         "triage_mode": "not_understood_prototype",
         "updated": today,
         "intent_refs": intents,
+        "spec_refs": specs,
         "plan_refs": plans,
         "script_refs": scripts,
         "revisit_when": args.revisit_when,
@@ -215,6 +262,15 @@ def cmd_triage(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_spec(args: argparse.Namespace) -> int:
+    repo = Path(args.repo).resolve()
+    if args.spec_action == "impact":
+        imp = compute_spec_impact(repo, args.spec_id)
+        print(json.dumps(imp, ensure_ascii=False, indent=2))
+        return 0
+    return 1
+
+
 def cmd_kd(args: argparse.Namespace) -> int:
     repo = Path(args.repo).resolve()
     if args.kd_action == "impact":
@@ -230,15 +286,16 @@ def cmd_kd(args: argparse.Namespace) -> int:
             counterproposal=args.counterproposal,
         )
         build_intent_views(repo)
+        build_spec_views(repo)
         build_knowledge_debt_views(repo)
-        # Co-activate KD + linked Intents & Plans in Hebbian memory on revisit!
+        # Co-activate KD + linked Intents, Specs & Plans in Hebbian memory on revisit!
         federated = load_all_federated_graphs(repo)
         engine = HebbianAssociativeEngine(repo, backend=args.embedding_backend)
         engine.sync_federated(federated)
         kds, _ = load_knowledge_debt_graph(repo)
         kd_node = kds[args.kd_id]
         engine.reinforce_cluster(
-            [args.kd_id, *kd_node.intent_refs, *kd_node.plan_refs],
+            [args.kd_id, *kd_node.intent_refs, *kd_node.spec_refs, *kd_node.plan_refs],
             reason=f"kd_resolve:{args.kd_id}:{args.verdict}",
         )
         if (repo / "_aiHumanInteract" / "studio").is_dir():
@@ -269,10 +326,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__)
     sub = p.add_subparsers(dest="command", required=True)
 
-    b = sub.add_parser("build", help="Validate & build all four graphs, Hebbian synapses, and Studio")
+    b = sub.add_parser("build", help="Validate & build all five graphs, Hebbian synapses, and Studio")
     b.add_argument("repo", type=Path)
     b.add_argument("--embedding-backend", choices=("auto", "mlx", "hash"), default="auto")
-    b.add_argument("--title", default="PtM Four-Graph Curated Studio")
+    b.add_argument("--title", default="PtM Five-Graph Curated Studio")
     b.add_argument("--with-portrait", action="store_true")
     b.add_argument("--portrait-mode", choices=("auto", "llm", "deterministic"), default="auto")
     b.set_defaults(func=cmd_build)
@@ -290,6 +347,37 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("--no-reinforce", action="store_true")
     q.set_defaults(func=cmd_query)
 
+    rel = sub.add_parser(
+        "related",
+        help="Agent-facing cross-graph lookup by existing node ID, uncommitted draft file, or draft text",
+    )
+    rel.add_argument("repo", type=Path)
+    rel.add_argument(
+        "target",
+        nargs="?",
+        default=None,
+        help="Auto-detected node ID (e.g. WP-002 / INT-003 / src/a.py), draft file path, or draft text",
+    )
+    rel.add_argument("--node", default=None, help="Explicit existing node ID (e.g. WP-002, INT-003, KD-001)")
+    rel.add_argument("--draft-file", default=None, help="Path to an uncommitted draft .md or source file")
+    rel.add_argument("--text", default=None, help="Draft plan/intent summary text")
+    rel.add_argument("--per-graph", type=int, default=4, help="Max ranked candidates returned per graph")
+    rel.add_argument("--novel-top-k", type=int, default=8, help="Max novel (undeclared) discoveries highlighted")
+    rel.add_argument("--embedding-backend", choices=("auto", "mlx", "hash"), default="auto")
+    rel.add_argument(
+        "--reinforce",
+        action="store_true",
+        help="Persist Hebbian co-activation reinforcement (default is read-only probe)",
+    )
+    rel.set_defaults(func=cmd_related)
+
+    sp = sub.add_parser("spec", help="Inspect Spec Graph blast radius")
+    sp_sub = sp.add_subparsers(dest="spec_action", required=True)
+    spi = sp_sub.add_parser("impact")
+    spi.add_argument("repo", type=Path)
+    spi.add_argument("spec_id")
+    spi.set_defaults(func=cmd_spec)
+
     tr = sub.add_parser("triage", help="Record 3-way technical disclosure decision")
     tr.add_argument("repo", type=Path)
     tr.add_argument("--term", required=True)
@@ -304,6 +392,7 @@ def build_parser() -> argparse.ArgumentParser:
     tr.add_argument("--gap", default="")
     tr.add_argument("--counterproposal", default="")
     tr.add_argument("--intents", default="")
+    tr.add_argument("--specs", default="")
     tr.add_argument("--plans", default="")
     tr.add_argument("--scripts", default="")
     tr.add_argument("--id", default=None)

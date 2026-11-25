@@ -509,13 +509,14 @@
 
   function relationCounts(rel) {
     const count = (list, type) => (list || []).filter(item => item.type === type).length;
+    const targets = (list, type) => (list || []).filter(item => item.type === type).map(item => item.target);
     return {
       parent: (rel.parent ? 1 : 0) + (rel.children || []).length,
       depends: count(rel.in, 'prerequisite_for') + count(rel.out, 'prerequisite_for'),
       enables: count(rel.in, 'enables') + count(rel.out, 'enables'),
       validates: count(rel.in, 'validates') + count(rel.out, 'validates'),
       supersedes: count(rel.in, 'supersedes') + count(rel.out, 'supersedes'),
-      conflicts: count(rel.in, 'conflicts_with') + count(rel.out, 'conflicts_with'),
+      conflicts: new Set([...targets(rel.in, 'conflicts_with'), ...targets(rel.out, 'conflicts_with')]).size,
       alternative: count(rel.in, 'alternative_of') + count(rel.out, 'alternative_of'),
     };
   }
@@ -759,9 +760,13 @@
   }
   function overview() {
     const r = svg.getBoundingClientRect();
-    k = Math.min(1, (r.width - 40) / W, (r.height - 40) / H);
-    tx = (r.width - W * k) / 2;
-    ty = Math.max(20, (r.height - H * k) / 2);
+    const pW = panel.hidden ? 0 : panel.getBoundingClientRect().width;
+    const availW = Math.max(280, r.width - pW - 40);
+    const topPad = 104;
+    const availH = Math.max(220, r.height - topPad - 52);
+    k = Math.min(1, availW / W, availH / H);
+    tx = Math.max(20, (availW - W * k) / 2 + 20);
+    ty = Math.max(topPad, topPad + (availH - H * k) / 2);
     apply();
   }
   svg.addEventListener('wheel', (event) => {

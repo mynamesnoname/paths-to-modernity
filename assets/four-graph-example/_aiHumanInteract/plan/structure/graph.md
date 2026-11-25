@@ -15,7 +15,10 @@ flowchart TB
     WP_003["WP-003<br/>备选方案：基于启发式风险分静默跳过技术声明<br/>work-package · superseded"]
     WP_004["WP-004<br/>落地轻量键值谱峰特征持久存储<br/>work-package · done"]
     WP_005["WP-005<br/>构建追加式事件溯源回放审计器（受 KD-002 书签约束）<br/>work-package · proposed"]
+    WP_006["WP-006<br/>端到端验证直接画布会话与三态分拣契约<br/>work-package · done"]
     WP_003 -.->|alternative_of| WP_002
+    WP_003 -.->|conflicts_with| WP_005
+    WP_005 -.->|conflicts_with| WP_003
     LT_001 -->|decomposes_to| MT_001
     LT_001 -->|decomposes_to| MT_002
     MT_001 -->|decomposes_to| ST_001
@@ -23,12 +26,17 @@ flowchart TB
     ST_001 -->|decomposes_to| WP_001
     ST_001 -->|decomposes_to| WP_002
     ST_001 -->|decomposes_to| WP_003
+    ST_001 -->|decomposes_to| WP_006
     ST_002 -->|decomposes_to| WP_004
     ST_002 -->|decomposes_to| WP_005
     MT_001 -.->|enables| MT_002
+    WP_001 -.->|enables| WP_004
     WP_001 -.->|prerequisite_for| WP_002
+    WP_001 -.->|prerequisite_for| WP_006
     WP_004 -.->|prerequisite_for| WP_005
     WP_002 -.->|supersedes| WP_003
+    WP_006 -.->|validates| WP_001
+    WP_006 -.->|validates| WP_002
     classDef proposed fill:#dcecff,stroke:#28649a,color:#10283d;
     class MT_002,WP_005 proposed;
     classDef ready fill:#d9eff2,stroke:#23727a,color:#10282b;
@@ -37,7 +45,7 @@ flowchart TB
     class LT_001,MT_001,ST_001,WP_002 in_progress;
     classDef blocked fill:#ffd9d9,stroke:#a12b2b,color:#3d1010;
     classDef done fill:#d9f2df,stroke:#237a3b,color:#102814;
-    class WP_001,WP_004 done;
+    class WP_001,WP_004,WP_006 done;
     classDef superseded fill:#eeeeee,stroke:#777777,color:#333333;
     class WP_003 superseded;
 ```
@@ -73,13 +81,16 @@ flowchart TB
 | `WP-003` | [备选方案：基于启发式风险分静默跳过技术声明](../work-package/WP-003.md) | `superseded` | ST-001 | WP-002 | — | 2026-11-24 |
 | `WP-004` | [落地轻量键值谱峰特征持久存储](../work-package/WP-004.md) | `done` | ST-002 | — | — | 2026-11-24 |
 | `WP-005` | [构建追加式事件溯源回放审计器（受 KD-002 书签约束）](../work-package/WP-005.md) | `proposed` | ST-002 | — | WP-004 | 2026-11-24 |
+| `WP-006` | [端到端验证直接画布会话与三态分拣契约](../work-package/WP-006.md) | `done` | ST-001 | — | WP-001 | 2026-11-24 |
 
 ## Typed edge summary
 
 | Relationship | Count |
 |---|---:|
 | `alternative_of` | 1 |
-| `decomposes_to` | 9 |
-| `enables` | 1 |
-| `prerequisite_for` | 2 |
+| `conflicts_with` | 2 |
+| `decomposes_to` | 10 |
+| `enables` | 2 |
+| `prerequisite_for` | 3 |
 | `supersedes` | 1 |
+| `validates` | 2 |

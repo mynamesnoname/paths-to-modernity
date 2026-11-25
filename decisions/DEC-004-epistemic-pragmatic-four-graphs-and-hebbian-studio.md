@@ -53,27 +53,36 @@ Paths to Modernity（PtM）定位为服务于复杂项目设计（如网站与�
 - **`affirmed`**：用户在体验原型或后续实践中理解了该技术，取消知识债并**肯定**原决定，原计划保持有效；
 - **`rejected`**：用户在后续实践中意识到原技术实现不符合真实需求，取消知识债、**否定**原决定并给出新观点。确定性工具据此计算**影响半径（Impact Blast Radius）**，标记受影响的 Plan 节点（进入 `superseded` / 重分解）与需要重开的 Intent 节点。
 
-## 决策五 — 联邦四图架构（Federated Four-Graph Ecosystem）与 Plan Graph v4 兼容
+## 决策五 — 联邦五图架构（Federated Five-Graph Ecosystem）与 Plan Graph v4 兼容
 
-**决策：** 遵循评审文档 `2026-11-11` §A.4 与 `2026-11-12` §4 的联邦原则——**不把四种不同语义的图强行揉成单一 Schema，也不破坏既有 `paths-to-modernity-plan-graph-v4` 契约**，而是在 `_aiHumanInteract/` 下维护四类各司其职的权威图，并通过显式跨图引用连接：
+**决策：** 遵循评审文档 `2026-11-11` §A.4 与 `2026-11-12` §4 的联邦原则——**不把不同生命周期与语义的图强行揉成单一 Schema，也不破坏既有 `paths-to-modernity-plan-graph-v4` 契约**，而是在 `_aiHumanInteract/` 下维护五类各司其职的权威图，按**“认知探索层 → 常驻规范契约层 → 实践执行与代码层”**三层咬合：
 
-| 图谱 | 目录 | 认知/实践属性 | 权威真源（Source of Truth） | 核心边类型（显式/观测） |
+| 图谱 | 目录 | 层级与时间属性 | 权威真源（Source of Truth） | 核心职责与显式/观测边 |
 |---|---|---|---|---|
-| **Intent Graph** | `_aiHumanInteract/intent/` | 认知性（Epistemic） | `nodes/INT-###.md` + `utterances/` | `Declared`: `refines`, `branches_from`, `constrains`, `supersedes` |
-| **Plan Graph (v4)** | `_aiHumanInteract/plan/` | 实践性（Pragmatic） | `long-term..work-package/*.md` | `Declared`: `decomposes_to`, `prerequisite_for`, `alternative_of`, `supersedes` 等 |
-| **Knowledge Debt** | `_aiHumanInteract/knowledge-debt/` | 认知书签与重审闸门 | `nodes/KD-###.md` | `Declared`: `bookmarks_intent`, `bookmarks_plan`, `touches_script` |
-| **Scripts Graph** | `_aiHumanInteract/scripts/` | 代码实现状态 | 仓库真实源码 + 可选 `annotations.json` | `Observed` (AST/静态分析): `imports`, `invokes`; `Declared`: Plan `links.code` 映射 |
+| **Intent Graph** | `_aiHumanInteract/intent/` | 认知探索层（动机与变体澄清） | `nodes/INT-###.md` + `utterances/` | `Declared`: 七组标准双向关系 + `crystallizes_into -> SPEC` + `seeds_plan -> Plan` |
+| **Spec Graph** | `_aiHumanInteract/specs/` | **常驻规范契约层（跨任务持续生效）** | `nodes/SPEC-###.md` | 四大支柱（`invariant` 红线守则、`glossary` 统一术语与禁用别名、`standard` 开发/美学标准、`contract` 可验证接口/状态契约）；七组图内显式关系 + `governs_script` / `verifies_spec` |
+| **Plan Graph (v4)** | `_aiHumanInteract/plan/` | 实践执行层（一次性施工增量） | `long-term..work-package/*.md` | `Declared`: 七组标准双向关系 + `implements_spec -> SPEC` + `implements_in -> SCR` |
+| **Knowledge Debt** | `_aiHumanInteract/knowledge-debt/` | 认知书签与重审闸门 | `nodes/KD-###.md` | `Declared`: `bookmarks_intent`, `questions_spec`, `bookmarks_plan`, `touches_script` |
+| **Scripts Graph** | `_aiHumanInteract/scripts/` | 代码与测试观测事实层 | 仓库真实源码 + 可选 `annotations.json` | `Observed` (AST): `imports`, `invokes`; 自动反向聚合 `governed_by_specs`, `verifies_specs`, `governed_by_plans` |
 
-Plan Graph v4 利用其原生支持的开放 `links` 类别（如 `links.intent`、`links.knowledge_debt`、`links.prototype`）与 `source_requirement` 实现无缝回链，无需破坏 v4 验证器。
+Plan Graph v4 利用其原生支持的开放 `links` 类别（`links.intent`、`links.spec`、`links.knowledge_debt`、`links.prototype`）与 `source_requirement` 实现无缝回链，无需改动 v4 验证器。
 
 ## 决策六 — 端侧嵌入 + 赫布关联层（Hebbian Associative Layer）与双层策展工作台
 
 **决策：**
 
-1. **边语义严格分层**：赫布学习产生的连接统一存储在 `_aiHumanInteract/hebbian/associations.json`，标记为 `Associative` 层，绝不冒充人类声明的 `Declared` 边或 AST 解析的 `Observed` 边。
-2. **端侧 SOTA 嵌入优先 + 确定性降级**：在 Apple Silicon 笔记本端默认优先调用本地部署的 `mlx-community/Qwen3-Embedding-0.6B-4bit-DWQ`（`mlx-embeddings`，约 333MB 统一内存，原生支持中英双语与代码语义，带内容哈希缓存）；跨平台支持 `fastembed` / `sentence-transformers`；无第三方包环境自动降级为纯标准库字符/词元子词哈希向量，保证离线 CI 与通用环境 100% 可运行。
-3. **赫布共激活与双路扩散检索（Dual-Path Retrieval）**：修复参考实现 `HeLa-Mem` 中的离线冷启动无跨会话边与时间衰减失效问题——结合初始高置信度语义种子边、跨图查询/编辑共激活强化（$\Delta w_{ij} = \eta \cdot a_i a_j$）、全局突触衰减与 `Base Top-k + Spreading Flip Top-m` 双路检索，并识别跨图高连接度枢纽节点（Hubs）。
-4. **DesignerlyLoop 风格可视化工作台**：除保留并打磨单图 `plan_view.py` 外，新增 `_aiHumanInteract/studio/index.html`（由 `ptm_studio.py` 生成的自包含零外链交互式工作台），沿用 `Soft Technical / Architectural Minimalism` 视觉语言，提供“认知层（Intent + Concepts + KD）↔ 实践层（Plan 2.5D + Scripts）”双层联动视图、分图专视图、赫布突触弧线开关、激活扩散探针及三态技术分拣/知识债重审影响模拟器。
+1. **边语义严格分层**：赫布学习产生的连接统一存储在 `_aiHumanInteract/hebbian/associations.json`，标记为 `Associative` 层，绝不冒充人类/Agent 显式维护的 `Declared` 边或 AST 解析的 `Observed` 边。
+2. **显式关系与赫布关联的四通道视觉分工**：
+   - **图谱树结构实线**：画布结构边仅绘制 `Parent / Children`（`decomposes_to` / `decomposes_intent`），保持树轮廓高度干净；
+   - **侧栏结构化双向表**：`Depends on / Required by`、`Enables / Enabled by`、`Validates / Validated by`（连同全部七组显式关系及点击跳转药丸）统一收纳于右侧详情栏顶部；
+   - **对偶卡片图标印章（两级）**：`Supersedes / Superseded by`（`↓`/`↑`）、`Conflicts with`（`✕`）、`Alternative of / Has alternative`（`◎`/`⇄`）在静息态以右下角微徽章提示，在悬停/选中时在对偶卡片上点亮顶部悬浮语义印章药丸、虚线轮廓环与右侧建筑水印；
+   - **赫布突触弧线与邻居列表**：琥珀色有机弧线支持 `智能聚焦 / 全局网格 / 隐藏` 三态切换，并在侧栏底部独立列出 `w_ij` 关联邻居。
+3. **端侧 SOTA 嵌入优先 + 确定性降级**：在 Apple Silicon 笔记本端默认优先调用本地部署的 `mlx-community/Qwen3-Embedding-0.6B-4bit-DWQ`（`mlx-embeddings`，约 333MB 统一内存，原生支持中英双语与代码语义，带内容哈希缓存）；跨平台支持 `fastembed` / `sentence-transformers`；无第三方包环境自动降级为纯标准库字符/词元子词哈希向量，保证离线 CI 与通用环境 100% 可运行。
+4. **赫布共激活与双路扩散检索（Dual-Path Retrieval）**：修复参考实现 `HeLa-Mem` 中的离线冷启动无跨会话边与时间衰减失效问题——结合初始高置信度语义种子边、跨图查询/编辑共激活强化（$\Delta w_{ij} = \eta \cdot a_i a_j$）、全局突触衰减与 `Base Top-k + Spreading Flip Top-m` 双路检索，并识别跨图高连接度枢纽节点（Hubs）；同时提供面向 Agent 的无副作用反查接口（`ptm.py related`），支持按现存节点 ID、未入库草稿文件或构想文本跨四张图检索关联内容。
+5. **词汇精确匹配机制的取舍（对 `HeLa-Mem` §3.1.1 关键词机制的批判性裁剪）**：
+   - **保留数学项，拒绝远程 LLM 抽词**：`HeLa-Mem` 论文 §3.1.1 / §3.4 在基础激活分中引入 $\alpha \cdot \text{keyword\_match}$，其源码因受限于早期弱英文句向量（`all-MiniLM-L6-v2`，22M 参数）对专有名词不敏感，采取了“每次写入节点及每次检索 Query 均同步调用一次远程 LLM（`llm_extract_keywords`）抽取不超过 3 个词”的做法。PtM 明确**拒绝**该在线抽词实现：① 每次检索附加远程 API 往返会摧毁端侧毫秒级响应与离线可用性；② 在中英混杂与代码并存场景下，LLM 抽取的字面词极易出现跨语种错位（如入库抽 `"Event Sourcing"`、查询抽 `"事件溯源"` 导致集合交集归零），而 `Qwen3-Embedding-0.6B` 本身已具备强跨语种与代码语义对齐能力。
+   - **以确定性标识符提取 + PtM 原生结构化锚点替代**：为兜底稠密向量不够敏感的精确标识符（函数名、类名、节点编号、特定缩写），PtM 在 `S_base` 中保留了零延迟的本地确定性词汇/标识符重合度加分；更重要的是，不同于 `HeLa-Mem` 面对无结构闲聊流水只能靠大模型猜关键词，PtM 的四图结构本身已显式提炼出三类高信噪比“黄金锚点”——**Intent 的 `concepts[].name`**、**Knowledge Debt 的 `term`**、以及 **Scripts Graph AST 解析出的 `classes / functions` 符号**，无需额外消耗任何 API Token。
+6. **DesignerlyLoop 风格可视化工作台**：除保留并打磨单图 `plan_view.py` 外，新增 `_aiHumanInteract/studio/index.html`（由 `ptm_studio.py` 生成的自包含零外链交互式工作台），沿用 `Soft Technical / Architectural Minimalism` 视觉语言，提供“认知层（Intent + Concepts + KD）↔ 实践层（Plan 2.5D + Scripts）”双层联动视图、分图专视图、赫布突触弧线开关、激活扩散探针及三态技术分拣/知识债重审影响模拟器。
 
 ## 决策七 — 子智能体项目画像（Portrait）与 `AGENTS.md` 双标记块恢复机制
 

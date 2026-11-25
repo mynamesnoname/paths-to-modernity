@@ -7,12 +7,24 @@ flowchart LR
     INT_001["INT-001: 让科学光谱 Agent 交互更快且具备直接操作感<br/>(科学光谱 Agent, 更快) · crystallized"]
     INT_002["INT-002: 对未理解技术采用三态分拣与可回溯知识债书签<br/>(非完全技术能力责任人, 先记下来跑通原型) · clarified"]
     INT_003["INT-003: 跨会话保持谱峰特征可寻址与历史审计<br/>(同一谱峰可寻址身份, 历史状态回放粒度) · exploring"]
+    INT_004["INT-004: 备选意图：对用户完全隐藏底层算法与数据策略<br/>(全黑盒免打扰代理) · superseded"]
+    INT_005["INT-005: 实证检验直接画布与书签流是否消除伪同意摩擦<br/>(零弹窗回放验收) · clarified"]
     INT_001 -->|decomposes_intent| INT_002
+    INT_002 -.->|enables| INT_003
+    INT_002 -.->|supersedes| INT_004
     INT_002 -.->|refines| INT_001
     INT_001 -->|decomposes_intent| INT_003
+    INT_003 -.->|conflicts_with| INT_004
     INT_003 -.->|refines| INT_001
     INT_003 -.->|branches_from| INT_002
     INT_003 -.->|constrains| INT_002
+    INT_001 -->|decomposes_intent| INT_004
+    INT_004 -.->|conflicts_with| INT_003
+    INT_004 -.->|alternative_of| INT_002
+    INT_001 -->|decomposes_intent| INT_005
+    INT_002 -.->|prerequisite_for| INT_005
+    INT_005 -.->|validates| INT_001
+    INT_005 -.->|validates| INT_002
 ```
 
 ## Intents & Concepts
@@ -22,3 +34,5 @@ flowchart LR
 | `INT-001` | [让科学光谱 Agent 交互更快且具备直接操作感](../nodes/INT-001.md) | `crystallized` | 科学光谱 Agent (anchored); 更快 (resolved) | LT-001, WP-001 | KD-003 |
 | `INT-002` | [对未理解技术采用三态分拣与可回溯知识债书签](../nodes/INT-002.md) | `clarified` | 非完全技术能力责任人 (resolved); 先记下来跑通原型 (resolved) | MT-001, WP-002, WP-003 | KD-001 |
 | `INT-003` | [跨会话保持谱峰特征可寻址与历史审计](../nodes/INT-003.md) | `exploring` | 同一谱峰可寻址身份 (resolved); 历史状态回放粒度 (ambiguous) | MT-002, WP-004, WP-005 | KD-002 |
+| `INT-004` | [备选意图：对用户完全隐藏底层算法与数据策略](../nodes/INT-004.md) | `superseded` | 全黑盒免打扰代理 (resolved) | WP-003 | — |
+| `INT-005` | [实证检验直接画布与书签流是否消除伪同意摩擦](../nodes/INT-005.md) | `clarified` | 零弹窗回放验收 (resolved) | WP-006 | — |
