@@ -1,0 +1,48 @@
+{
+  "schema_version": "paths-to-modernity-episodes-v1",
+  "threads": {
+    "THR-001": {
+      "status": "crystallized",
+      "capsule_summary": "经 IV-3 概念澄清与两份 SVG 认知原型对照，否决模态审批弹窗，确立主画布谱峰直选并固化为 SPEC-001 与 WP-001。",
+      "title": "主画布谱峰零弹窗直接操作与原型比选",
+      "node_refs": [
+        "INT-001",
+        "SPEC-001",
+        "SPEC-003",
+        "WP-001"
+      ]
+    },
+    "THR-002": {
+      "status": "crystallized",
+      "capsule_summary": "针对未知底层技术采用“理解同意 / 暂存 KD 先做原型 / 否决提新观点”侧栏分拣，固化为契约 SPEC-004 与 WP-002/WP-006。",
+      "title": "三态技术披露分拣闸门与拒绝伪同意",
+      "node_refs": [
+        "INT-002",
+        "INT-005",
+        "KD-001",
+        "SPEC-004",
+        "WP-002",
+        "WP-006"
+      ]
+    },
+    "THR-003": {
+      "status": "active",
+      "capsule_summary": "首期采用轻量字典快照（WP-004），多人并发覆写回放需求暂挂 KD-002 持续观察（关联 EVAL-003 存疑项）。",
+      "title": "跨会话 PK-### 快照存储与多人事件溯源权衡",
+      "node_refs": [
+        "INT-003",
+        "KD-002",
+        "WP-004",
+        "WP-005"
+      ]
+    },
+    "THR-004": {
+      "status": "crystallized",
+      "capsule_summary": "全栈强制统一使用 PeakHandle (PK-###)，明令禁用 WaveItem、LineCursor、PeakIdx，固化为 SPEC-002。",
+      "title": "统一领域术语 PeakHandle 与禁用同义混名",
+      "node_refs": [
+        "SPEC-002"
+      ]
+    }
+  }
+}

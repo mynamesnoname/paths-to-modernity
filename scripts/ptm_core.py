@@ -11,6 +11,7 @@ Maintains distinct sources of truth and edge provenance across:
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import os
 import re
@@ -18,15 +19,18 @@ import subprocess
 import sys
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-SKILL_ROOT = Path(__file__).resolve().parent.parent
+SCRIPT_DIR = Path(__file__).resolve().parent
+SKILL_ROOT = SCRIPT_DIR.parent
 BUNDLE_PLAN_DIR = SKILL_ROOT / "assets" / "plan-graph" / "_aiHumanInteract" / "plan"
-if str(BUNDLE_PLAN_DIR) not in sys.path:
-    sys.path.insert(0, str(BUNDLE_PLAN_DIR))
+for _p in (SCRIPT_DIR, BUNDLE_PLAN_DIR):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 
+from ptm_memory import EpisodicMemoryStore, attach_episodic_threads_to_federated  # noqa: E402
 import validate as plan_validate  # noqa: E402
 import build_graph as plan_build  # noqa: E402
 
@@ -35,6 +39,8 @@ INTENT_SCHEMA = "paths-to-modernity-intent-graph-v1"
 SPEC_SCHEMA = "paths-to-modernity-spec-graph-v1"
 KD_SCHEMA = "paths-to-modernity-knowledge-debt-v1"
 SCRIPTS_SCHEMA = "paths-to-modernity-scripts-graph-v1"
+EVAL_SCHEMA = "paths-to-modernity-evaluation-v1"
+VERIFICATION_SCHEMA = "paths-to-modernity-verification-receipt-v1"
 
 INTENT_STATUSES = {"exploring", "clarified", "crystallized", "reopened", "superseded"}
 SPEC_STATUSES = {"draft", "enforced", "deprecated", "superseded"}
@@ -42,6 +48,21 @@ SPEC_KINDS = {"invariant", "glossary", "standard", "contract"}
 SPEC_ENFORCEMENTS = {"must", "must_not", "should", "canonical_term"}
 KD_STATUSES = {"open", "affirmed", "rejected"}
 KD_KINDS = {"concept", "reasoning_gap", "comparison_gap", "intuitive_doubt", "evidence_gap"}
+EVAL_KINDS = {
+    "alternative_comparison",
+    "quality_review",
+    "prototype_critique",
+    "spec_audit",
+    "legacy_note",
+}
+EVAL_VERDICTS = {"pass", "selected_winner", "concerns", "fail", "noted"}
+EVAL_REVIEWER_MODES = {
+    "isolated_subagent",
+    "browser_subagent",
+    "human_owner",
+    "joint",
+    "legacy",
+}
 TRIAGE_MODES = {
     "understood_agreed",
     "not_understood_prototype",
@@ -53,6 +74,7 @@ INTENT_ID_RE = re.compile(r"^INT-\d{3}$")
 SPEC_ID_RE = re.compile(r"^SPEC-\d{3}$")
 KD_ID_RE = re.compile(r"^KD-\d{3}$")
 PLAN_ID_RE = re.compile(r"^(LT|MT|ST|WP)-\d{3}$")
+EVAL_ID_RE = re.compile(r"^EVAL-\d{3}$")
 
 IGNORED_DIRS = {
     ".git",
@@ -68,6 +90,7 @@ IGNORED_DIRS = {
     ".ruff_cache",
     "dist",
     "build",
+    "vendor",
     ".obsidian",
     "_aiHumanInteract",
 }
@@ -1768,15 +1791,21 @@ def build_scripts_views(repo_root: Path) -> dict[str, Any]:
 
 
 def load_all_federated_graphs(repo_root: Path) -> dict[str, Any]:
-    """Load Intent, Spec, Plan (v4), Knowledge Debt, and Scripts graphs into one unified memory view."""
+    """Load Intent, Spec, Plan (v4), Knowledge Debt, Scripts, Evaluations & Verification into one view."""
     repo_root = repo_root.resolve()
     intents, intent_edges = load_intent_graph(repo_root)
     specs, spec_edges = load_spec_graph(repo_root)
     kds, kd_edges = load_knowledge_debt_graph(repo_root)
+    evals = load_evaluations(repo_root)
 
     plan_payload: dict[str, Any] = {"nodes": [], "edges": []}
     plan_root = repo_root / "_aiHumanInteract" / "plan"
-    if plan_root.is_dir() and any((plan_root / lvl).is_dir() for lvl in plan_validate.LEVELS):
+    has_plan_nodes = plan_root.is_dir() and any(
+        any((plan_root / lvl).glob("*.md"))
+        for lvl in plan_validate.LEVELS
+        if (plan_root / lvl).is_dir()
+    )
+    if has_plan_nodes:
         p_nodes = plan_validate.require_valid_graph(plan_root, repo_root)
         plan_payload = plan_build.graph_payload(plan_root, p_nodes)
 
@@ -1835,22 +1864,40 @@ def load_all_federated_graphs(repo_root: Path) -> dict[str, Any]:
     for e in kd_edges:
         _add_cross(e["from"], e["to"], e["relationship"])
 
-    return {
+    intent_node_dicts = [intents[k].as_payload() for k in sorted(intents)]
+    spec_node_dicts = [
+        {
+            **specs[k].as_payload(),
+            "impact_preview": compute_spec_impact(repo_root, k),
+        }
+        for k in sorted(specs)
+    ]
+    plan_node_dicts = [dict(n) for n in plan_payload.get("nodes", [])]
+    script_node_dicts = [dict(n) for n in scripts_payload.get("nodes", [])]
+
+    verification_report = attach_verification_and_evaluations(
+        repo_root=repo_root,
+        intent_nodes=intent_node_dicts,
+        spec_nodes=spec_node_dicts,
+        plan_nodes=plan_node_dicts,
+        script_nodes=script_node_dicts,
+        script_edges=scripts_payload.get("edges", []),
+        evaluations=evals,
+    )
+
+    federated_out: dict[str, Any] = {
         "intent": {
-            "nodes": [intents[k].as_payload() for k in sorted(intents)],
+            "nodes": intent_node_dicts,
             "edges": intent_edges,
         },
         "specs": {
-            "nodes": [
-                {
-                    **specs[k].as_payload(),
-                    "impact_preview": compute_spec_impact(repo_root, k),
-                }
-                for k in sorted(specs)
-            ],
+            "nodes": spec_node_dicts,
             "edges": spec_edges,
         },
-        "plan": plan_payload,
+        "plan": {
+            **plan_payload,
+            "nodes": plan_node_dicts,
+        },
         "knowledge_debt": {
             "nodes": [
                 {
@@ -1861,6 +1908,828 @@ def load_all_federated_graphs(repo_root: Path) -> dict[str, Any]:
             ],
             "edges": kd_edges,
         },
-        "scripts": scripts_payload,
+        "scripts": {
+            **scripts_payload,
+            "nodes": script_node_dicts,
+        },
+        "evaluations": {
+            "schema_version": EVAL_SCHEMA,
+            "node_count": len(evals),
+            "nodes": [evals[k].as_payload() for k in sorted(evals)],
+        },
+        "verification_report": verification_report,
         "cross_edges": cross_edges,
     }
+
+    turns_jsonl = repo_root / "_aiHumanInteract" / "episodes" / "turns.jsonl"
+    sqlite_db = repo_root / "_aiHumanInteract" / ".cache" / "memory.sqlite"
+    if turns_jsonl.is_file() or sqlite_db.is_file():
+        ep_store = EpisodicMemoryStore(repo_root)
+        ep_sum = ep_store.export_summary()
+        if turns_jsonl.is_file() and ep_sum["turn_count"] == 0:
+            ep_sum = ep_store.sync_portable_episodes(federated_out)
+        else:
+            ep_store.apply_portable_thread_state()
+            ep_store.bind_threads_to_federated_graphs(federated_out)
+            ep_sum = ep_store.export_summary()
+        attach_episodic_threads_to_federated(federated_out, ep_sum)
+    else:
+        federated_out["episodic_memory"] = {
+            "turn_count": 0,
+            "span_count": 0,
+            "thread_count": 0,
+            "folded_count": 0,
+            "active_count": 0,
+            "vector_blob_count": 0,
+            "threads": [],
+        }
+
+    return federated_out
+
+
+# ============================================================================
+# 4. DUAL-TRACK VERIFICATION RECEIPTS & SUBSTANTIVE EVALUATIONS (EVAL-###)
+# ============================================================================
+
+
+@dataclass(frozen=True)
+class EvaluationNode:
+    eval_id: str
+    title: str
+    kind: str
+    verdict: str
+    perspective: str
+    reviewer_mode: str
+    updated: str
+    summary: str
+    evaluates_intents: tuple[str, ...]
+    evaluates_specs: tuple[str, ...]
+    evaluates_plans: tuple[str, ...]
+    evaluates_scripts: tuple[str, ...]
+    preserved_qualities: tuple[str, ...]
+    at_risk_qualities: tuple[str, ...]
+    evidence_refs: tuple[str, ...]
+    recommended_action: str | None
+    source: str
+    body: str
+
+    def as_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "id": self.eval_id,
+            "title": self.title,
+            "kind": self.kind,
+            "verdict": self.verdict,
+            "perspective": self.perspective,
+            "reviewer_mode": self.reviewer_mode,
+            "updated": self.updated,
+            "summary": self.summary,
+            "evaluates_intents": list(self.evaluates_intents),
+            "evaluates_specs": list(self.evaluates_specs),
+            "evaluates_plans": list(self.evaluates_plans),
+            "evaluates_scripts": list(self.evaluates_scripts),
+            "preserved_qualities": list(self.preserved_qualities),
+            "at_risk_qualities": list(self.at_risk_qualities),
+            "evidence_refs": list(self.evidence_refs),
+            "recommended_action": self.recommended_action,
+            "source": self.source,
+            "body": self.body,
+        }
+        return payload
+
+
+def load_evaluations(repo_root: Path) -> dict[str, EvaluationNode]:
+    """Load `_aiHumanInteract/plan/evaluations/*.md` (structured front matter or legacy notes)."""
+    repo_root = repo_root.resolve()
+    eval_dir = repo_root / "_aiHumanInteract" / "plan" / "evaluations"
+    if not eval_dir.is_dir():
+        return {}
+
+    nodes: dict[str, EvaluationNode] = {}
+    for path in sorted(eval_dir.glob("*.md")):
+        if path.name.lower() == "readme.md":
+            continue
+        rel = path.relative_to(repo_root).as_posix()
+        raw_txt = path.read_text(encoding="utf-8")
+        first_line = raw_txt.splitlines()[0].strip() if raw_txt.splitlines() else ""
+        if first_line != "---":
+            # Graceful backward compatibility for plain-Markdown legacy evaluation notes
+            eid = path.stem
+            lines = [ln.strip() for ln in raw_txt.splitlines() if ln.strip()]
+            heading = lines[0].lstrip("#").strip() if lines else eid
+            para = next((ln for ln in lines[1:] if not ln.startswith("#")), heading)
+            nodes[eid] = EvaluationNode(
+                eval_id=eid,
+                title=heading,
+                kind="legacy_note",
+                verdict="noted",
+                perspective="未标注独立视角（旧版记录）",
+                reviewer_mode="legacy",
+                updated=date.today().isoformat(),
+                summary=para[:200],
+                evaluates_intents=(),
+                evaluates_specs=(),
+                evaluates_plans=(),
+                evaluates_scripts=(),
+                preserved_qualities=(),
+                at_risk_qualities=(),
+                evidence_refs=(),
+                recommended_action=None,
+                source=rel,
+                body=raw_txt.strip(),
+            )
+            continue
+
+        meta, body = parse_front_matter(path)
+        eid = str(meta.get("id", "")).strip()
+        if not EVAL_ID_RE.fullmatch(eid):
+            raise PtmGraphError(f"{rel}: invalid evaluation ID {eid!r} (expected EVAL-###)")
+        if path.stem != eid:
+            raise PtmGraphError(f"{rel}: filename must match {eid}.md")
+        title = str(meta.get("title", "")).strip()
+        if not title:
+            raise PtmGraphError(f"{rel}: title must be non-empty")
+        kind = str(meta.get("kind", "")).strip()
+        if kind not in EVAL_KINDS:
+            raise PtmGraphError(f"{rel}: invalid kind {kind!r} (expected {sorted(EVAL_KINDS)})")
+        verdict = str(meta.get("verdict", "")).strip()
+        if verdict not in EVAL_VERDICTS:
+            raise PtmGraphError(
+                f"{rel}: invalid verdict {verdict!r} (expected {sorted(EVAL_VERDICTS)})"
+            )
+        perspective = str(meta.get("perspective", "")).strip()
+        if not perspective:
+            raise PtmGraphError(f"{rel}: perspective is required to prevent abstract self-review")
+        reviewer_mode = str(meta.get("reviewer_mode", "isolated_subagent")).strip()
+        if reviewer_mode not in EVAL_REVIEWER_MODES:
+            raise PtmGraphError(f"{rel}: invalid reviewer_mode {reviewer_mode!r}")
+        updated = _check_iso_date(meta.get("updated"), rel)
+        summary = str(meta.get("summary", "")).strip()
+        if not summary:
+            raise PtmGraphError(f"{rel}: summary must be non-empty")
+
+        def _str_list(key: str, pattern: re.Pattern[str] | None = None) -> tuple[str, ...]:
+            raw = meta.get(key, [])
+            if not isinstance(raw, list):
+                raise PtmGraphError(f"{rel}: {key} must be a list")
+            items = tuple(str(x).strip() for x in raw if str(x).strip())
+            if pattern:
+                for item in items:
+                    if not pattern.fullmatch(item):
+                        raise PtmGraphError(f"{rel}: invalid ID {item!r} in {key}")
+            return items
+
+        rec_act = meta.get("recommended_action")
+        nodes[eid] = EvaluationNode(
+            eval_id=eid,
+            title=title,
+            kind=kind,
+            verdict=verdict,
+            perspective=perspective,
+            reviewer_mode=reviewer_mode,
+            updated=updated,
+            summary=summary,
+            evaluates_intents=_str_list("evaluates_intents", INTENT_ID_RE),
+            evaluates_specs=_str_list("evaluates_specs", SPEC_ID_RE),
+            evaluates_plans=_str_list("evaluates_plans", PLAN_ID_RE),
+            evaluates_scripts=_str_list("evaluates_scripts"),
+            preserved_qualities=_str_list("preserved_qualities"),
+            at_risk_qualities=_str_list("at_risk_qualities"),
+            evidence_refs=_str_list("evidence_refs"),
+            recommended_action=str(rec_act).strip() if rec_act else None,
+            source=rel,
+            body=body,
+        )
+    return nodes
+
+
+def _sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+UNITTEST_RAN_RE = re.compile(r"Ran\s+(\d+)\s+tests?\s+in\s+([\d.]+)s")
+UNITTEST_FAIL_DETAIL_RE = re.compile(r"FAILED\s*\(([^)]+)\)")
+UNITTEST_CASE_RE = re.compile(
+    r"^(test[\w_]*)\s+\(([\w.]+)\).*?\.\.\.\s+(ok|FAIL|ERROR|skipped.*)\s*$"
+)
+PYTEST_PASSED_RE = re.compile(r"(\d+)\s+passed")
+PYTEST_FAILED_RE = re.compile(r"(\d+)\s+(?:failed|error|errors)")
+
+
+def load_verification_receipt(repo_root: Path) -> dict[str, Any] | None:
+    path = repo_root.resolve() / "_aiHumanInteract" / "scripts" / "verification-status.json"
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(data, dict) and data.get("schema_version") == VERIFICATION_SCHEMA:
+            return data
+    except (OSError, json.JSONDecodeError):
+        return None
+    return None
+
+
+def run_formal_verification(
+    repo_root: Path,
+    *,
+    command: str | None = None,
+    timeout_sec: int = 120,
+) -> dict[str, Any]:
+    """Execute project tests, capture deterministic pass/fail counts, and record SHA-256 hashes."""
+    repo_root = repo_root.resolve()
+    scripts_payload = scan_scripts_graph(repo_root)
+    existing_nodes = [
+        n for n in scripts_payload.get("nodes", []) if n.get("status") != "planned_missing"
+    ]
+    file_hashes: dict[str, str] = {}
+    all_test_paths: list[str] = []
+    py_test_paths: list[str] = []
+    for n in existing_nodes:
+        rel = n["path"]
+        fpath = repo_root / rel
+        if fpath.is_file():
+            file_hashes[rel] = _sha256_file(fpath)
+            if n.get("role") == "test" and not rel.startswith("vendor/"):
+                all_test_paths.append(rel)
+                if rel.endswith(".py"):
+                    py_test_paths.append(rel)
+    if command:
+        named = [r for r in all_test_paths if r in command or Path(r).name in command]
+        test_rel_paths = named if named else all_test_paths
+    else:
+        test_rel_paths = py_test_paths
+
+    now_iso = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    env = dict(os.environ)
+    existing_py_path = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = (
+        f"{repo_root}{os.pathsep}{existing_py_path}" if existing_py_path else str(repo_root)
+    )
+
+    if not command and not test_rel_paths:
+        receipt = {
+            "schema_version": VERIFICATION_SCHEMA,
+            "timestamp": now_iso,
+            "runner_command": None,
+            "overall_status": "no_tests",
+            "exit_code": 0,
+            "total_tests": 0,
+            "passed_tests": 0,
+            "failed_tests": 0,
+            "duration_sec": 0.0,
+            "test_scripts": {},
+            "file_hashes": file_hashes,
+            "output_tail": "",
+        }
+        out_path = repo_root / "_aiHumanInteract" / "scripts" / "verification-status.json"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(
+            json.dumps(receipt, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        return receipt
+
+    if command:
+        runner_display = command
+        proc = subprocess.run(
+            command,
+            shell=True,
+            cwd=repo_root,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=timeout_sec,
+            check=False,
+        )
+    else:
+        start_dir = "tests" if (repo_root / "tests").is_dir() else "."
+        cmd_argv = [
+            sys.executable,
+            "-B",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            start_dir,
+            "-p",
+            "test_*.py",
+            "-v",
+        ]
+        runner_display = f"python3 -B -m unittest discover -s {start_dir} -p 'test_*.py' -v"
+        proc = subprocess.run(
+            cmd_argv,
+            cwd=repo_root,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=timeout_sec,
+            check=False,
+        )
+
+    combined_out = proc.stdout or ""
+    total_tests = 0
+    failed_tests = 0
+    duration_sec = 0.0
+
+    m_ran = UNITTEST_RAN_RE.search(combined_out)
+    if m_ran:
+        total_tests = int(m_ran.group(1))
+        duration_sec = float(m_ran.group(2))
+        m_fail = UNITTEST_FAIL_DETAIL_RE.search(combined_out)
+        if m_fail:
+            for part in m_fail.group(1).split(","):
+                k_v = part.strip().split("=")
+                if len(k_v) == 2 and k_v[0].strip() in {"failures", "errors"}:
+                    failed_tests += int(k_v[1].strip())
+        elif proc.returncode != 0:
+            failed_tests = max(1, total_tests)
+    else:
+        mp = PYTEST_PASSED_RE.search(combined_out)
+        mf = PYTEST_FAILED_RE.search(combined_out)
+        m_node_total = re.search(r"(?:ℹ|#)\s*tests\s+(\d+)", combined_out)
+        m_node_fail = re.search(r"(?:ℹ|#)\s*fail\s+(\d+)", combined_out)
+        m_node_dur = re.search(r"(?:ℹ|#)\s*duration_ms\s+([\d.]+)", combined_out)
+        if m_node_total:
+            total_tests = int(m_node_total.group(1))
+            failed_tests = int(m_node_fail.group(1)) if m_node_fail else (1 if proc.returncode != 0 else 0)
+            if m_node_dur:
+                duration_sec = float(m_node_dur.group(1)) / 1000.0
+        else:
+            if mp:
+                total_tests += int(mp.group(1))
+            if mf:
+                f_cnt = int(mf.group(1))
+                failed_tests += f_cnt
+                total_tests += f_cnt
+            if command and proc.returncode == 0 and total_tests == 0:
+                total_tests = 1
+        if proc.returncode != 0 and failed_tests == 0:
+            failed_tests = 1
+            total_tests = max(1, total_tests)
+
+    passed_tests = max(0, total_tests - failed_tests)
+    overall = "passed" if (proc.returncode == 0 and total_tests > 0) else (
+        "no_tests" if (proc.returncode == 0 and total_tests == 0) else "failed"
+    )
+
+    # Map individual unittest cases back to test script files
+    stem_to_rel = {Path(r).stem: r for r in test_rel_paths}
+    per_script: dict[str, dict[str, Any]] = {
+        r: {"status": "passed" if overall == "passed" else ("failed" if overall == "failed" else "no_tests"), "passed": 0, "failed": 0, "cases": []}
+        for r in test_rel_paths
+    }
+    matched_any_case = False
+    for raw_ln in combined_out.splitlines():
+        mc = UNITTEST_CASE_RE.match(raw_ln.strip())
+        if not mc:
+            continue
+        case_name, dotted_cls, outcome = mc.group(1), mc.group(2), mc.group(3)
+        parts = dotted_cls.split(".")
+        matched_rel = None
+        for idx in range(len(parts), 0, -1):
+            cand = "/".join(parts[:idx]) + ".py"
+            if cand in per_script:
+                matched_rel = cand
+                break
+            if f"tests/{cand}" in per_script:
+                matched_rel = f"tests/{cand}"
+                break
+        if not matched_rel and len(parts) >= 2 and parts[-2] in stem_to_rel:
+            matched_rel = stem_to_rel[parts[-2]]
+        if matched_rel:
+            matched_any_case = True
+            ok = outcome.startswith("ok") or outcome.startswith("skipped")
+            rec = per_script[matched_rel]
+            if ok:
+                rec["passed"] += 1
+            else:
+                rec["failed"] += 1
+            rec["cases"].append({"name": case_name, "status": "passed" if ok else "failed"})
+
+    if matched_any_case:
+        for r, rec in per_script.items():
+            if rec["failed"] > 0:
+                rec["status"] = "failed"
+            elif rec["passed"] > 0:
+                rec["status"] = "passed"
+            else:
+                rec["status"] = "passed" if overall == "passed" else "unverified"
+    else:
+        for r, rec in per_script.items():
+            if overall == "passed":
+                rec["passed"] = max(1, passed_tests)
+                rec["status"] = "passed"
+            elif overall == "failed":
+                rec["failed"] = max(1, failed_tests)
+                rec["status"] = "failed"
+
+    tail_lines = combined_out.strip().splitlines()[-18:]
+    receipt = {
+        "schema_version": VERIFICATION_SCHEMA,
+        "timestamp": now_iso,
+        "runner_command": runner_display,
+        "overall_status": overall,
+        "exit_code": proc.returncode,
+        "total_tests": total_tests,
+        "passed_tests": passed_tests,
+        "failed_tests": failed_tests,
+        "duration_sec": round(duration_sec, 4),
+        "test_scripts": per_script,
+        "file_hashes": file_hashes,
+        "output_tail": "\n".join(tail_lines),
+    }
+    out_path = repo_root / "_aiHumanInteract" / "scripts" / "verification-status.json"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(
+        json.dumps(receipt, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    return receipt
+
+
+def _rollup_eval_status(eval_items: list[dict[str, Any]]) -> dict[str, Any]:
+    if not eval_items:
+        return {"count": 0, "status": "none", "eval_ids": [], "at_risk_count": 0}
+    verdicts = {e["verdict"] for e in eval_items}
+    if "fail" in verdicts:
+        st = "fail"
+    elif "concerns" in verdicts:
+        st = "concerns"
+    elif "selected_winner" in verdicts:
+        st = "selected_winner"
+    elif "pass" in verdicts:
+        st = "pass"
+    else:
+        st = "noted"
+    at_risk_cnt = sum(len(e.get("at_risk_qualities") or []) for e in eval_items)
+    return {
+        "count": len(eval_items),
+        "status": st,
+        "eval_ids": [e["id"] for e in eval_items],
+        "at_risk_count": at_risk_cnt,
+    }
+
+
+def attach_verification_and_evaluations(
+    *,
+    repo_root: Path,
+    intent_nodes: list[dict[str, Any]],
+    spec_nodes: list[dict[str, Any]],
+    plan_nodes: list[dict[str, Any]],
+    script_nodes: list[dict[str, Any]],
+    script_edges: list[dict[str, Any]],
+    evaluations: Mapping[str, EvaluationNode],
+) -> dict[str, Any]:
+    """Enrich federated nodes in-place with SHA-256 verification status & `EVAL-###` critiques."""
+    receipt = load_verification_receipt(repo_root)
+    recorded_hashes: dict[str, str] = (receipt or {}).get("file_hashes", {})
+    test_script_results: dict[str, dict[str, Any]] = (receipt or {}).get("test_scripts", {})
+
+    # 1. Live SHA-256 check across all scripts on disk
+    current_hashes: dict[str, str] = {}
+    missing_paths: set[str] = set()
+    for sn in script_nodes:
+        rel = sn["path"]
+        fpath = repo_root / rel
+        if sn.get("status") == "planned_missing" or not fpath.is_file():
+            missing_paths.add(rel)
+        else:
+            current_hashes[rel] = _sha256_file(fpath)
+
+    def _is_file_stale(rel: str) -> bool:
+        if not receipt or rel in missing_paths:
+            return False
+        rec_h = recorded_hashes.get(rel)
+        cur_h = current_hashes.get(rel)
+        return bool(rec_h is None or cur_h != rec_h)
+
+    global_stale_files = sorted(rel for rel in current_hashes if _is_file_stale(rel))
+
+    # 2. Transitive script dependency closure (`test_file -> imported/invoked modules`)
+    callees_adj: dict[str, list[str]] = defaultdict(list)
+    for e in script_edges:
+        if e.get("relationship") in {"imports", "invokes"}:
+            callees_adj[e["from_path"]].append(e["to_path"])
+
+    def _reachable_callees(start_rel: str) -> list[str]:
+        seen = {start_rel}
+        q = [start_rel]
+        out = [start_rel]
+        while q:
+            cur = q.pop(0)
+            for nxt in sorted(set(callees_adj.get(cur, ()))):
+                if nxt not in seen:
+                    seen.add(nxt)
+                    out.append(nxt)
+                    q.append(nxt)
+        return out
+
+    test_reach: dict[str, list[str]] = {}
+    covering_tests_by_script: dict[str, set[str]] = defaultdict(set)
+    for sn in script_nodes:
+        if sn.get("role") == "test":
+            reach = _reachable_callees(sn["path"])
+            test_reach[sn["path"]] = reach
+            for target_rel in reach:
+                covering_tests_by_script[target_rel].add(sn["path"])
+
+    # Also propagate explicit Spec/Plan test pairings (`verified_by_scripts` -> `governs_scripts`, `links.tests` -> `links.code`)
+    for sp in spec_nodes:
+        if sp.get("status") in {"superseded", "deprecated"}:
+            continue
+        for t_rel in sp.get("verified_by_scripts", []):
+            for g_rel in sp.get("governs_scripts", []):
+                covering_tests_by_script[g_rel].add(t_rel)
+    for pn in plan_nodes:
+        if pn.get("status") == "superseded":
+            continue
+        lnks = pn.get("links") or {}
+        for t_rel in lnks.get("tests", []):
+            for c_rel in lnks.get("code", []):
+                covering_tests_by_script[c_rel].add(t_rel)
+
+    def _eval_file_group(test_rels: Iterable[str], governed_rels: Iterable[str]) -> dict[str, Any]:
+        tests = sorted({r for r in test_rels if r and not r.startswith("external:")})
+        govs = sorted({r for r in governed_rels if r and not r.startswith("external:")})
+        all_files = sorted(set(tests) | set(govs))
+        missing = sorted(r for r in all_files if r in missing_paths)
+        if not tests:
+            return {
+                "status": "unverified",
+                "reason": "尚未声明自动化验证测试脚本",
+                "test_scripts": [],
+                "governed_files": govs,
+                "stale_files": [],
+                "missing_files": missing,
+                "receipt_timestamp": (receipt or {}).get("timestamp"),
+            }
+        if missing:
+            return {
+                "status": "unverified",
+                "reason": f"受辖源码或测试尚未落地: {', '.join(missing)}",
+                "test_scripts": tests,
+                "governed_files": govs,
+                "stale_files": [],
+                "missing_files": missing,
+                "receipt_timestamp": (receipt or {}).get("timestamp"),
+            }
+        if not receipt or receipt.get("overall_status") == "no_tests":
+            return {
+                "status": "unverified",
+                "reason": "尚未生成形式验证回执（请执行 ptm.py verify）",
+                "test_scripts": tests,
+                "governed_files": govs,
+                "stale_files": [],
+                "missing_files": [],
+                "receipt_timestamp": None,
+            }
+        failing_tests = [
+            t
+            for t in tests
+            if test_script_results.get(t, {}).get("status") == "failed"
+            or (t not in test_script_results and receipt.get("overall_status") == "failed")
+        ]
+        if failing_tests:
+            return {
+                "status": "failing",
+                "reason": f"测试执行未通过: {', '.join(failing_tests)}",
+                "test_scripts": tests,
+                "governed_files": govs,
+                "stale_files": [],
+                "missing_files": [],
+                "receipt_timestamp": receipt.get("timestamp"),
+                "runner_command": receipt.get("runner_command"),
+            }
+        # Include transitive imports of the test scripts so changing a helper module invalidates its test!
+        watched_files = set(all_files)
+        for t in tests:
+            watched_files.update(test_reach.get(t, [t]))
+        stale = sorted(f for f in watched_files if _is_file_stale(f))
+        if stale:
+            return {
+                "status": "stale",
+                "reason": f"自上次回执后源码/测试 SHA-256 已变更: {', '.join(stale)}",
+                "test_scripts": tests,
+                "governed_files": govs,
+                "stale_files": stale,
+                "missing_files": [],
+                "receipt_timestamp": receipt.get("timestamp"),
+                "runner_command": receipt.get("runner_command"),
+            }
+        # Verify at least one declared test actually ran & passed in receipt
+        ran_passed = [
+            t for t in tests if test_script_results.get(t, {}).get("status") == "passed"
+        ]
+        if not ran_passed and receipt.get("overall_status") != "passed":
+            return {
+                "status": "unverified",
+                "reason": "测试脚本尚未纳入最新运行回执",
+                "test_scripts": tests,
+                "governed_files": govs,
+                "stale_files": [],
+                "missing_files": [],
+                "receipt_timestamp": receipt.get("timestamp"),
+            }
+        return {
+            "status": "verified",
+            "reason": f"测试通过且 {len(watched_files)} 个受辖文件 SHA-256 指纹保鲜一致",
+            "test_scripts": tests,
+            "governed_files": govs,
+            "stale_files": [],
+            "missing_files": [],
+            "receipt_timestamp": receipt.get("timestamp"),
+            "runner_command": receipt.get("runner_command"),
+            "passed_tests": receipt.get("passed_tests", 0),
+            "total_tests": receipt.get("total_tests", 0),
+        }
+
+    # 3. Compute verification rollup for Scripts, Specs, and Plans
+    for sn in script_nodes:
+        rel = sn["path"]
+        if sn.get("status") == "planned_missing":
+            sn["verification"] = {
+                "status": "unverified",
+                "reason": "规划目标文件尚未在磁盘创建",
+                "test_scripts": [],
+                "governed_files": [rel],
+                "stale_files": [],
+                "missing_files": [rel],
+            }
+        elif sn.get("role") == "test":
+            sn["verification"] = _eval_file_group([rel], test_reach.get(rel, [rel]))
+        else:
+            cov_tests = sorted(covering_tests_by_script.get(rel, ()))
+            sn["verification"] = _eval_file_group(cov_tests, [rel])
+
+    for sp in spec_nodes:
+        if sp.get("status") in {"superseded", "deprecated"}:
+            sp["verification"] = {
+                "status": "not_applicable",
+                "reason": f"规范处于 {sp['status']} 状态，无需实测守门",
+                "test_scripts": [],
+                "governed_files": [],
+                "stale_files": [],
+                "missing_files": [],
+            }
+        else:
+            sp["verification"] = _eval_file_group(
+                sp.get("verified_by_scripts", []), sp.get("governs_scripts", [])
+            )
+
+    # Plan nodes: leaf WPs evaluate own `links.tests` + `validated_by` WP tests; parent scopes aggregate children
+    plan_by_id = {pn["id"]: pn for pn in plan_nodes}
+    children_by_plan: dict[str, list[str]] = defaultdict(list)
+    validating_tests_by_plan: dict[str, set[str]] = defaultdict(set)
+    for pn in plan_nodes:
+        p = pn.get("parent")
+        if p:
+            children_by_plan[p].append(pn["id"])
+        if pn.get("status") != "superseded":
+            p_tests = (pn.get("links") or {}).get("tests", [])
+            for v_target in pn.get("validates", []):
+                validating_tests_by_plan[v_target].update(p_tests)
+
+    wp_verifications: dict[str, dict[str, Any]] = {}
+    for pn in plan_nodes:
+        pid = pn["id"]
+        if pn.get("status") == "superseded":
+            wp_verifications[pid] = {
+                "status": "not_applicable",
+                "reason": "已被替代方案接替 (superseded)",
+                "test_scripts": [],
+                "governed_files": [],
+                "stale_files": [],
+                "missing_files": [],
+            }
+            continue
+        if not children_by_plan.get(pid):
+            lnks = pn.get("links") or {}
+            eff_tests = sorted(set(lnks.get("tests", [])) | validating_tests_by_plan.get(pid, set()))
+            eff_code = lnks.get("code", [])
+            wp_verifications[pid] = _eval_file_group(eff_tests, eff_code)
+
+    def _resolve_plan_verification(pid: str) -> dict[str, Any]:
+        if pid in wp_verifications:
+            return wp_verifications[pid]
+        pn = plan_by_id[pid]
+        active_children = [
+            ch for ch in children_by_plan.get(pid, [])
+            if plan_by_id[ch].get("status") != "superseded"
+        ]
+        if not active_children:
+            lnks = pn.get("links") or {}
+            res = _eval_file_group(lnks.get("tests", []), lnks.get("code", []))
+            wp_verifications[pid] = res
+            return res
+        child_vs = [_resolve_plan_verification(ch) for ch in active_children]
+        statuses = [cv["status"] for cv in child_vs]
+        all_tests = sorted({t for cv in child_vs for t in cv.get("test_scripts", [])})
+        all_govs = sorted({g for cv in child_vs for g in cv.get("governed_files", [])})
+        all_stale = sorted({s for cv in child_vs for s in cv.get("stale_files", [])})
+        all_missing = sorted({m for cv in child_vs for m in cv.get("missing_files", [])})
+        v_cnt = sum(1 for st in statuses if st == "verified")
+        if "failing" in statuses:
+            st, rsn = "failing", "子工作包存在未通过测试"
+        elif "stale" in statuses:
+            st, rsn = "stale", f"子工作包受辖源码已修改待重测: {', '.join(all_stale)}"
+        elif v_cnt == len(statuses):
+            st, rsn = "verified", f"下属 {v_cnt}/{len(statuses)} 个有效子项全部实测通过且哈希保鲜"
+        elif v_cnt > 0 or "partial" in statuses:
+            st, rsn = "partial", f"下属子项部分完成实测覆盖 ({v_cnt}/{len(statuses)} 项已实测)"
+        else:
+            st, rsn = "unverified", "下属子项尚未建立有效实测回执"
+        res = {
+            "status": st,
+            "reason": rsn,
+            "test_scripts": all_tests,
+            "governed_files": all_govs,
+            "stale_files": all_stale,
+            "missing_files": all_missing,
+            "receipt_timestamp": (receipt or {}).get("timestamp"),
+            "runner_command": (receipt or {}).get("runner_command"),
+        }
+        wp_verifications[pid] = res
+        return res
+
+    for pn in plan_nodes:
+        pn["verification"] = _resolve_plan_verification(pn["id"])
+
+    # 4. Bind substantive evaluations (`EVAL-###`) across Intent, Spec, Plan, and Scripts
+    evals_by_target: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
+    for eid, ev in sorted(evaluations.items()):
+        ep = ev.as_payload()
+        for iid in ev.evaluates_intents:
+            evals_by_target[iid][eid] = ep
+        for sid in ev.evaluates_specs:
+            evals_by_target[sid][eid] = ep
+        for pid in ev.evaluates_plans:
+            evals_by_target[pid][eid] = ep
+        for srel in ev.evaluates_scripts:
+            evals_by_target[f"SCR:{srel}"][eid] = ep
+
+    # Also honor reverse `PlanNode.links.evaluation` pointers (`_aiHumanInteract/plan/evaluations/EVAL-001.md`)
+    for pn in plan_nodes:
+        for eref in (pn.get("links") or {}).get("evaluation", []):
+            stem = Path(eref).stem
+            if stem in evaluations:
+                evals_by_target[pn["id"]][stem] = evaluations[stem].as_payload()
+
+    for group in (intent_nodes, spec_nodes, plan_nodes, script_nodes):
+        for n in group:
+            nid = n["id"]
+            attached = [evals_by_target[nid][k] for k in sorted(evals_by_target.get(nid, ()))]
+            n["evaluations"] = attached
+            n["evaluation_rollup"] = _rollup_eval_status(attached)
+
+    active_specs = [s for s in spec_nodes if s.get("status") not in {"superseded", "deprecated"}]
+    active_wps = [
+        p for p in plan_nodes
+        if p.get("level") == "work-package" and p.get("status") != "superseded"
+    ]
+    eval_list = [evaluations[k].as_payload() for k in sorted(evaluations)]
+
+    return {
+        "has_receipt": receipt is not None,
+        "receipt_timestamp": (receipt or {}).get("timestamp"),
+        "runner_command": (receipt or {}).get("runner_command"),
+        "overall_test_status": (receipt or {}).get("overall_status", "unverified"),
+        "total_tests": (receipt or {}).get("total_tests", 0),
+        "passed_tests": (receipt or {}).get("passed_tests", 0),
+        "failed_tests": (receipt or {}).get("failed_tests", 0),
+        "global_stale_files": global_stale_files,
+        "spec_counts": {
+            st: sum(1 for s in active_specs if s["verification"]["status"] == st)
+            for st in ("verified", "stale", "failing", "unverified")
+        },
+        "wp_counts": {
+            st: sum(1 for w in active_wps if w["verification"]["status"] == st)
+            for st in ("verified", "stale", "failing", "unverified")
+        },
+        "evaluation_counts": {
+            "total": len(eval_list),
+            "pass_or_winner": sum(
+                1 for e in eval_list if e["verdict"] in {"pass", "selected_winner"}
+            ),
+            "concerns_or_fail": sum(
+                1 for e in eval_list if e["verdict"] in {"concerns", "fail"}
+            ),
+        },
+    }
+
+
+def build_evaluation_views(repo_root: Path) -> dict[str, Any]:
+    """Validate evaluations and write `_aiHumanInteract/plan/evaluations/index.json` if present."""
+    repo_root = repo_root.resolve()
+    evals = load_evaluations(repo_root)
+    payload = {
+        "schema_version": EVAL_SCHEMA,
+        "node_count": len(evals),
+        "source_of_truth": ["_aiHumanInteract/plan/evaluations/EVAL-*.md"],
+        "nodes": [evals[k].as_payload() for k in sorted(evals)],
+    }
+    if evals:
+        eval_dir = repo_root / "_aiHumanInteract" / "plan" / "evaluations"
+        eval_dir.mkdir(parents=True, exist_ok=True)
+        (eval_dir / "index.json").write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+    return payload

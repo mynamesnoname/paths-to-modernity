@@ -3,13 +3,15 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
 
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SKILL_ROOT / "scripts"))
-from ptm_core import format_front_matter  # noqa: E402
+from ptm_core import format_front_matter, run_formal_verification  # noqa: E402
+from ptm_memory import EpisodicMemoryStore  # noqa: E402
 
 
 SVG_DIRECT_CANVAS = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 146">
@@ -618,12 +620,100 @@ def seed_example(target: Path) -> None:
             format_front_matter(meta, body), encoding="utf-8"
         )
 
-    # 5. Seed Plan Graph v4 nodes (100% compliant with validate.py!)
+    # 5. Seed Plan Graph v4 nodes & Context-Separated Substantive Evaluations (100% compliant with validate.py!)
     plan_root = target / "_aiHumanInteract" / "plan"
-    (plan_root / "evaluations" / "EVAL-001.md").write_text(
-        "# EVAL-001 · 三态分拣闸门与直接画布对比记录\n\nShared baseline evaluation for WP-002 vs WP-003.\n",
-        encoding="utf-8",
-    )
+    evaluations = [
+        (
+            {
+                "id": "EVAL-001",
+                "title": "显式三态分拣闸门 vs. 启发式静默跳过对比评鉴",
+                "kind": "alternative_comparison",
+                "verdict": "selected_winner",
+                "perspective": "认知心理学与高频光谱实验员视角",
+                "reviewer_mode": "joint",
+                "updated": "2026-11-24",
+                "summary": "对照两份认知原型后确认：侧栏三态分拣（WP-002）既保持画布视线连续，又为未知技术保留可推翻的 KD 书签；静默黑盒跳过（WP-003）剥夺知情权且导致后期无法定向反悔。",
+                "evaluates_intents": ["INT-001", "INT-002"],
+                "evaluates_specs": ["SPEC-001", "SPEC-004"],
+                "evaluates_plans": ["WP-002", "WP-003"],
+                "evaluates_scripts": ["src/triage_gate.py"],
+                "preserved_qualities": [
+                    "操作科学对象应像拨动实体仪器一样直接连贯，不退化为管理弹窗",
+                    "诚实记录未知，绝不把沉默或顺从伪装成技术背书",
+                ],
+                "at_risk_qualities": [],
+                "evidence_refs": [
+                    "_aiHumanInteract/intent/prototypes/direct-canvas.svg",
+                    "_aiHumanInteract/intent/prototypes/modal-queue.svg",
+                ],
+                "recommended_action": "选定 WP-002 作为正式技术分拣路径，将 WP-003 标记为 superseded。",
+            },
+            "# EVAL-001 · 三态分拣闸门与黑盒静默跳过方案比选\n\n"
+            "基于共享目标基线对比 `WP-002` 与 `WP-003`，结合 `direct-canvas.svg` / `modal-queue.svg` 物理旋转实验完成裁决。",
+        ),
+        (
+            {
+                "id": "EVAL-002",
+                "title": "主画布零模态阻塞与建筑极简解耦标准独立审阅",
+                "kind": "quality_review",
+                "verdict": "pass",
+                "perspective": "前端直接操作体验与架构解耦审阅子代理",
+                "reviewer_mode": "browser_subagent",
+                "updated": "2026-11-25",
+                "summary": "独立子代理核验确认：SpectralCanvas.ts 谱峰点选单步直达无弹窗遮挡，workbench_api.py 单向编排存储层与分拣层且零循环依赖。",
+                "evaluates_intents": ["INT-001", "INT-005"],
+                "evaluates_specs": ["SPEC-001", "SPEC-003"],
+                "evaluates_plans": ["WP-001", "WP-006"],
+                "evaluates_scripts": ["web/SpectralCanvas.ts", "src/workbench_api.py"],
+                "preserved_qualities": [
+                    "谱峰选中、对比与标注在主画布单步直达，零模态审批队列",
+                    "存储模块 spectral_store.py 与分拣模块 triage_gate.py 严格保持单向零循环依赖",
+                ],
+                "at_risk_qualities": [],
+                "evidence_refs": [
+                    "_aiHumanInteract/intent/prototypes/direct-canvas.svg",
+                    "web/SpectralCanvas.ts",
+                ],
+                "recommended_action": None,
+            },
+            "# EVAL-002 · 直接画布与视觉/架构解耦标准独立审阅\n\n"
+            "编码完成后由隔离上下文子代理对照 `INT-001` 用户原话及 `SPEC-001` / `SPEC-003` 红线独立审阅通过。",
+        ),
+        (
+            {
+                "id": "EVAL-003",
+                "title": "轻量谱峰键值存储与多协作者并发审计边界评鉴",
+                "kind": "spec_audit",
+                "verdict": "concerns",
+                "perspective": "科研多协作者数据可靠性与可审计视角",
+                "reviewer_mode": "isolated_subagent",
+                "updated": "2026-11-25",
+                "summary": "形式测试已通过且严格遵循 PeakHandle (PK-###) 命名，但单快照字典覆写在多人异步修改同一谱峰备注时无法回溯被覆盖的中间推理。",
+                "evaluates_intents": ["INT-003"],
+                "evaluates_specs": ["SPEC-002"],
+                "evaluates_plans": ["WP-004", "WP-005"],
+                "evaluates_scripts": ["src/spectral_store.py"],
+                "preserved_qualities": [
+                    "恢复上下文轻快透明，不引入笨重的运维负担",
+                    "全栈严格统一采用 PeakHandle (PK-###) 标识，未混入 WaveItem 等禁用别名",
+                ],
+                "at_risk_qualities": [
+                    "多人协作编辑同一 PK-### 时仅保留最后一次 upsert 快照，缺乏冲突审计轨迹（受 KD-002 书签监控）",
+                ],
+                "evidence_refs": [
+                    "src/spectral_store.py",
+                    "_aiHumanInteract/knowledge-debt/nodes/KD-002.md",
+                ],
+                "recommended_action": "单人研究阶段维持 WP-004 轻量快照；若后续出现双人标注冲突，立即触发 KD-002 重审以决定是否启动 WP-005。",
+            },
+            "# EVAL-003 · 谱峰存储规范与多协作者审计边界评鉴\n\n"
+            "典型演示：**形式验证通过（`✓ 实测`）并不等于内容品质无虞**——独立视角子代理识别出多人协作下的覆写盲区并显式挂接 `KD-002` 触发条件。",
+        ),
+    ]
+    for ev_meta, ev_body in evaluations:
+        (plan_root / "evaluations" / f"{ev_meta['id']}.md").write_text(
+            format_front_matter(ev_meta, ev_body), encoding="utf-8"
+        )
 
     plan_nodes = [
         (
@@ -946,13 +1036,113 @@ def seed_example(target: Path) -> None:
         out.write_text(format_front_matter(meta, body), encoding="utf-8")
 
     (target / "README.md").write_text(
-        "# Spectral Workbench — PtM Four-Graph Worked Example\n\n"
-        "Demonstrates Intent Graph (`intent/`), Plan Graph v4 (`plan/`), Knowledge Debt "
-        "bookmarks (`knowledge-debt/`), AST Scripts Graph (`scripts/`), MLX on-device "
-        "Hebbian associative retrieval (`hebbian/`), Subagent Portrait in `AGENTS.md`, "
-        "and the DesignerlyLoop-style interactive Studio (`_aiHumanInteract/studio/index.html`).\n",
+        "# Spectral Workbench — PtM Five-Graph Worked Example\n\n"
+        "Demonstrates Intent Graph (`intent/`), Spec Graph (`specs/`), Plan Graph v4 (`plan/`), "
+        "Knowledge Debt bookmarks (`knowledge-debt/`), AST Scripts Graph (`scripts/`), "
+        "Dual-Track Formal Verification (`scripts/verification-status.json`) & Context-Separated "
+        "Evaluations (`plan/evaluations/EVAL-###.md`), MLX on-device Hebbian associative retrieval "
+        "(`hebbian/`), Subagent Portrait in `AGENTS.md`, and the interactive Three-Stratum Studio "
+        "(`_aiHumanInteract/studio/index.html`).\n",
         encoding="utf-8",
     )
+
+    # 6. Seed multiplexed multi-topic dialogue turns (`Turn -> Span -> Thread` disentanglement)
+    ep_store = EpisodicMemoryStore(target, backend_name="hash")
+    interleaved_turns = [
+        {
+            "turn_id": "TURN-0001",
+            "session_id": "SES-DESIGN-01",
+            "turn_index": 1,
+            "timestamp": "2026-11-24T09:10:00",
+            "user_text": (
+                "1. 我想让这个科学光谱 Agent 更快，像在实验台上直接拨动旋钮看谱线一样顺手，别每次操作都弹确认窗。\n"
+                "2. 遇到我不懂的底层算法别让我一直盲目点 Agree，先记下来把原型跑通，等我看到效果再决定留不留。\n"
+                "3. 下周回来继续看同一组光谱时，不管是键盘快捷键还是 Agent 都要能直接指到同一个谱峰特征。"
+            ),
+            "assistant_text": (
+                "1. **直接画布操作（消除弹窗）**：建议将“更快”锚定为缩短从意图到视觉反馈的认知回路（IV-3），在主画布直接点选谱峰，取消模态审批流。\n"
+                "2. **三态技术分拣与知识债书签**：对底层技术声明提供“理解同意 / 暂不理解先做原型记入 KD / 否决提新观点”三态选择，杜绝伪 Agree。\n"
+                "3. **跨会话可寻址谱峰标识**：为每个谱峰分配跨会话稳定的 `PK-###` 标识，供前端画布与后端存储共同寻址。"
+            ),
+        },
+        {
+            "turn_id": "TURN-0002",
+            "session_id": "SES-DESIGN-01",
+            "turn_index": 2,
+            "timestamp": "2026-11-24T09:18:00",
+            "user_text": (
+                "关于第1点：直接画布和传统弹窗队列光靠文字描述我怕理解有偏差，能不能画两张轻量对比草图让我直观看看？\n\n"
+                "关于第3点：跨会话谱峰存储如果直接上 Event Sourcing 事件溯源会不会太重？干脆先做简单键值快照，把事件溯源记进知识债 KD-002 观察吧。\n\n"
+                "另外突然想到个新问题：代码里有人把谱峰叫 WaveItem、有人叫 LineCursor，能不能立一条常驻术语规范强制统一成 PeakHandle？"
+            ),
+            "assistant_text": (
+                "### 1. 两份认知原型 SVG 对照（Physical Rotation）\n"
+                "已生成 `direct-canvas.svg`（主画布谱峰直选 + 侧栏非阻塞分拣条）与 `modal-queue.svg`（传统遮挡式分步弹窗）供直观比选。\n\n"
+                "### 2. 轻量谱峰键值存储与 KD-002 书签边界\n"
+                "完全赞同：在 `WP-004` 先落地 `SpectralFeatureStore` 轻量字典快照，将追加式事件溯源挂入 `KD-002`（待多人并发覆写冲突出现时再重审 `WP-005`）。\n\n"
+                "### 3. 统一领域术语规范 PeakHandle (SPEC-002)\n"
+                "将 `PeakHandle (PK-###)` 固化为 `SPEC-002` 标准词（Glossary），并将 `WaveItem`、`LineCursor`、`PeakIdx` 列入禁用别名。"
+            ),
+        },
+        {
+            "turn_id": "TURN-0003",
+            "session_id": "SES-DESIGN-01",
+            "turn_index": 3,
+            "timestamp": "2026-11-24T09:26:00",
+            "user_text": (
+                "1. 看了两张 SVG 原型太清楚了，一眼选直接画布方案 A！请把主画布零模态阻塞固化成顶层铁律 SPEC-001 并落地 WP-001。\n"
+                "2. 关于第2点的三态技术分拣（THR-002）：结合第1点侧栏非阻塞的结论，把 classify_disclosure 写成契约 SPEC-004 并配单元测试守门（WP-002 / WP-006）。"
+            ),
+            "assistant_text": (
+                "1. **固化零弹窗铁律 SPEC-001 与 WP-001**：已将直接画布与显式授权写入 `INT-001`、`SPEC-001` 及 `WP-001`。\n"
+                "2. **落地三态分拣契约 SPEC-004 与测试守门**：已建立 `SPEC-004` 后置条件契约、`WP-002` 实现及 `WP-006`（`tests/test_workbench.py`）自动化回归测试，并关联 `KD-001`。"
+            ),
+        },
+    ]
+    for t_rec in interleaved_turns:
+        ep_store.ingest_turn(
+            user_text=t_rec["user_text"],
+            assistant_text=t_rec["assistant_text"],
+            session_id=t_rec["session_id"],
+            timestamp=t_rec["timestamp"],
+            turn_id=t_rec["turn_id"],
+            turn_index=t_rec["turn_index"],
+            append_portable_jsonl=True,
+        )
+
+    # Fold settled threads (`THR-001`, `THR-002`, `THR-004`) into crisp 1-line capsules,
+    # keeping `THR-003` (multi-editor replay audit question) `active`!
+    ep_store.fold_thread(
+        "THR-001",
+        status="crystallized",
+        title="主画布谱峰零弹窗直接操作与原型比选",
+        capsule_summary="经 IV-3 概念澄清与两份 SVG 认知原型对照，否决模态审批弹窗，确立主画布谱峰直选并固化为 SPEC-001 与 WP-001。",
+        node_refs=["INT-001", "SPEC-001", "SPEC-003", "WP-001"],
+    )
+    ep_store.fold_thread(
+        "THR-002",
+        status="crystallized",
+        title="三态技术披露分拣闸门与拒绝伪同意",
+        capsule_summary="针对未知底层技术采用“理解同意 / 暂存 KD 先做原型 / 否决提新观点”侧栏分拣，固化为契约 SPEC-004 与 WP-002/WP-006。",
+        node_refs=["INT-002", "INT-005", "SPEC-004", "WP-002", "WP-006", "KD-001"],
+    )
+    ep_store.fold_thread(
+        "THR-003",
+        status="active",
+        title="跨会话 PK-### 快照存储与多人事件溯源权衡",
+        capsule_summary="首期采用轻量字典快照（WP-004），多人并发覆写回放需求暂挂 KD-002 持续观察（关联 EVAL-003 存疑项）。",
+        node_refs=["INT-003", "WP-004", "WP-005", "KD-002"],
+    )
+    ep_store.fold_thread(
+        "THR-004",
+        status="crystallized",
+        title="统一领域术语 PeakHandle 与禁用同义混名",
+        capsule_summary="全栈强制统一使用 PeakHandle (PK-###)，明令禁用 WaveItem、LineCursor、PeakIdx，固化为 SPEC-002。",
+        node_refs=["SPEC-002"],
+    )
+
+    # 7. Execute deterministic formal verification receipt so initial state carries real SHA-256 hashes
+    run_formal_verification(target)
 
 
 def main() -> int:

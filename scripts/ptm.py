@@ -2,7 +2,10 @@
 """Unified CLI for Paths to Modernity (PtM) Four-Graph Infrastructure.
 
 Commands:
-  ptm.py build <repo>       Validate & build Intent, Spec, Plan (v4), Knowledge Debt, Scripts, Hebbian & Studio
+  ptm.py build <repo>       Validate & build Intent, Spec, Plan (v4), Knowledge Debt, Scripts, Evaluations, SQLite Memory, Hebbian & Studio
+  ptm.py verify <repo>      Run deterministic tests, record SHA-256 freshness receipt & refresh verification status
+  ptm.py eval <scaffold|list> <repo> ...  Scaffold or inspect context-separated substantive evaluations (EVAL-###)
+  ptm.py memory <log|import-jsonl|threads|show|search|fold|context> <repo> ...  Manage SQLite Turn->Span->Thread episodic memory
   ptm.py status <repo>      Print compact project neighborhood status across all five graphs
   ptm.py query <repo> <q>   Run Dual-Path Retrieval (Base + Hebbian Spreading Flip) & reinforce cluster
   ptm.py related <repo> ... Agent-facing reverse lookup by existing node ID, draft file, or draft text
@@ -11,6 +14,7 @@ Commands:
   ptm.py kd impact <repo> <KD-ID>         Preview reorganization blast radius if KD is rejected
   ptm.py kd resolve <repo> <KD-ID> ...    Affirm or reject a KD bookmark & propagate reorganization
   ptm.py portrait <repo>    Synthesize subagent recovery portrait into AGENTS.md
+  ptm.py embed-probe <repo> Probe active embedding backend, model namespace, dimensions & latency
 """
 
 from __future__ import annotations
@@ -29,7 +33,11 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from ptm_core import (  # noqa: E402
+    EVAL_KINDS,
+    EVAL_REVIEWER_MODES,
+    EVAL_VERDICTS,
     PtmGraphError,
+    build_evaluation_views,
     build_intent_views,
     build_knowledge_debt_views,
     build_scripts_views,
@@ -40,8 +48,9 @@ from ptm_core import (  # noqa: E402
     load_all_federated_graphs,
     load_knowledge_debt_graph,
     resolve_knowledge_debt,
+    run_formal_verification,
 )
-from ptm_hebbian import HebbianAssociativeEngine  # noqa: E402
+from ptm_hebbian import BACKEND_CHOICES, HebbianAssociativeEngine, TieredEmbedder  # noqa: E402
 from ptm_portrait import (  # noqa: E402
     build_portrait_digest,
     render_portrait_block,
@@ -74,10 +83,13 @@ def cmd_build(args: argparse.Namespace) -> int:
     spec_p = build_spec_views(repo)
     kd_p = build_knowledge_debt_views(repo)
     scripts_p = build_scripts_views(repo)
+    eval_p = build_evaluation_views(repo)
     federated = load_all_federated_graphs(repo)
+    v_rep = federated.get("verification_report") or {}
 
     engine = HebbianAssociativeEngine(repo, backend=args.embedding_backend)
     heb_p = engine.sync_federated(federated)
+    ep_mem = federated.get("episodic_memory") or engine.make_episodic_store().export_summary()
     studio_path = build_studio_html(repo, federated, heb_p, title=args.title)
 
     print(
@@ -87,6 +99,9 @@ def cmd_build(args: argparse.Namespace) -> int:
         f"  Plan Graph (v4) : {len(federated['plan'].get('nodes', []))} nodes, {len(federated['plan'].get('edges', []))} edges\n"
         f"  Knowledge Debt  : {kd_p['node_count']} bookmarks\n"
         f"  Scripts Graph   : {scripts_p['node_count']} modules, {scripts_p['edge_count']} AST edges\n"
+        f"  Verification    : status={v_rep.get('overall_test_status')} ({v_rep.get('passed_tests', 0)}/{v_rep.get('total_tests', 0)} passed, stale_files={len(v_rep.get('global_stale_files', []))})\n"
+        f"  Evaluations     : {eval_p['node_count']} records (concerns_or_fail={v_rep.get('evaluation_counts', {}).get('concerns_or_fail', 0)})\n"
+        f"  Episodic SQLite : {ep_mem.get('turn_count', 0)} turns -> {ep_mem.get('span_count', 0)} spans -> {ep_mem.get('thread_count', 0)} threads (folded={ep_mem.get('folded_count', 0)}, f32_blobs={ep_mem.get('vector_blob_count', 0)})\n"
         f"  Hebbian Memory  : {heb_p['synapse_count']} synapses ({heb_p['embedding_backend']} -> {heb_p['embedding_model']})\n"
         f"  Curated Studio  : {studio_path}"
     )
@@ -98,6 +113,114 @@ def cmd_build(args: argparse.Namespace) -> int:
         agents_path = update_agents_portrait(repo, block)
         print(f"  Portrait ({gen}) : {agents_path}")
     return 0
+
+
+def _next_eval_id(eval_dir: Path) -> str:
+    existing = []
+    if eval_dir.is_dir():
+        for p in eval_dir.glob("EVAL-*.md"):
+            try:
+                existing.append(int(p.stem.split("-")[1]))
+            except (IndexError, ValueError):
+                pass
+    nxt = (max(existing) + 1) if existing else 1
+    return f"EVAL-{nxt:03d}"
+
+
+def cmd_verify(args: argparse.Namespace) -> int:
+    repo = Path(args.repo).resolve()
+    receipt = run_formal_verification(repo, command=args.cmd)
+    federated = load_all_federated_graphs(repo)
+    if (repo / "_aiHumanInteract" / "studio").is_dir():
+        engine = HebbianAssociativeEngine(repo, backend=args.embedding_backend)
+        heb_p = engine.sync_federated(federated)
+        build_studio_html(repo, federated, heb_p)
+    out = {
+        "receipt": receipt,
+        "verification_report": federated.get("verification_report"),
+    }
+    print(json.dumps(out, ensure_ascii=False, indent=2))
+    if args.strict and receipt.get("overall_status") == "failed":
+        return 2
+    return 0
+
+
+def cmd_eval(args: argparse.Namespace) -> int:
+    repo = Path(args.repo).resolve()
+    if args.eval_action == "list":
+        federated = load_all_federated_graphs(repo)
+        print(
+            json.dumps(
+                {
+                    "verification_report": federated.get("verification_report"),
+                    "evaluations": federated.get("evaluations", {}).get("nodes", []),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.eval_action == "scaffold":
+        eval_dir = repo / "_aiHumanInteract" / "plan" / "evaluations"
+        eval_dir.mkdir(parents=True, exist_ok=True)
+        eid = args.id or _next_eval_id(eval_dir)
+        today = date.today().isoformat()
+
+        def _csv(val: str | None) -> list[str]:
+            return [x.strip() for x in (val or "").split(",") if x.strip()]
+
+        def _semi(val: str | None) -> list[str]:
+            return [x.strip() for x in (val or "").split(";") if x.strip()]
+
+        meta = {
+            "id": eid,
+            "title": args.title.strip(),
+            "kind": args.kind,
+            "verdict": args.verdict,
+            "perspective": args.perspective.strip(),
+            "reviewer_mode": args.reviewer_mode,
+            "updated": today,
+            "summary": args.summary.strip(),
+            "evaluates_intents": _csv(args.intents),
+            "evaluates_specs": _csv(args.specs),
+            "evaluates_plans": _csv(args.plans),
+            "evaluates_scripts": _csv(args.scripts),
+            "preserved_qualities": _semi(args.preserved),
+            "at_risk_qualities": _semi(args.at_risk),
+            "evidence_refs": _csv(args.evidence),
+            "recommended_action": args.action.strip() if args.action else None,
+        }
+        body = (
+            f"# {eid} · {args.title.strip()}\n\n"
+            f"- **Perspective:** {args.perspective.strip()} (`{args.reviewer_mode}`)\n"
+            f"- **Verdict:** `{args.verdict}`\n\n"
+            f"## Substantive Findings\n\n{args.summary.strip()}\n"
+        )
+        if args.notes:
+            body += f"\n{args.notes.strip()}\n"
+        out_path = eval_dir / f"{eid}.md"
+        out_path.write_text(format_front_matter(meta, body), encoding="utf-8")
+        build_evaluation_views(repo)
+        if (repo / "_aiHumanInteract" / "studio").is_dir():
+            federated = load_all_federated_graphs(repo)
+            engine = HebbianAssociativeEngine(repo, backend=args.embedding_backend)
+            heb_p = engine.sync_federated(federated)
+            build_studio_html(repo, federated, heb_p)
+        print(
+            json.dumps(
+                {
+                    "created_evaluation": eid,
+                    "verdict": args.verdict,
+                    "perspective": args.perspective.strip(),
+                    "path": out_path.relative_to(repo).as_posix(),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
+    return 1
 
 
 def cmd_status(args: argparse.Namespace) -> int:
@@ -305,6 +428,92 @@ def cmd_kd(args: argparse.Namespace) -> int:
     return 1
 
 
+def cmd_memory(args: argparse.Namespace) -> int:
+    repo = Path(args.repo).resolve()
+    backend = getattr(args, "embedding_backend", "auto")
+    engine = HebbianAssociativeEngine(repo, backend=backend)
+    store = engine.make_episodic_store()
+
+    act = args.mem_action
+    if act == "log":
+        hint_nodes = [x.strip() for x in (args.nodes or "").split(",") if x.strip()]
+        res = store.ingest_turn(
+            user_text=args.user,
+            assistant_text=args.assistant,
+            session_id=args.session,
+            hint_nodes=hint_nodes,
+            append_portable_jsonl=True,
+        )
+        federated = load_all_federated_graphs(repo)
+        store.bind_threads_to_federated_graphs(federated)
+        if (repo / "_aiHumanInteract" / "studio").is_dir():
+            heb_p = engine.sync_federated(federated)
+            build_studio_html(repo, federated, heb_p)
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        return 0
+
+    if act == "import-jsonl":
+        res = store.import_jsonl_transcript(Path(args.jsonl_file).resolve(), session_id=args.session)
+        federated = load_all_federated_graphs(repo)
+        store.bind_threads_to_federated_graphs(federated)
+        if (repo / "_aiHumanInteract" / "studio").is_dir():
+            heb_p = engine.sync_federated(federated)
+            build_studio_html(repo, federated, heb_p)
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        return 0
+
+    if act == "threads":
+        federated = load_all_federated_graphs(repo)
+        store.sync_portable_episodes(federated)
+        summary = store.export_summary()
+        summary["threads"] = store.list_threads(include_spans=False)
+        print(json.dumps(summary, ensure_ascii=False, indent=2))
+        return 0
+
+    if act == "show":
+        federated = load_all_federated_graphs(repo)
+        store.sync_portable_episodes(federated)
+        detail = store.get_thread(args.thread_id.strip().upper())
+        if detail is None:
+            raise PtmGraphError(f"Unknown thread ID: {args.thread_id}")
+        print(json.dumps(detail, ensure_ascii=False, indent=2))
+        return 0
+
+    if act == "search":
+        federated = load_all_federated_graphs(repo)
+        store.sync_portable_episodes(federated)
+        out = store.search_spans(args.query, top_k=args.top_k)
+        print(json.dumps(out, ensure_ascii=False, indent=2))
+        return 0
+
+    if act == "fold":
+        federated = load_all_federated_graphs(repo)
+        store.sync_portable_episodes(federated)
+        nodes = [x.strip() for x in (args.nodes or "").split(",") if x.strip()]
+        folded = store.fold_thread(
+            args.thread_id.strip().upper(),
+            capsule_summary=args.capsule or None,
+            status=args.status,
+            node_refs=nodes,
+            title=args.title or None,
+        )
+        if (repo / "_aiHumanInteract" / "studio").is_dir():
+            federated = load_all_federated_graphs(repo)
+            heb_p = engine.sync_federated(federated)
+            build_studio_html(repo, federated, heb_p)
+        print(json.dumps(folded, ensure_ascii=False, indent=2))
+        return 0
+
+    if act == "context":
+        federated = load_all_federated_graphs(repo)
+        store.sync_portable_episodes(federated)
+        ctx = store.render_selective_context()
+        print(json.dumps(ctx, ensure_ascii=False, indent=2))
+        return 0
+
+    return 1
+
+
 def cmd_portrait(args: argparse.Namespace) -> int:
     repo = Path(args.repo).resolve()
     federated = load_all_federated_graphs(repo)
@@ -322,17 +531,130 @@ def cmd_portrait(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_embed_probe(args: argparse.Namespace) -> int:
+    repo = Path(args.repo).resolve()
+    cache_path = repo / "_aiHumanInteract" / ".cache" / "memory.sqlite"
+    embedder = TieredEmbedder(cache_path, backend=args.embedding_backend)
+    info = embedder.probe()
+    print(json.dumps(info, ensure_ascii=False, indent=2))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__)
     sub = p.add_subparsers(dest="command", required=True)
 
     b = sub.add_parser("build", help="Validate & build all five graphs, Hebbian synapses, and Studio")
     b.add_argument("repo", type=Path)
-    b.add_argument("--embedding-backend", choices=("auto", "mlx", "hash"), default="auto")
+    b.add_argument("--embedding-backend", choices=BACKEND_CHOICES, default="auto")
     b.add_argument("--title", default="PtM Five-Graph Curated Studio")
     b.add_argument("--with-portrait", action="store_true")
     b.add_argument("--portrait-mode", choices=("auto", "llm", "deterministic"), default="auto")
     b.set_defaults(func=cmd_build)
+
+    ver = sub.add_parser(
+        "verify",
+        help="Run deterministic test suite, record SHA-256 freshness receipt & refresh Studio",
+    )
+    ver.add_argument("repo", type=Path)
+    ver.add_argument("--cmd", default=None, help="Optional custom test runner command")
+    ver.add_argument("--strict", action="store_true", help="Exit non-zero if tests fail")
+    ver.add_argument("--embedding-backend", choices=BACKEND_CHOICES, default="auto")
+    ver.set_defaults(func=cmd_verify)
+
+    ev = sub.add_parser("eval", help="Scaffold or inspect context-separated substantive evaluations")
+    ev_sub = ev.add_subparsers(dest="eval_action", required=True)
+    evl = ev_sub.add_parser("list")
+    evl.add_argument("repo", type=Path)
+    evl.set_defaults(func=cmd_eval)
+
+    evs = ev_sub.add_parser("scaffold")
+    evs.add_argument("repo", type=Path)
+    evs.add_argument("--title", required=True)
+    evs.add_argument(
+        "--kind",
+        choices=tuple(sorted(EVAL_KINDS - {"legacy_note"})),
+        default="quality_review",
+    )
+    evs.add_argument(
+        "--verdict",
+        choices=tuple(sorted(EVAL_VERDICTS - {"noted"})),
+        required=True,
+    )
+    evs.add_argument("--perspective", required=True)
+    evs.add_argument(
+        "--reviewer-mode",
+        choices=tuple(sorted(EVAL_REVIEWER_MODES - {"legacy"})),
+        default="isolated_subagent",
+    )
+    evs.add_argument("--summary", required=True)
+    evs.add_argument("--intents", default="")
+    evs.add_argument("--specs", default="")
+    evs.add_argument("--plans", default="")
+    evs.add_argument("--scripts", default="")
+    evs.add_argument("--preserved", default="", help="Semicolon-separated preserved qualities")
+    evs.add_argument("--at-risk", default="", help="Semicolon-separated at-risk qualities")
+    evs.add_argument("--evidence", default="", help="Comma-separated repo-relative evidence paths")
+    evs.add_argument("--action", default="", help="Optional recommended follow-up action")
+    evs.add_argument("--notes", default="", help="Optional extra markdown body notes")
+    evs.add_argument("--id", default=None)
+    evs.add_argument("--embedding-backend", choices=BACKEND_CHOICES, default="auto")
+    evs.set_defaults(func=cmd_eval)
+
+    mem = sub.add_parser(
+        "memory",
+        help="Manage embedded SQLite Turn->Span->Thread episodic memory & binary vector cache",
+    )
+    mem_sub = mem.add_subparsers(dest="mem_action", required=True)
+
+    mlog = mem_sub.add_parser("log", help="Ingest a single turn & disentangle multi-topic Spans")
+    mlog.add_argument("repo", type=Path)
+    mlog.add_argument("--user", required=True)
+    mlog.add_argument("--assistant", required=True)
+    mlog.add_argument("--session", default="SES-01")
+    mlog.add_argument("--nodes", default="", help="Optional comma-separated graph node IDs")
+    mlog.add_argument("--embedding-backend", choices=BACKEND_CHOICES, default="auto")
+    mlog.set_defaults(func=cmd_memory)
+
+    mimp = mem_sub.add_parser("import-jsonl", help="Import turns from a JSONL transcript")
+    mimp.add_argument("repo", type=Path)
+    mimp.add_argument("jsonl_file", type=Path)
+    mimp.add_argument("--session", default="SES-IMPORT")
+    mimp.add_argument("--embedding-backend", choices=BACKEND_CHOICES, default="auto")
+    mimp.set_defaults(func=cmd_memory)
+
+    mthr = mem_sub.add_parser("threads", help="List disentangled virtual Topic Threads (THR-###)")
+    mthr.add_argument("repo", type=Path)
+    mthr.add_argument("--embedding-backend", choices=BACKEND_CHOICES, default="auto")
+    mthr.set_defaults(func=cmd_memory)
+
+    mshw = mem_sub.add_parser("show", help="Show pure single-topic Q&A timeline for one THR-###")
+    mshw.add_argument("repo", type=Path)
+    mshw.add_argument("thread_id")
+    mshw.add_argument("--embedding-backend", choices=BACKEND_CHOICES, default="auto")
+    mshw.set_defaults(func=cmd_memory)
+
+    msrc = mem_sub.add_parser("search", help="Hybrid FTS5 BM25 + dense vector search across Spans")
+    msrc.add_argument("repo", type=Path)
+    msrc.add_argument("query")
+    msrc.add_argument("--top-k", type=int, default=6)
+    msrc.add_argument("--embedding-backend", choices=BACKEND_CHOICES, default="auto")
+    msrc.set_defaults(func=cmd_memory)
+
+    mfld = mem_sub.add_parser("fold", help="Fold a settled thread into a 1-line capsule")
+    mfld.add_argument("repo", type=Path)
+    mfld.add_argument("thread_id")
+    mfld.add_argument("--status", choices=("folded", "crystallized", "resolved", "active"), default="folded")
+    mfld.add_argument("--capsule", default="")
+    mfld.add_argument("--nodes", default="")
+    mfld.add_argument("--title", default="")
+    mfld.add_argument("--embedding-backend", choices=BACKEND_CHOICES, default="auto")
+    mfld.set_defaults(func=cmd_memory)
+
+    mctx = mem_sub.add_parser("context", help="Render selective working context (active spans + folded capsules)")
+    mctx.add_argument("repo", type=Path)
+    mctx.add_argument("--embedding-backend", choices=BACKEND_CHOICES, default="auto")
+    mctx.set_defaults(func=cmd_memory)
 
     s = sub.add_parser("status", help="Show compact multi-graph neighborhood digest")
     s.add_argument("repo", type=Path)
@@ -343,7 +665,7 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("query")
     q.add_argument("--top-k", type=int, default=5)
     q.add_argument("--max-flipped", type=int, default=4)
-    q.add_argument("--embedding-backend", choices=("auto", "mlx", "hash"), default="auto")
+    q.add_argument("--embedding-backend", choices=BACKEND_CHOICES, default="auto")
     q.add_argument("--no-reinforce", action="store_true")
     q.set_defaults(func=cmd_query)
 
@@ -363,7 +685,7 @@ def build_parser() -> argparse.ArgumentParser:
     rel.add_argument("--text", default=None, help="Draft plan/intent summary text")
     rel.add_argument("--per-graph", type=int, default=4, help="Max ranked candidates returned per graph")
     rel.add_argument("--novel-top-k", type=int, default=8, help="Max novel (undeclared) discoveries highlighted")
-    rel.add_argument("--embedding-backend", choices=("auto", "mlx", "hash"), default="auto")
+    rel.add_argument("--embedding-backend", choices=BACKEND_CHOICES, default="auto")
     rel.add_argument(
         "--reinforce",
         action="store_true",
@@ -411,7 +733,7 @@ def build_parser() -> argparse.ArgumentParser:
     kdr.add_argument("--verdict", choices=("affirmed", "rejected"), required=True)
     kdr.add_argument("--note", required=True)
     kdr.add_argument("--counterproposal", default=None)
-    kdr.add_argument("--embedding-backend", choices=("auto", "mlx", "hash"), default="auto")
+    kdr.add_argument("--embedding-backend", choices=BACKEND_CHOICES, default="auto")
     kdr.set_defaults(func=cmd_kd)
 
     pr = sub.add_parser("portrait", help="Generate subagent recovery portrait into AGENTS.md")
@@ -419,6 +741,11 @@ def build_parser() -> argparse.ArgumentParser:
     pr.add_argument("--mode", choices=("auto", "llm", "deterministic"), default="auto")
     pr.add_argument("--dry-run", action="store_true")
     pr.set_defaults(func=cmd_portrait)
+
+    ep = sub.add_parser("embed-probe", help="Smoke-probe local MLX / OpenAI API / hash embedding backend")
+    ep.add_argument("repo", type=Path)
+    ep.add_argument("--embedding-backend", choices=BACKEND_CHOICES, default="auto")
+    ep.set_defaults(func=cmd_embed_probe)
 
     return p
 

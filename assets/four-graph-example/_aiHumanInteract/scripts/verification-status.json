@@ -1,0 +1,32 @@
+{
+  "schema_version": "paths-to-modernity-verification-receipt-v1",
+  "timestamp": "2026-11-26T01:44:37",
+  "runner_command": "python3 -B -m unittest discover -s tests -p 'test_*.py' -v",
+  "overall_status": "passed",
+  "exit_code": 0,
+  "total_tests": 1,
+  "passed_tests": 1,
+  "failed_tests": 0,
+  "duration_sec": 0.0,
+  "test_scripts": {
+    "tests/test_workbench.py": {
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "cases": [
+        {
+          "name": "test_provisional_bookmark_flow",
+          "status": "passed"
+        }
+      ]
+    }
+  },
+  "file_hashes": {
+    "src/spectral_store.py": "b1928e52e588e169322c3821d0a49395033a786f2917f0a110492ebc9091af3b",
+    "src/triage_gate.py": "9728e6be2ba79cb6e16fd7886738fbacb18805f4ff7e3f139d26370f248b3c70",
+    "src/workbench_api.py": "7b12ca1f2c39d9fe2be0e74ee308ff7ad1d2357f8ca17222d7b4c8fef0b14bf5",
+    "tests/test_workbench.py": "2dac8d16292bbe89c6ac1dc198ea7e4faac023c5b179f66860f87443fd26f9f7",
+    "web/SpectralCanvas.ts": "ce5a19275f33fe80979d3dae952c6072ee3b3eda654c8c1d0fb97c80e3785ec9"
+  },
+  "output_tail": "test_provisional_bookmark_flow (test_workbench.WorkbenchTests.test_provisional_bookmark_flow) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nOK"
+}

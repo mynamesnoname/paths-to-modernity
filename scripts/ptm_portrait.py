@@ -28,16 +28,17 @@ PORTRAIT_END = "<!-- paths-to-modernity:portrait:end -->"
 
 SUBAGENT_SYSTEM_PROMPT = """You are an isolated Paths-to-Modernity (PtM) Recovery Portrait Subagent.
 Given a compact JSON digest of a project's Intent Graph, Spec Graph (standing invariants, glossary,
-standards, contracts), Plan Graph, Knowledge Debt bookmarks, Scripts Graph hubs, and Hebbian hubs,
-write a crisp, high-signal Markdown summary (strictly <= 20 lines, no outer code fences, Chinese
-preferred when source titles/utterances contain Chinese) with EXACTLY these four bullet sections:
+standards, contracts), Plan Graph, Knowledge Debt bookmarks, Scripts Graph hubs, Formal Verification
+status, Substantive Evaluations (`EVAL-###`), and Hebbian hubs, write a crisp, high-signal Markdown
+summary (strictly <= 20 lines, no outer code fences, Chinese preferred when source titles/utterances
+contain Chinese) with EXACTLY these four bullet sections:
 
 - **意图画像 (Intent Portrait):** 2-3 concise clauses summarizing core user intents, resolved concept variants, and key experiential qualities.
 - **常驻规范与术语 (Spec & Glossary Portrait):** active `SPEC-###` invariants (Do/Don't redlines), canonical glossary terms, and enforced contracts.
-- **规划与执行画像 (Plan & Scripts Portrait):** active/ready pragmatic work (`LT/MT/ST/WP`), completion ratio, core code hubs, and missing planned scripts if any.
-- **认知书签与关联枢纽 (Epistemic Watchlist & Hubs):** open `KD-###` technical bookmarks (and revisit triggers) plus top cross-graph Hebbian associative hubs.
+- **规划与验证画像 (Plan, Scripts & Verification Portrait):** active/ready pragmatic work (`LT/MT/ST/WP`), formal test receipt / stale hash warnings, core code hubs, and missing planned scripts.
+- **评鉴关注、认知书签与关联枢纽 (Evaluations, Watchlist & Hubs):** any `EVAL-###` concerns/at-risk qualities, open `KD-###` technical bookmarks (and revisit triggers), plus top cross-graph Hebbian hubs.
 
-Be factual, cite exact IDs (`INT-###`, `SPEC-###`, `WP-###`, `KD-###`, file paths), never invent authorization, and keep every line dense and immediately useful after context compaction."""
+Be factual, cite exact IDs (`INT-###`, `SPEC-###`, `WP-###`, `EVAL-###`, `KD-###`, file paths), never invent authorization, and keep every line dense and immediately useful after context compaction."""
 
 
 def load_dotenv(env_paths: list[Path]) -> dict[str, str]:
@@ -149,6 +150,19 @@ def build_portrait_digest(
     missing_scripts = [s["path"] for s in scripts if s.get("status") == "planned_missing"]
 
     hubs = (hebbian_payload or {}).get("hubs", [])[:5]
+    v_rep = federated.get("verification_report") or {}
+    ep_mem = federated.get("episodic_memory") or {}
+    eval_nodes = federated.get("evaluations", {}).get("nodes", [])
+    eval_highlights = [
+        {
+            "id": e["id"],
+            "title": e["title"],
+            "verdict": e["verdict"],
+            "perspective": e["perspective"],
+            "at_risk_qualities": e.get("at_risk_qualities", [])[:2],
+        }
+        for e in eval_nodes
+    ]
 
     return {
         "intents": intents,
@@ -158,6 +172,26 @@ def build_portrait_digest(
             plan_by_status.get("in_progress", []) + plan_by_status.get("ready", [])
         )[:6],
         "done_plans": plan_by_status.get("done", [])[:5],
+        "verification": {
+            "overall_test_status": v_rep.get("overall_test_status", "unverified"),
+            "passed_tests": v_rep.get("passed_tests", 0),
+            "total_tests": v_rep.get("total_tests", 0),
+            "stale_files": v_rep.get("global_stale_files", []),
+            "spec_counts": v_rep.get("spec_counts", {}),
+            "wp_counts": v_rep.get("wp_counts", {}),
+        },
+        "episodic_memory": {
+            "turn_count": ep_mem.get("turn_count", 0),
+            "span_count": ep_mem.get("span_count", 0),
+            "thread_count": ep_mem.get("thread_count", 0),
+            "folded_count": ep_mem.get("folded_count", 0),
+            "active_threads": [
+                {"id": t["id"], "title": t["title"]}
+                for t in ep_mem.get("threads", [])
+                if t.get("status") == "active"
+            ][:3],
+        },
+        "evaluations": eval_highlights,
         "knowledge_debt": kds,
         "top_script_hubs": [
             {"path": s["path"], "role": s["role"], "centrality": s.get("centrality", 0.0)}
@@ -175,11 +209,11 @@ def deterministic_portrait_body(digest: Mapping[str, Any]) -> str:
     intents = digest.get("intents", [])
     if intents:
         int_parts = [
-            f"`{i['id']}` {i['title']} (`{i['status']}`)" for i in intents[:4]
+            f"`{i['id']}` {i['title']} (`{i['status']}`)" for i in intents[:6]
         ]
         qualities = sorted(
             {q for i in intents for q in i.get("qualities", []) if q}
-        )[:3]
+        )[:4]
         q_suffix = f"；核心体验品质：{'；'.join(qualities)}" if qualities else ""
         intent_line = f"- **意图画像 (Intent Portrait):** {' · '.join(int_parts)}{q_suffix}。"
     else:
@@ -190,7 +224,7 @@ def deterministic_portrait_body(digest: Mapping[str, Any]) -> str:
         sp_parts = [
             f"`{s['id']}` [{s['kind']}] {s['title']}"
             + (f"（标准词：`{s['canonical_term']}`）" if s.get("canonical_term") else "")
-            for s in specs[:4]
+            for s in specs[:8]
         ]
         spec_line = f"- **常驻规范与术语 (Spec & Glossary Portrait):** {' · '.join(sp_parts)}。"
     else:
@@ -202,11 +236,36 @@ def deterministic_portrait_body(digest: Mapping[str, Any]) -> str:
     top_scr = ", ".join(f"`{s['path']}`" for s in digest.get("top_script_hubs", [])[:3]) or "无脚本"
     missing = digest.get("planned_missing_scripts", [])
     miss_str = f"；待落地脚本：{', '.join(f'`{m}`' for m in missing[:3])}" if missing else ""
+    ver = digest.get("verification") or {}
+    v_st = ver.get("overall_test_status", "unverified")
+    stale_f = ver.get("stale_files") or []
+    if stale_f:
+        ver_str = f"；形式验证：源码已改待重测（{', '.join(f'`{x}`' for x in stale_f[:3])}）"
+    elif v_st == "passed":
+        ver_str = f"；形式验证：{ver.get('passed_tests', 0)}/{ver.get('total_tests', 0)} 用例通过且 SHA-256 指纹保鲜"
+    elif v_st == "failed":
+        ver_str = "；形式验证：存在失败用例待修复"
+    else:
+        ver_str = "；形式验证：尚未生成 `ptm.py verify` 回执"
     plan_line = (
-        f"- **规划与执行画像 (Plan & Scripts Portrait):** 状态分布（{count_str}）；当前焦点：{active_p}；"
-        f"核心代码枢纽：{top_scr}{miss_str}。"
+        f"- **规划与验证画像 (Plan, Scripts & Verification Portrait):** 状态分布（{count_str}）；当前焦点：{active_p}；"
+        f"核心代码枢纽：{top_scr}{miss_str}{ver_str}。"
     )
 
+    evals = digest.get("evaluations") or []
+    concern_evals = [e for e in evals if e.get("verdict") in {"concerns", "fail"}]
+    ev_prefix = ""
+    if concern_evals:
+        ev_prefix = (
+            "评鉴关注："
+            + "；".join(
+                f"`{e['id']}`({e['verdict']} · {e['perspective']})"
+                for e in concern_evals[:2]
+            )
+            + " · "
+        )
+    elif evals:
+        ev_prefix = f"内容评鉴：{len(evals)} 份已通过/选定 · "
     open_kds = [k for k in digest.get("knowledge_debt", []) if k["status"] == "open"]
     kd_str = (
         "；".join(f"`{k['id']}` {k['term']}（触发重审：{k['revisit_when']}）" for k in open_kds[:3])
@@ -216,7 +275,7 @@ def deterministic_portrait_body(digest: Mapping[str, Any]) -> str:
     hubs = digest.get("hebbian_hubs", [])
     hub_items = ", ".join(f"`{h['id']}`({h['strength']:.2f})" for h in hubs[:3])
     hub_str = f"；赫布高连接枢纽：{hub_items}" if hubs else ""
-    kd_line = f"- **认知书签与关联枢纽 (Epistemic Watchlist & Hubs):** {kd_str}{hub_str}。"
+    kd_line = f"- **评鉴关注、认知书签与关联枢纽 (Evaluations, Watchlist & Hubs):** {ev_prefix}{kd_str}{hub_str}。"
 
     return "\n".join([intent_line, spec_line, plan_line, kd_line])
 

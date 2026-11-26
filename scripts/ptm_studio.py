@@ -512,26 +512,33 @@ def _passive_icon_badges(rel_entry: Mapping[str, Any] | None) -> list[dict[str, 
     return badges
 
 
-def _collect_prototype_svgs(repo_root: Path, intent_nodes: list[dict[str, Any]]) -> dict[str, str]:
+def _collect_prototype_svgs(
+    repo_root: Path,
+    intent_nodes: list[dict[str, Any]],
+    eval_nodes: list[dict[str, Any]] | None = None,
+) -> dict[str, str]:
     svgs: dict[str, str] = {}
+    refs: list[str] = []
     for inode in intent_nodes:
-        refs: list[str] = []
         for alt in inode.get("implementation_alternatives", []):
             if isinstance(alt, dict) and alt.get("prototype"):
                 refs.append(str(alt["prototype"]))
         for c in inode.get("concepts", []):
             if isinstance(c, dict) and c.get("prototype"):
                 refs.append(str(c["prototype"]))
-        for ref in refs:
-            if ref in svgs or not ref.endswith(".svg"):
-                continue
-            target = (repo_root / ref).resolve()
-            try:
-                target.relative_to(repo_root.resolve())
-            except ValueError:
-                continue
-            if target.is_file() and target.stat().st_size <= 120_000:
-                svgs[ref] = target.read_text(encoding="utf-8", errors="replace")
+    for enode in eval_nodes or []:
+        for eref in enode.get("evidence_refs", []):
+            refs.append(str(eref))
+    for ref in refs:
+        if ref in svgs or not ref.endswith(".svg"):
+            continue
+        target = (repo_root / ref).resolve()
+        try:
+            target.relative_to(repo_root.resolve())
+        except ValueError:
+            continue
+        if target.is_file() and target.stat().st_size <= 120_000:
+            svgs[ref] = target.read_text(encoding="utf-8", errors="replace")
     return svgs
 
 
@@ -591,25 +598,28 @@ STUDIO_HTML = r"""<!DOCTYPE html>
   .sep { width: 1px; height: 17px; background: var(--line); margin: 0 2px; }
   .lens-btn {
     border: 1px solid transparent; background: transparent; color: #4A5562;
-    font: inherit; font-size: 11.5px; font-weight: 500; padding: 4px 9px;
-    border-radius: 7px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
-    transition: background .14s ease, color .14s ease;
+    font: inherit; font-size: 11px; font-weight: 500; padding: 3.5px 7.5px;
+    border-radius: 7px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+    white-space: nowrap; transition: background .14s ease, color .14s ease;
   }
   .lens-btn:hover { background: #EFECE6; color: #1F2933; }
   .lens-btn.active { background: #232D37; color: #FFFFFF; font-weight: 600; }
   .lens-btn .cnt {
-    font-size: 10px; opacity: 0.8; font-variant-numeric: tabular-nums;
+    font-size: 9.5px; opacity: 0.82; font-variant-numeric: tabular-nums;
     padding: 0 4px; border-radius: 4px; background: rgba(120,130,140,0.14);
   }
   .lens-btn.active .cnt { background: rgba(255,255,255,0.22); opacity: 1; }
 
   .toggle-pill {
     border: 1px solid var(--line); background: #FFFFFF; color: #52606D;
-    font: inherit; font-size: 11px; font-weight: 500; padding: 4px 9px;
-    border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+    font: inherit; font-size: 11px; font-weight: 500; padding: 3.5px 8.5px;
+    border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+    white-space: nowrap;
   }
   .toggle-pill.on { border-color: #C88A2E; background: #FDF6E7; color: #7A5213; font-weight: 600; }
   .toggle-pill.cross-on { border-color: #6E5DC6; background: #F3F1FC; color: #44338A; font-weight: 600; }
+  .toggle-pill.verify-on { border-color: #6CA888; background: #ECF7F0; color: #1B5E37; font-weight: 600; }
+  .toggle-pill.verify-attn { border-color: #DF8A52; background: #FFF1E6; color: #8F3D14; font-weight: 700; }
   .toggle-pill:disabled { opacity: 0.42; cursor: default; }
 
   /* Legend Strip */
@@ -675,6 +685,7 @@ STUDIO_HTML = r"""<!DOCTYPE html>
   }
   .s-badge.base { background: #E6EFFA; color: #2B5488; }
   .s-badge.flip { background: #FDF3DC; color: #8C5811; border: 1px solid #E9C77B; }
+  .s-badge.thr { background: #ECF7F4; color: #19574E; border: 1px solid #96CFC5; }
   .s-id { font-weight: 600; color: #3E4C59; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; flex: none; }
   .s-title { color: #1F2933; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
   .s-via { font-size: 10.5px; color: #8C5811; white-space: nowrap; flex: none; }
@@ -777,6 +788,95 @@ STUDIO_HTML = r"""<!DOCTYPE html>
   }
   .rel-summary b { font-weight: 700; color: #1F2933; }
   .rel-summary span.hebb-cnt { border-color: #E2C285; background: #FDF6E7; color: #7A5213; }
+  .rel-summary span.ver-ok { border-color: #84C39B; background: #E6F5EC; color: #185A34; font-weight: 600; }
+  .rel-summary span.ver-warn { border-color: #E0AE58; background: #FFF3DF; color: #8A530B; font-weight: 600; }
+  .rel-summary span.ver-fail { border-color: #E09494; background: #FDECEC; color: #962828; font-weight: 600; }
+  .rel-summary span.eval-ok { border-color: #AEB8E8; background: #EEF1FC; color: #364584; font-weight: 600; }
+  .rel-summary span.eval-warn { border-color: #E5A882; background: #FFF0E6; color: #8F3D14; font-weight: 600; }
+  .rel-summary span.thr-cnt { border-color: #96CFC5; background: #EBF7F5; color: #19574E; font-weight: 600; }
+
+  /* Disentangled Episodic Topic Threads (Turn -> Span -> Thread) */
+  .thr-card {
+    border: 1px solid #D8E3E1; border-radius: 9px; padding: 9px 11px;
+    background: #FBFDFC; margin: 6px 0;
+  }
+  .thr-card.active {
+    border-color: #88C4B8; background: #F6FBF9;
+  }
+  .thr-capsule {
+    margin-top: 5px; padding: 6.5px 9px; border-radius: 6px;
+    background: #EFF6F4; border-left: 3px solid #2C6B67;
+    font-size: 11.5px; color: #1F3A37; line-height: 1.46;
+  }
+  .thr-details { margin-top: 6px; }
+  .thr-details summary {
+    cursor: pointer; font-size: 11px; font-weight: 600; color: #2A5C56;
+    user-select: none; padding: 2px 0;
+  }
+  .thr-details summary:hover { color: #163C38; }
+  .span-item {
+    margin-top: 7px; padding: 7px 9px; border-radius: 7px;
+    background: #FFFFFF; border: 1px solid #E3E8EC; font-size: 11.3px; line-height: 1.46;
+  }
+  .span-prov {
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    font-size: 10px; font-family: ui-monospace, SFMono-Regular, monospace;
+    color: #616E7C; margin-bottom: 4px;
+  }
+  .span-prov-badge {
+    background: #EDF2F7; border: 1px solid #CBD5E0; color: #334E68;
+    padding: 0.5px 5px; border-radius: 4px; font-weight: 600;
+  }
+  .span-u { color: #1F2933; margin-bottom: 4px; }
+  .span-u b { color: #5243AA; }
+  .span-a { color: #334E68; padding-top: 4px; border-top: 1px dashed #E6EBF0; }
+  .span-a b { color: #1F5A52; }
+
+  /* Dual-Track Formal Verification & Substantive Evaluation Inspector Cards */
+  .ver-card, .eval-card {
+    border: 1px solid #DCE3EA; border-radius: 9px; padding: 9px 11px;
+    background: #FAFBFD; margin: 6px 0;
+  }
+  .eval-card.concerns, .eval-card.fail {
+    border-color: #E6B596; background: #FFFDFB;
+  }
+  .ver-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-weight: 700; font-size: 12px; color: #1F2933;
+  }
+  .ver-pill {
+    font-size: 10px; font-weight: 700; padding: 1.5px 7px; border-radius: 999px;
+    white-space: nowrap; flex: none;
+  }
+  .ver-pill.verified, .ver-pill.pass, .ver-pill.selected_winner {
+    background: #E6F5EC; border: 1px solid #84C39B; color: #185A34;
+  }
+  .ver-pill.stale, .ver-pill.concerns {
+    background: #FFF1E4; border: 1px solid #E3AC72; color: #8A4510;
+  }
+  .ver-pill.failing, .ver-pill.fail {
+    background: #FDECEC; border: 1px solid #E09494; color: #962828;
+  }
+  .ver-pill.partial {
+    background: #EBF3F9; border: 1px solid #A3C2DC; color: #265077;
+  }
+  .ver-pill.unverified, .ver-pill.noted {
+    background: #F1F3F5; border: 1px solid #CBD2D9; color: #52606D;
+  }
+  .eval-persp {
+    margin-top: 4px; font-size: 11px; color: #4A5562;
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  }
+  .eval-persp-tag {
+    background: #EEF1FC; border: 1px solid #C6CEF0; color: #344382;
+    padding: 1px 6px; border-radius: 4px; font-size: 10.5px; font-weight: 600;
+  }
+  .qual-row {
+    padding: 4.5px 8px; border-radius: 6px; font-size: 11px; line-height: 1.42;
+    margin-top: 4px; display: flex; align-items: flex-start; gap: 6px;
+  }
+  .qual-row.preserved { background: #EDF7F0; border: 1px solid #B8DCC4; color: #1E462E; }
+  .qual-row.risk { background: #FFF2E8; border: 1px solid #E8B490; color: #883812; font-weight: 500; }
 
   .rel-card {
     border: 1px solid #E2E7EC; border-radius: 9px; padding: 8px 11px;
@@ -869,11 +969,13 @@ STUDIO_HTML = r"""<!DOCTYPE html>
   .g-node.probe-base .halo-ring { opacity: 1; stroke: #3E68A8; stroke-width: 3; }
   .g-node.probe-flip .halo-ring { opacity: 1; stroke: #D48817; stroke-width: 3.2; stroke-dasharray: 6 3; }
   .g-node.blast-hit .halo-ring { opacity: 1; stroke: #C93B3B; stroke-width: 3.2; }
+  .g-node.verify-attn-hit .halo-ring { opacity: 1; stroke: #D96B27; stroke-width: 3; stroke-dasharray: 5 3; }
   .n-id { font-size: 10.5px; font-weight: 600; fill: #6E7A86; font-family: ui-monospace, SFMono-Regular, monospace; }
   .n-tag { font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; }
   .n-title { font-size: 12.5px; font-weight: 600; }
   .n-sub { font-size: 10px; fill: #616E7C; }
   .micro-glyph-txt { font-size: 9.5px; font-weight: 800; pointer-events: none; }
+  .medallion-txt { font-size: 8.4px; font-weight: 700; pointer-events: none; letter-spacing: 0.01em; }
   .stamp-pill-txt { font-size: 10px; font-weight: 700; letter-spacing: 0.02em; }
 </style>
 </head>
@@ -894,16 +996,18 @@ STUDIO_HTML = r"""<!DOCTYPE html>
     <button class="lens-btn" data-lens="scripts">5 · 脚本依赖图 <span class="cnt">{scripts_count}</span></button>
   </div>
   <div class="bar-cluster">
-    <button id="toggle-cross" class="toggle-pill cross-on" type="button">跨域溯源连线</button>
-    <button id="toggle-hebbian" class="toggle-pill on" type="button" title="点击切换：智能聚焦 / 全局网格 / 隐藏">⚡ 赫布突触: 智能聚焦</button>
+    <button id="toggle-verify" class="toggle-pill verify-on" type="button" title="点击切换：双轨徽章 / 聚焦待测与存疑 / 隐藏">✓ 双轨验证: 徽章</button>
+    <button id="toggle-cross" class="toggle-pill cross-on" type="button">跨域连线</button>
+    <button id="toggle-hebbian" class="toggle-pill on" type="button" title="点击切换：智能聚焦 / 全局网格 / 隐藏">⚡ 赫布: 智能聚焦</button>
   </div>
 </div>
 
 <div id="legend">
   <span class="leg-item"><span class="leg-line"></span>Parent / Children 树结构线</span>
-  <span class="leg-item"><span class="rel-ico alt">⇄</span><span class="rel-ico sup-down">↓</span><span class="rel-ico conflict">✕</span>备选·替代·冲突印章</span>
+  <span class="leg-item"><span class="rel-ico alt">⇄</span><span class="rel-ico sup-down">↓</span><span class="rel-ico conflict">✕</span>备选·替代·冲突</span>
+  <span class="leg-item"><span class="ver-pill verified" style="padding:0 5px;font-size:9.5px;">✓实测</span><span class="ver-pill concerns" style="padding:0 5px;font-size:9.5px;">⚠存疑/◈评鉴</span>形式+内容双轨验证</span>
   <span id="leg-cross" class="leg-item"><span class="leg-line cross"></span>跨域溯源边</span>
-  <span class="leg-item"><span class="leg-line hebb"></span>Hebbian 突触 (悬停/选中展开)</span>
+  <span class="leg-item"><span class="leg-line hebb"></span>Hebbian 突触</span>
 </div>
 
 <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
@@ -985,8 +1089,18 @@ const MICRO_TONES = {
   'conflict': { fill: '#FDECEC', stroke: '#E5A1A1', text: '#9B2C2C' },
   'alt':      { fill: '#F1EEFC', stroke: '#BEB3EC', text: '#44338A' }
 };
+const MEDALLION_SPECS = {
+  verified:        { label: '✓ 实测', fill: '#E6F5EC', stroke: '#84C39B', text: '#185A34' },
+  stale:           { label: '⟳ 待测', fill: '#FFF3DF', stroke: '#E0AE58', text: '#8A530B' },
+  failing:         { label: '✕ 失败', fill: '#FDECEC', stroke: '#E09494', text: '#962828' },
+  partial:         { label: '◐ 部分', fill: '#EBF3F9', stroke: '#A3C2DC', text: '#265077' },
+  unverified:      { label: '○ 未测', fill: '#F3F4F6', stroke: '#CBD2D9', text: '#52606D' },
+  eval_ok:         { label: '◈ 评鉴', fill: '#EEF1FC', stroke: '#AEB8E8', text: '#364584' },
+  eval_warn:       { label: '⚠ 存疑', fill: '#FFF0E6', stroke: '#E5A882', text: '#8F3D14' }
+};
 let currentLens = 'overview';
 let hebbianMode = 'focus'; // 'focus' | 'all' | 'off'
+let verifyMode = 'badges'; // 'badges' | 'attention' | 'off'
 let showCross = true;
 let selectedId = null;
 let hoveredId = null;
@@ -1223,6 +1337,44 @@ function renderScene() {
       svgEl('text', { x: x + 14, y: y + 18, class: 'n-id' }, n.short_id),
       svgEl('text', { x: x + CARD_W - 10, y: y + 18, 'text-anchor': 'end', class: 'n-tag', fill: n.accent }, n.badge)
     );
+    if (verifyMode !== 'off') {
+      const pills = [];
+      const ver = (n.raw && n.raw.verification) || null;
+      const evr = (n.raw && n.raw.evaluation_rollup) || null;
+      if (ver && ver.status && ver.status !== 'not_applicable') {
+        const showUnv = ver.status === 'unverified' && (
+          verifyMode === 'attention' ||
+          n.status === 'planned_missing' ||
+          (n.graph === 'plan' && n.raw.level === 'work-package')
+        );
+        if (ver.status !== 'unverified' || showUnv) {
+          const sp = MEDALLION_SPECS[ver.status];
+          if (sp) pills.push({ ...sp, tip: `形式验证 (${ver.status}): ${ver.reason || ''}` });
+        }
+      }
+      if (evr && evr.count > 0) {
+        const isWarn = evr.status === 'concerns' || evr.status === 'fail';
+        const sp = isWarn ? MEDALLION_SPECS.eval_warn : MEDALLION_SPECS.eval_ok;
+        pills.push({
+          ...sp,
+          tip: `内容评鉴 (${evr.eval_ids.join(', ')}): ${evr.status}`
+        });
+      }
+      if (pills.length) {
+        let mx = x + Math.max(63, 20.5 + n.short_id.length * 6.55);
+        for (const mp of pills) {
+          const mw = 34.0, mh = 13.5, my = y + 7.5;
+          const mg = svgEl('g', { class: 'verify-medallion' });
+          mg.append(
+            svgEl('title', {}, mp.tip),
+            svgEl('rect', { x: mx, y: my, width: mw, height: mh, rx: 3.8, fill: mp.fill, stroke: mp.stroke, 'stroke-width': 0.95 }),
+            svgEl('text', { x: mx + mw / 2, y: my + mh / 2 + 0.3, 'text-anchor': 'middle', 'dominant-baseline': 'central', class: 'medallion-txt', fill: mp.text }, mp.label)
+          );
+          g.append(mg);
+          mx += mw + 2.5;
+        }
+      }
+    }
     n.wrapped_title.forEach((line, idx) => {
       g.append(svgEl('text', { x: x + 14, y: y + 37 + idx * 15.5, class: 'n-title', fill: n.palette[2] }, line));
     });
@@ -1333,26 +1485,70 @@ function applyTransform() {
 function fitOverview() {
   const layout = DATA.layouts[currentLens] || DATA.layouts.overview;
   const r = svg.getBoundingClientRect();
+  const tb = document.getElementById('topbar').getBoundingClientRect();
+  const topClear = Math.max(58, Math.round(tb.bottom + 12));
+  const bottomClear = 78;
   const panelOpen = !panelEl.hidden;
   const pWidth = panelOpen ? panelEl.getBoundingClientRect().width : 0;
   const availW = Math.max(320, r.width - pWidth - 44);
-  const availH = Math.max(240, r.height - 134);
+  const availH = Math.max(220, r.height - topClear - bottomClear);
   k = Math.min(1.04, Math.max(0.18, Math.min(availW / layout.width, availH / layout.height)));
   tx = Math.max(16, (availW - layout.width * k) / 2 + 16);
-  ty = Math.max(64, (availH - layout.height * k) / 2 + 56);
+  ty = Math.max(topClear, topClear + (availH - layout.height * k) / 2);
   applyTransform();
+}
+
+function nodeNeedsVerificationAttention(n) {
+  if (!n || n.status === 'superseded' || n.status === 'deprecated') return false;
+  const ver = (n.raw && n.raw.verification) || null;
+  const evr = (n.raw && n.raw.evaluation_rollup) || null;
+  if (evr && (evr.status === 'concerns' || evr.status === 'fail')) return true;
+  if (ver && (ver.status === 'stale' || ver.status === 'failing')) return true;
+  if (ver && ver.status === 'unverified') {
+    if (n.status === 'planned_missing') return true;
+    if (n.graph === 'plan' && n.raw.level === 'work-package') return true;
+    if (n.graph === 'specs' && n.raw.kind === 'contract') return true;
+  }
+  if (n.graph === 'knowledge_debt' && n.status === 'open') return true;
+  return false;
 }
 
 function clearProbeAndBlast() {
   blastKdId = null;
   probeActive = false;
+  if (verifyMode === 'attention') {
+    verifyMode = 'badges';
+    const vb = document.getElementById('toggle-verify');
+    vb.textContent = '✓ 双轨验证: 徽章';
+    vb.className = 'toggle-pill verify-on';
+  }
   document.getElementById('probe-banner').classList.remove('on');
   document.querySelectorAll('.g-node').forEach(g => {
-    g.classList.remove('dimmed', 'probe-base', 'probe-flip', 'blast-hit');
+    g.classList.remove('dimmed', 'probe-base', 'probe-flip', 'blast-hit', 'verify-attn-hit');
   });
   document.querySelectorAll('.edge-hot, .edge-hebb-hot, .edge-blast').forEach(e => {
     e.classList.remove('edge-hot', 'edge-hebb-hot', 'edge-blast');
   });
+}
+
+function applyVerifyAttentionSpotlight() {
+  if (verifyMode !== 'attention' || probeActive || blastKdId) return;
+  let attnCnt = 0;
+  nodeLayer.querySelectorAll('.g-node').forEach(g => {
+    const n = nodesById.get(g.dataset.id);
+    if (nodeNeedsVerificationAttention(n)) {
+      g.classList.add('verify-attn-hit');
+      g.classList.remove('dimmed');
+      attnCnt += 1;
+    } else {
+      g.classList.remove('verify-attn-hit');
+      g.classList.add('dimmed');
+    }
+  });
+  const banner = document.getElementById('probe-banner');
+  document.getElementById('probe-label').textContent =
+    `⚠ 验证与评鉴关注焦点：共 ${attnCnt} 个节点存在待测缺口、哈希过期、评鉴存疑或开放知识债`;
+  banner.classList.add('on');
 }
 
 function reapplyHighlights() {
@@ -1393,6 +1589,7 @@ function reapplyHighlights() {
     cardMarkLayer.replaceChildren();
   }
   if (blastKdId) triggerBlastRadius(blastKdId, true);
+  else if (verifyMode === 'attention' && !probeActive) applyVerifyAttentionSpotlight();
 }
 
 function runSpreadingProbe(seedQueryOrId, fromNode = false) {
@@ -1551,8 +1748,36 @@ function makeRelationPill(targetId) {
 function renderHeaderRelSummary(id) {
   const box = document.getElementById('p-rel-summary');
   box.replaceChildren();
+  const node = nodesById.get(id);
   const rel = RELATIONS[id];
   const synCnt = (synapsesByNode.get(id) || []).length;
+  if (node && node.raw) {
+    const ver = node.raw.verification;
+    if (ver && ver.status && ver.status !== 'not_applicable') {
+      const vLabels = {
+        verified: ['ver-ok', '✓ 实测通过'],
+        stale: ['ver-warn', '⟳ 源码已改待测'],
+        failing: ['ver-fail', '✕ 测试未过'],
+        partial: ['ver-ok', '◐ 部分实测'],
+        unverified: ['', '○ 尚未实测']
+      };
+      const [cls, txt] = vLabels[ver.status] || ['', ver.status];
+      box.append(htmlEl('span', cls, txt));
+    }
+    const evr = node.raw.evaluation_rollup;
+    if (evr && evr.count > 0) {
+      const isW = evr.status === 'concerns' || evr.status === 'fail';
+      const evSpan = htmlEl('span', isW ? 'eval-warn' : 'eval-ok', isW ? '⚠ 评鉴存疑 ' : '◈ 内容评鉴 ');
+      evSpan.append(htmlEl('b', null, String(evr.count)));
+      box.append(evSpan);
+    }
+    const epr = node.raw.episodic_rollup;
+    if (epr && epr.thread_count > 0) {
+      const tSpan = htmlEl('span', 'thr-cnt', '💬 线索 ');
+      tSpan.append(htmlEl('b', null, String(epr.thread_count)));
+      box.append(tSpan);
+    }
+  }
   if (rel) {
     const counts = [
       ['parent', (rel.parent ? 1 : 0) + (rel.children || []).length],
@@ -1575,6 +1800,210 @@ function renderHeaderRelSummary(id) {
     hItem.append(htmlEl('b', null, String(synCnt)));
     box.append(hItem);
   }
+}
+
+function renderVerificationAndEvaluations(n) {
+  const raw = n.raw || {};
+  const ver = raw.verification;
+  const evals = raw.evaluations || [];
+  const showFormal = ver && ver.status && ver.status !== 'not_applicable' && ['specs', 'plan', 'scripts'].includes(n.graph);
+  if (!showFormal && !evals.length) return null;
+
+  const wrap = htmlEl('div');
+
+  if (showFormal) {
+    wrap.append(htmlEl('div', 'sec-title', '形式验证回执 (Formal Validation · Test & SHA-256 Freshness)'));
+    const vcard = htmlEl('div', 'ver-card');
+    const vhead = htmlEl('div', 'ver-head');
+    const statusLabelMap = {
+      verified: '✓ VERIFIED · 实测有效',
+      stale: '⟳ STALE · 源码已改待重测',
+      failing: '✕ FAILING · 用例未通过',
+      partial: '◐ PARTIAL · 子项部分实测',
+      unverified: '○ UNVERIFIED · 尚未实测'
+    };
+    vhead.append(
+      htmlEl('span', null, ver.passed_tests !== undefined && ver.total_tests
+        ? `测试套件: ${ver.passed_tests}/${ver.total_tests} passed`
+        : '自动化测试与源码指纹校验'),
+      htmlEl('span', 'ver-pill ' + ver.status, statusLabelMap[ver.status] || ver.status)
+    );
+    vcard.append(vhead);
+    if (ver.reason) {
+      vcard.append(htmlEl('div', 'p-meta', ver.reason));
+    }
+    if (ver.receipt_timestamp) {
+      vcard.append(htmlEl('div', 'p-meta', `最近回执: ${ver.receipt_timestamp}${ver.runner_command ? ' · ' + ver.runner_command : ''}`));
+    }
+    if ((ver.stale_files || []).length) {
+      const srow = htmlEl('div', 'qual-row risk');
+      srow.append(htmlEl('span', null, '⟳ 哈希变更待重测: ' + ver.stale_files.join(', ')));
+      vcard.append(srow);
+    }
+    if ((ver.test_scripts || []).length) {
+      const tw = htmlEl('div', 'rel-values');
+      tw.style.marginTop = '6px';
+      ver.test_scripts.forEach(ts => tw.append(makeRelationPill('SCR:' + ts)));
+      vcard.append(tw);
+    }
+    wrap.append(vcard);
+  }
+
+  if (evals.length) {
+    wrap.append(htmlEl('div', 'sec-title', `内容评鉴记录 (Substantive Evaluations · ${evals.length})`));
+    const verdictBadgeMap = {
+      pass: '✓ PASS · 品质达标',
+      selected_winner: '★ WINNER · 比选胜出',
+      concerns: '⚠ CONCERNS · 存在隐忧',
+      fail: '✕ FAIL · 违背品质',
+      noted: '◈ NOTED · 历史记录'
+    };
+    evals.forEach(ev => {
+      const ecard = htmlEl('div', 'eval-card ' + ev.verdict);
+      const ehead = htmlEl('div', 'ver-head');
+      ehead.append(
+        htmlEl('span', null, `${ev.id} · ${ev.title}`),
+        htmlEl('span', 'ver-pill ' + ev.verdict, verdictBadgeMap[ev.verdict] || ev.verdict)
+      );
+      ecard.append(ehead);
+
+      const persp = htmlEl('div', 'eval-persp');
+      persp.append(
+        htmlEl('span', 'eval-persp-tag', `视角: ${ev.perspective}`),
+        htmlEl('span', 'p-meta', `${ev.reviewer_mode} · ${ev.updated}`)
+      );
+      ecard.append(persp);
+
+      if (ev.summary) {
+        ecard.append(htmlEl('div', 'quote-box', ev.summary));
+      }
+      (ev.preserved_qualities || []).forEach(pq => {
+        const qrow = htmlEl('div', 'qual-row preserved');
+        qrow.append(htmlEl('span', 'rule-tag', '✓ 守护'), htmlEl('span', null, pq));
+        ecard.append(qrow);
+      });
+      (ev.at_risk_qualities || []).forEach(rq => {
+        const qrow = htmlEl('div', 'qual-row risk');
+        qrow.append(htmlEl('span', 'rule-tag', '⚠ 风险'), htmlEl('span', null, rq));
+        ecard.append(qrow);
+      });
+      if (ev.recommended_action) {
+        ecard.append(htmlEl('div', 'p-meta', `建议行动: ${ev.recommended_action}`));
+      }
+      (ev.evidence_refs || []).forEach(eref => {
+        if (DATA.prototypes && DATA.prototypes[eref]) {
+          const frame = htmlEl('div', 'proto-frame');
+          frame.innerHTML = DATA.prototypes[eref];
+          ecard.append(frame);
+        }
+      });
+      const targets = [
+        ...(ev.evaluates_intents || []),
+        ...(ev.evaluates_specs || []),
+        ...(ev.evaluates_plans || []),
+        ...(ev.evaluates_scripts || []).map(s => 'SCR:' + s)
+      ].filter(tid => tid !== n.id);
+      if (targets.length) {
+        const tw = htmlEl('div', 'rel-values');
+        tw.style.marginTop = '6px';
+        targets.forEach(tid => tw.append(makeRelationPill(tid)));
+        ecard.append(tw);
+      }
+      wrap.append(ecard);
+    });
+  }
+  return wrap;
+}
+
+function renderEpisodicThreads(n, focusThreadId = null) {
+  const raw = n.raw || {};
+  const threads = raw.episodic_threads || [];
+  if (!threads.length) return null;
+
+  const wrap = htmlEl('div');
+  wrap.append(htmlEl('div', 'sec-title', `原始对话解缠结线索 (Episodic Threads · Turn → Span → Thread · ${threads.length})`));
+
+  const statusBadge = {
+    active: ['thr', '● ACTIVE · 在途展开'],
+    crystallized: ['verified', '▣ CRYSTALLIZED · 胶囊归档'],
+    folded: ['partial', '▣ FOLDED · 胶囊折叠'],
+    resolved: ['verified', '✓ RESOLVED · 已结案']
+  };
+
+  threads.forEach(th => {
+    const isAct = th.status === 'active';
+    const card = htmlEl('div', 'thr-card' + (isAct ? ' active' : ''));
+    card.dataset.threadId = th.id;
+
+    const head = htmlEl('div', 'ver-head');
+    const [bCls, bTxt] = statusBadge[th.status] || ['noted', th.status];
+    head.append(
+      htmlEl('span', null, `${th.id} · ${th.title}`),
+      htmlEl('span', 'ver-pill ' + (bCls === 'thr' ? 'partial' : bCls), bTxt)
+    );
+    card.append(head);
+
+    const multiTurnSpans = (th.spans || []).filter(s => s.span_total > 1).length;
+    const demuxNote = multiTurnSpans > 0
+      ? `跨 ${th.turn_count} 轮对话 · 解缠结提取 ${th.span_count} 段单主题问答（自动剥离同轮其他并行议题）`
+      : `跨 ${th.turn_count} 轮对话 · 共 ${th.span_count} 段原始问答切片`;
+    card.append(htmlEl('div', 'p-meta', demuxNote));
+
+    if (th.capsule_summary) {
+      const cap = htmlEl('div', 'thr-capsule');
+      cap.append(htmlEl('strong', null, isAct ? '阶段摘要: ' : '胶囊摘要: '), document.createTextNode(th.capsule_summary));
+      card.append(cap);
+    }
+
+    if ((th.cross_threads || []).length) {
+      const xmeta = htmlEl('div', 'p-meta');
+      xmeta.style.marginTop = '4px';
+      const peers = [...new Set(th.cross_threads.map(x => `${x.thread_id} (经 ${x.via_span_id})`))];
+      xmeta.textContent = '⇄ 跨线索交织引用: ' + peers.join(', ');
+      card.append(xmeta);
+    }
+
+    if ((th.spans || []).length) {
+      const det = htmlEl('details', 'thr-details');
+      if (isAct || focusThreadId === th.id) det.open = true;
+      det.append(
+        htmlEl(
+          'summary',
+          null,
+          isAct
+            ? `展开中：${th.span_count} 段纯净原始问答切片（SQLite spans 表）`
+            : `点击展开归档原文：${th.span_count} 段解缠结纯净问答切片`
+        )
+      );
+      th.spans.forEach(sp => {
+        const sbox = htmlEl('div', 'span-item');
+        const prov = htmlEl('div', 'span-prov');
+        prov.append(
+          htmlEl('span', 'span-prov-badge', `${sp.turn_id} · 轮内切片 ${sp.span_index}/${sp.span_total}`),
+          htmlEl('span', null, `${sp.span_id}${sp.role === 'cross_ref' ? ' · 跨线索合流' : ''}`)
+        );
+        const uDiv = htmlEl('div', 'span-u');
+        uDiv.append(htmlEl('b', null, 'User: '), document.createTextNode(sp.user_slice));
+        const aDiv = htmlEl('div', 'span-a');
+        aDiv.append(htmlEl('b', null, 'Agent: '), document.createTextNode(sp.assistant_slice));
+        sbox.append(prov, uDiv, aDiv);
+        det.append(sbox);
+      });
+      card.append(det);
+    }
+
+    const otherNodes = (th.linked_nodes || []).map(x => x.node_id).filter(nid => nid !== n.id && nodesById.has(nid));
+    if (otherNodes.length) {
+      const nw = htmlEl('div', 'rel-values');
+      nw.style.marginTop = '6px';
+      otherNodes.forEach(nid => nw.append(makeRelationPill(nid)));
+      card.append(nw);
+    }
+
+    wrap.append(card);
+  });
+
+  return wrap;
 }
 
 function renderDeclaredRelations(id) {
@@ -1634,7 +2063,7 @@ function renderDeclaredRelations(id) {
   return wrap;
 }
 
-function selectNode(id) {
+function selectNode(id, focusThreadId = null) {
   const n = nodesById.get(id);
   if (!n) return;
   const wasHidden = panelEl.hidden;
@@ -1671,12 +2100,16 @@ function selectNode(id) {
   }
 
   body.replaceChildren();
+  body.scrollTop = 0;
   const raw = n.raw;
 
   if (n.graph === 'intent' || n.graph === 'specs' || n.graph === 'plan') {
     const relSection = renderDeclaredRelations(id);
     if (relSection) body.append(relSection);
   }
+
+  const verEvalSection = renderVerificationAndEvaluations(n);
+  if (verEvalSection) body.append(verEvalSection);
 
   if (n.graph === 'intent') {
     body.append(htmlEl('div', 'sec-title', '原始表达副本 (Verbatim Utterance)'));
@@ -1868,6 +2301,9 @@ function selectNode(id) {
     }
   }
 
+  const epSection = renderEpisodicThreads(n, focusThreadId);
+  if (epSection) body.append(epSection);
+
   const syns = (synapsesByNode.get(id) || []).slice().sort((a, b) => b.weight - a.weight);
   if (syns.length) {
     body.append(htmlEl('div', 'sec-title', `赫布关联邻居 (Hebbian Synapses · ${syns.length})`));
@@ -1876,6 +2312,11 @@ function selectNode(id) {
       wrap.append(makeChip(s.target, `w=${s.weight.toFixed(2)}`, 'hebb'));
     });
     body.append(wrap);
+  }
+
+  if (focusThreadId) {
+    const tCard = body.querySelector(`.thr-card[data-thread-id="${CSS.escape(focusThreadId)}"]`);
+    if (tCard) tCard.scrollIntoView({ block: 'nearest' });
   }
 
   history.replaceState(null, '', '#' + encodeURIComponent(id));
@@ -1900,13 +2341,35 @@ function setLens(lens) {
 document.querySelectorAll('.lens-btn').forEach(btn => {
   btn.addEventListener('click', () => setLens(btn.dataset.lens));
 });
+document.getElementById('toggle-verify').addEventListener('click', (e) => {
+  const order = ['badges', 'attention', 'off'];
+  verifyMode = order[(order.indexOf(verifyMode) + 1) % order.length];
+  const btn = e.currentTarget;
+  if (verifyMode === 'badges') {
+    btn.textContent = '✓ 双轨验证: 徽章';
+    btn.className = 'toggle-pill verify-on';
+    document.getElementById('probe-banner').classList.remove('on');
+    document.querySelectorAll('.g-node').forEach(g => g.classList.remove('dimmed', 'verify-attn-hit'));
+  } else if (verifyMode === 'attention') {
+    blastKdId = null;
+    probeActive = false;
+    btn.textContent = '⚠ 双轨验证: 聚焦关注';
+    btn.className = 'toggle-pill verify-attn';
+  } else {
+    btn.textContent = '✓ 双轨验证: 隐藏';
+    btn.className = 'toggle-pill';
+    document.getElementById('probe-banner').classList.remove('on');
+    document.querySelectorAll('.g-node').forEach(g => g.classList.remove('dimmed', 'verify-attn-hit'));
+  }
+  renderScene();
+});
 document.getElementById('toggle-hebbian').addEventListener('click', (e) => {
   const order = ['focus', 'all', 'off'];
   hebbianMode = order[(order.indexOf(hebbianMode) + 1) % order.length];
   const labels = {
-    focus: '⚡ 赫布突触: 智能聚焦',
-    all: '⚡ 赫布突触: 全局网格',
-    off: '⚡ 赫布突触: 已隐藏'
+    focus: '⚡ 赫布: 智能聚焦',
+    all: '⚡ 赫布: 全局网格',
+    off: '⚡ 赫布: 隐藏'
   };
   e.currentTarget.textContent = labels[hebbianMode];
   e.currentTarget.classList.toggle('on', hebbianMode !== 'off');
@@ -1961,10 +2424,37 @@ function renderSearchDropdown() {
     return;
   }
   const hits = runSpreadingProbe(q, false);
-  if (!hits.length) {
-    searchResults.append(htmlEl('div', 'p-meta', '未找到匹配或关联激活节点。'));
+  const qLower = q.toLowerCase();
+  const threadHits = (DATA.episodic_threads || []).filter(th => {
+    const blob = (th.id + ' ' + th.title + ' ' + (th.capsule_summary || '') + ' ' +
+      (th.spans || []).map(s => s.user_slice + ' ' + s.assistant_slice).join(' ')).toLowerCase();
+    return qLower.split(/\s+/).filter(Boolean).every(tok => blob.includes(tok));
+  }).slice(0, 3);
+
+  if (!hits.length && !threadHits.length) {
+    searchResults.append(htmlEl('div', 'p-meta', '未找到匹配或关联激活节点与对话线索。'));
     return;
   }
+  threadHits.forEach(th => {
+    const targetNid = ((th.linked_nodes || [])[0] || {}).node_id;
+    const row = htmlEl('div', 's-row');
+    row.append(
+      htmlEl('span', 's-badge thr', `💬 对话线索 (${th.span_count}切片)`),
+      htmlEl('span', 's-id', th.id),
+      htmlEl('span', 's-title', th.title)
+    );
+    if (targetNid) {
+      row.append(htmlEl('span', 's-via', `→ ${targetNid}`));
+    }
+    row.addEventListener('click', () => {
+      searchSurface.hidden = true;
+      if (targetNid && nodesById.has(targetNid)) {
+        if (!activePositions()[targetNid]) setLens('overview');
+        selectNode(targetNid, th.id);
+      }
+    });
+    searchResults.append(row);
+  });
   hits.forEach(h => {
     const n = nodesById.get(h.id);
     const row = htmlEl('div', 's-row');
@@ -2047,7 +2537,9 @@ def build_studio_html(
     layouts, stacked_ids = _compute_all_layouts(federated)
     explicit_relations = _build_explicit_relations(federated)
     prototypes = _collect_prototype_svgs(
-        repo_root, federated.get("intent", {}).get("nodes", [])
+        repo_root,
+        federated.get("intent", {}).get("nodes", []),
+        federated.get("evaluations", {}).get("nodes", []),
     )
 
     ui_nodes: list[dict[str, Any]] = []
@@ -2225,10 +2717,12 @@ def build_studio_html(
         "layouts": layouts,
         "stacked_ids": sorted(stacked_ids),
         "prototypes": prototypes,
+        "verification_report": federated.get("verification_report", {}),
+        "episodic_threads": federated.get("episodic_memory", {}).get("threads", []),
     }
 
     embed_model = str(hebbian_payload.get("embedding_model", "local"))
-    short_model = embed_model.split("/")[-1]
+    short_model = embed_model.split("/")[-1].replace("Embedding-", "Embed-").replace("-DWQ", "")
     out_path = repo_root / "_aiHumanInteract" / "studio" / "index.html"
     out_path.parent.mkdir(parents=True, exist_ok=True)
 

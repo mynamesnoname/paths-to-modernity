@@ -21,13 +21,26 @@ import os
 import re
 import subprocess
 import sys
+import time
+import urllib.error
+import urllib.request
 from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from ptm_memory import (
+    EpisodicMemoryStore,
+    SqliteVectorStore,
+    attach_episodic_threads_to_federated,
+)
+
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MLX_MODEL = "mlx-community/Qwen3-Embedding-0.6B-4bit-DWQ"
+OPENAI_BATCH_SIZE = 10
+OPENAI_TIMEOUT_SECONDS = 30.0
+DENSE_BACKENDS = {"mlx", "openai"}
+BACKEND_CHOICES = ("auto", "mlx", "local", "openai", "api", "hash")
 HEBBIAN_SCHEMA = "paths-to-modernity-hebbian-associative-v1"
 QUERY_INSTRUCTION = (
     "Instruct: Retrieve semantically or associatively related project intents, "
@@ -110,83 +123,226 @@ def _embed_with_mlx_inproc(texts: Sequence[str], model_id: str) -> list[list[flo
     return results
 
 
-def _detect_mlx_python() -> str | None:
-    """Return path to Python interpreter with `mlx_embeddings`, checking current & `.venv`."""
+def _normalize_backend_choice(backend: str) -> str:
+    raw = (backend or "auto").strip().lower()
+    if raw == "local":
+        return "mlx"
+    if raw == "api":
+        return "openai"
+    if raw in {"auto", "mlx", "openai", "hash"}:
+        return raw
+    raise RuntimeError(f"Unsupported embedding backend {backend!r}; expected one of {BACKEND_CHOICES}.")
+
+
+def _local_mlx_model() -> str:
+    return os.environ.get("PTM_EMBEDDING_LOCAL_MODEL", "").strip() or DEFAULT_MLX_MODEL
+
+
+def _probe_python_mlx(py_bin: Path | str) -> bool:
+    res = subprocess.run(
+        [str(py_bin), "-c", "import mlx_embeddings"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    return res.returncode == 0
+
+
+def _detect_mlx_python(*, explicit_only: bool = False) -> str | None:
+    """Return path to Python interpreter with `mlx_embeddings`, checking env, current, `.venv`, and source manifest."""
+    env_py = os.environ.get("PTM_EMBEDDING_LOCAL_PYTHON", "").strip()
+    if env_py:
+        cand = Path(env_py).expanduser()
+        if cand.is_file() and _probe_python_mlx(cand):
+            return str(cand)
+        if explicit_only:
+            raise RuntimeError(
+                f"Configured PTM_EMBEDDING_LOCAL_PYTHON={env_py!r} does not exist or cannot import mlx_embeddings."
+            )
+        return None
+
     try:
         import mlx_embeddings  # noqa: F401
         return sys.executable
     except ImportError:
         pass
-    venv_py = SKILL_ROOT / ".venv" / "bin" / "python"
-    if venv_py.is_file():
-        res = subprocess.run(
-            [str(venv_py), "-c", "import mlx_embeddings"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
-        )
-        if res.returncode == 0:
-            return str(venv_py)
+
+    candidates: list[Path] = [SKILL_ROOT / ".venv" / "bin" / "python"]
+    manifest_file = SKILL_ROOT / ".sync-manifest.json"
+    if manifest_file.is_file():
+        try:
+            src_str = json.loads(manifest_file.read_text(encoding="utf-8")).get("source", "")
+            if src_str:
+                candidates.append(Path(src_str) / ".venv" / "bin" / "python")
+        except (OSError, json.JSONDecodeError):
+            pass
+    for ancestor in SKILL_ROOT.parents:
+        candidates.append(ancestor / "skills" / "paths-to-modernity" / ".venv" / "bin" / "python")
+
+    seen: set[str] = set()
+    for venv_py in candidates:
+        key = str(venv_py)
+        if key in seen:
+            continue
+        seen.add(key)
+        if venv_py.is_file() and _probe_python_mlx(venv_py):
+            return key
     return None
 
 
+def _openai_embedding_config() -> dict[str, Any] | None:
+    """Read OpenAI-compatible embedding config from `PTM_EMBEDDING_*` env vars.
+
+    Opt-in only: `auto` never implicitly invokes `openai`, so an ambient API key
+    cannot turn an offline build into a billed network call.
+    """
+    base_url = os.environ.get("PTM_EMBEDDING_BASE_URL", "").strip().rstrip("/")
+    model = os.environ.get("PTM_EMBEDDING_MODEL", "").strip()
+    api_key = os.environ.get("PTM_EMBEDDING_API_KEY", "").strip()
+    if not (base_url and model and api_key):
+        return None
+    raw_dimensions = os.environ.get("PTM_EMBEDDING_DIMENSIONS", "").strip()
+    dimensions = (
+        int(raw_dimensions)
+        if raw_dimensions.isdigit() and int(raw_dimensions) > 0
+        else None
+    )
+    raw_timeout = os.environ.get("PTM_EMBEDDING_TIMEOUT", "").strip()
+    try:
+        timeout = float(raw_timeout) if raw_timeout else OPENAI_TIMEOUT_SECONDS
+    except ValueError:
+        timeout = OPENAI_TIMEOUT_SECONDS
+    return {
+        "base_url": base_url,
+        "model": model,
+        "api_key": api_key,
+        "dimensions": dimensions,
+        "timeout": timeout,
+    }
+
+
+def _embed_with_openai(texts: Sequence[str], config: Mapping[str, Any]) -> list[list[float]]:
+    """Embed texts via an OpenAI-compatible `/embeddings` endpoint with strict dimension & HTTP checks."""
+    vectors: list[list[float]] = []
+    url = f"{config['base_url']}/embeddings"
+    for start in range(0, len(texts), OPENAI_BATCH_SIZE):
+        batch = list(texts[start : start + OPENAI_BATCH_SIZE])
+        payload: dict[str, Any] = {
+            "model": config["model"],
+            "input": batch,
+            "encoding_format": "float",
+        }
+        if config.get("dimensions"):
+            payload["dimensions"] = int(config["dimensions"])
+        request = urllib.request.Request(
+            url,
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {config['api_key']}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=float(config["timeout"])) as response:
+                body = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", "replace")[:500]
+            raise RuntimeError(
+                f"embedding API {url} returned HTTP {exc.code}: {detail}"
+            ) from exc
+        except urllib.error.URLError as exc:
+            raise RuntimeError(
+                f"embedding API {url} request failed: {exc.reason}"
+            ) from exc
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(
+                f"embedding API {url} returned a non-JSON body"
+            ) from exc
+
+        data = body.get("data")
+        if not isinstance(data, list) or len(data) != len(batch):
+            raise RuntimeError(
+                f"embedding API {url} returned {len(data) if isinstance(data, list) else 'no'} "
+                f"vectors for {len(batch)} inputs"
+            )
+        ordered = sorted(
+            data,
+            key=lambda row: row.get("index", 0) if isinstance(row, Mapping) else 0,
+        )
+        for row in ordered:
+            vector = row.get("embedding") if isinstance(row, Mapping) else None
+            if not isinstance(vector, list) or not vector:
+                raise RuntimeError(f"embedding API {url} returned an empty embedding")
+            if config.get("dimensions") and len(vector) != int(config["dimensions"]):
+                raise RuntimeError(
+                    f"embedding API {url} returned {len(vector)} dimensions, "
+                    f"expected {config['dimensions']}"
+                )
+            vectors.append(_l2_normalize(vector))
+    return vectors
+
+
 class TieredEmbedder:
-    """Content-addressed local embedder supporting MLX (`Qwen3-Embedding-0.6B-4bit`) & fallback."""
+    """Content-addressed dual-interface embedder (`mlx` local + `openai` API + `hash`) over SQLite float32 BLOBs."""
 
     def __init__(
         self,
         cache_path: Path,
         backend: str = "auto",
-        model_id: str = DEFAULT_MLX_MODEL,
+        model_id: str | None = None,
     ) -> None:
         self.cache_path = cache_path
         self.requested_backend = backend
-        self.model_id = model_id
-        self.active_backend, self.mlx_python = self._resolve_backend(backend)
-        self.effective_model_id = (
-            model_id if self.active_backend == "mlx" else "ptm-stdlib-ngram-384"
+        norm_backend = _normalize_backend_choice(backend)
+        self.model_id = (model_id or "").strip() or _local_mlx_model()
+        self.openai_config = _openai_embedding_config()
+        self.active_backend, self.mlx_python = self._resolve_backend(norm_backend)
+        if self.active_backend == "mlx":
+            self.effective_model_id = (
+                self.model_id if self.model_id.startswith("mlx:") else f"mlx:{self.model_id}"
+            )
+        elif self.active_backend == "openai":
+            assert self.openai_config is not None
+            dimensions = self.openai_config.get("dimensions") or "default"
+            self.effective_model_id = f"openai:{self.openai_config['model']}:{dimensions}"
+        else:
+            self.effective_model_id = "ptm-stdlib-ngram-384"
+
+        db_file = (
+            cache_path
+            if cache_path.suffix in {".sqlite", ".db"}
+            else cache_path.parent / "memory.sqlite"
         )
-        self._cache: dict[str, list[float]] = {}
-        self._dirty = False
-        self._load_cache()
+        legacy_json = (
+            cache_path
+            if cache_path.suffix == ".json"
+            else cache_path.parent / "embeddings.json"
+        )
+        self._sql_store = SqliteVectorStore(db_file, legacy_json_path=legacy_json)
+        self._mem_cache: dict[str, list[float]] = {}
 
     def _resolve_backend(self, backend: str) -> tuple[str, str | None]:
         if backend == "hash":
             return "hash", None
-        mlx_py = _detect_mlx_python()
+        if backend == "openai":
+            if not self.openai_config:
+                raise RuntimeError(
+                    "OpenAI embedding backend requested, but PTM_EMBEDDING_BASE_URL, "
+                    "PTM_EMBEDDING_MODEL, and PTM_EMBEDDING_API_KEY are not all set."
+                )
+            return "openai", None
         if backend == "mlx":
+            mlx_py = _detect_mlx_python(explicit_only=True)
             if not mlx_py:
                 raise RuntimeError(
-                    "MLX backend requested, but mlx-embeddings is not installed."
+                    "Local MLX backend requested, but mlx-embeddings is not installed in Python or .venv."
                 )
             return "mlx", mlx_py
+        mlx_py = _detect_mlx_python(explicit_only=False)
         if mlx_py:
             return "mlx", mlx_py
         return "hash", None
-
-    def _load_cache(self) -> None:
-        if self.cache_path.is_file():
-            try:
-                raw = json.loads(self.cache_path.read_text(encoding="utf-8"))
-                if isinstance(raw, dict):
-                    self._cache = raw.get("vectors", {})
-            except (OSError, json.JSONDecodeError):
-                self._cache = {}
-
-    def save_cache(self) -> None:
-        if not self._dirty:
-            return
-        self.cache_path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {
-            "backend": self.active_backend,
-            "model_id": self.effective_model_id,
-            "count": len(self._cache),
-            "vectors": self._cache,
-        }
-        self.cache_path.write_text(
-            json.dumps(payload, ensure_ascii=False) + "\n", encoding="utf-8"
-        )
-        self._dirty = False
 
     def _key(self, text: str) -> str:
         digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:24]
@@ -199,18 +355,27 @@ class TieredEmbedder:
         is_query: bool = False,
         persist_cache: bool = True,
     ) -> list[list[float]]:
+        if not texts:
+            return []
+        raw_mlx_model = (
+            self.model_id[4:] if self.model_id.startswith("mlx:") else self.model_id
+        )
         formatted = [
             (QUERY_INSTRUCTION + t if (is_query and self.active_backend == "mlx") else t)
             for t in texts
         ]
         keys = [self._key(t) for t in formatted]
-        missing_indices = [i for i, k in enumerate(keys) if k not in self._cache]
+        need_db = [k for k in keys if k not in self._mem_cache]
+        if need_db:
+            loaded = self._sql_store.get_many(need_db)
+            self._mem_cache.update(loaded)
 
+        missing_indices = [i for i, k in enumerate(keys) if k not in self._mem_cache]
         if missing_indices:
             missing_texts = [formatted[i] for i in missing_indices]
             if self.active_backend == "mlx":
                 if self.mlx_python == sys.executable:
-                    computed = _embed_with_mlx_inproc(missing_texts, self.model_id)
+                    computed = _embed_with_mlx_inproc(missing_texts, raw_mlx_model)
                 else:
                     helper = (
                         "import json, os, sys; os.environ['HF_HUB_DISABLE_PROGRESS_BARS']='1'; "
@@ -222,32 +387,55 @@ class TieredEmbedder:
                     )
                     proc = subprocess.run(
                         [str(self.mlx_python), "-c", helper],
-                        input=json.dumps({"texts": missing_texts, "model": self.model_id}),
+                        input=json.dumps({"texts": missing_texts, "model": raw_mlx_model}),
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                         text=True,
                         check=True,
                     )
                     computed = json.loads(proc.stdout)
+            elif self.active_backend == "openai":
+                assert self.openai_config is not None
+                computed = _embed_with_openai(missing_texts, self.openai_config)
             else:
                 computed = [_stdlib_hash_embed(t) for t in missing_texts]
 
             ephemeral: dict[int, list[float]] = {}
+            to_persist: dict[str, list[float]] = {}
             for idx, vec in zip(missing_indices, computed):
                 if persist_cache:
-                    self._cache[keys[idx]] = vec
-                    self._dirty = True
+                    self._mem_cache[keys[idx]] = vec
+                    to_persist[keys[idx]] = vec
                 else:
                     ephemeral[idx] = vec
-            if persist_cache:
-                self.save_cache()
-            else:
+            if persist_cache and to_persist:
+                self._sql_store.put_many(self.effective_model_id, to_persist)
+            elif not persist_cache:
                 return [
-                    self._cache[k] if k in self._cache else ephemeral[i]
+                    self._mem_cache[k] if k in self._mem_cache else ephemeral[i]
                     for i, k in enumerate(keys)
                 ]
 
-        return [self._cache[k] for k in keys]
+        return [self._mem_cache[k] for k in keys]
+
+    def probe(self) -> dict[str, Any]:
+        """Run a two-sentence non-persisted smoke probe and return structured runtime telemetry."""
+        t0 = time.perf_counter()
+        vecs = self.embed_many(
+            ["PtM 双接口嵌入自检", "Cross-graph associative embedding probe"],
+            is_query=False,
+            persist_cache=False,
+        )
+        elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
+        return {
+            "ok": True,
+            "requested_backend": self.requested_backend,
+            "active_backend": self.active_backend,
+            "effective_model_id": self.effective_model_id,
+            "dimensions": len(vecs[0]) if vecs else 0,
+            "python": self.mlx_python,
+            "latency_ms": elapsed_ms,
+        }
 
 
 def _compute_recency(updated_str: str | None, ref_date: date, tau_days: float = 120.0) -> float:
@@ -263,8 +451,24 @@ def _compute_recency(updated_str: str | None, ref_date: date, tau_days: float = 
         return 1.0
 
 
+def _eval_context_snippet(node: Mapping[str, Any]) -> str:
+    evals = node.get("evaluations") or []
+    if not evals:
+        return ""
+    parts = []
+    for ev in evals:
+        risks = "; ".join(ev.get("at_risk_qualities") or [])
+        pres = "; ".join(ev.get("preserved_qualities") or [])
+        parts.append(
+            f"[Eval {ev['id']} {ev['verdict']} · {ev['perspective']}] {ev['summary']}"
+            + (f" Preserved: {pres}." if pres else "")
+            + (f" At-risk: {risks}." if risks else "")
+        )
+    return " Evaluations: " + " | ".join(parts)
+
+
 def _unified_nodes_from_federated(federated: Mapping[str, Any]) -> list[dict[str, Any]]:
-    """Convert all 4 federated graphs into rich textual descriptors for associative indexing."""
+    """Convert all 5 federated graphs into rich textual descriptors for associative indexing."""
     unified: list[dict[str, Any]] = []
 
     for n in federated.get("intent", {}).get("nodes", []):
@@ -280,6 +484,7 @@ def _unified_nodes_from_federated(federated: Mapping[str, Any]) -> list[dict[str
             f"[Intent {n['id']}] {n['title']}. Raw user intent: {n['raw_utterance']}. "
             f"Concepts & variants: {concepts_txt}. Alternatives: {alts_txt}. "
             f"Qualities: {'; '.join(n.get('qualities', []))}."
+            + _eval_context_snippet(n)
         )
         unified.append(
             {
@@ -306,6 +511,7 @@ def _unified_nodes_from_federated(federated: Mapping[str, Any]) -> list[dict[str
             f"DO: {dos}. DO NOT: {donts}. "
             f"Contract/Schema: {n.get('signature_or_schema') or ''}. "
             f"Postconditions: {posts}."
+            + _eval_context_snippet(n)
         )
         kws = _extract_keywords(text)
         if n.get("canonical_term"):
@@ -333,6 +539,7 @@ def _unified_nodes_from_federated(federated: Mapping[str, Any]) -> list[dict[str
             f"Acceptance: {'; '.join(n.get('acceptance', []))}. "
             f"Approach: {n.get('approach', '')}. Problem: {ctx.get('problem', '')}. "
             f"Qualities: {'; '.join(n.get('qualities', []))}."
+            + _eval_context_snippet(n)
         )
         unified.append(
             {
@@ -404,7 +611,7 @@ class HebbianAssociativeEngine:
             self.repo_root / "_aiHumanInteract" / "hebbian" / "associations.json"
         )
         self.cache_path = (
-            self.repo_root / "_aiHumanInteract" / ".cache" / "embeddings.json"
+            self.repo_root / "_aiHumanInteract" / ".cache" / "memory.sqlite"
         )
         self.embedder = TieredEmbedder(self.cache_path, backend=backend)
         self.learning_rate = learning_rate
@@ -445,10 +652,29 @@ class HebbianAssociativeEngine:
             self.synapses[u][v] = dict(rec)
             self.synapses[v][u] = dict(rec)
 
+    def make_episodic_store(self) -> EpisodicMemoryStore:
+        """Create an `EpisodicMemoryStore` sharing this engine's active embedder & `memory.sqlite`."""
+        return EpisodicMemoryStore(
+            self.repo_root,
+            embed_fn=lambda texts, is_q, persist: self.embedder.embed_many(
+                texts, is_query=is_q, persist_cache=persist
+            ),
+            backend_name=self.embedder.active_backend,
+            effective_model_id=self.embedder.effective_model_id,
+        )
+
     def sync_federated(
         self, federated: Mapping[str, Any], *, persist: bool = True
     ) -> dict[str, Any]:
-        """Embed all current nodes across the 4 graphs and seed/prune associative synapses."""
+        """Embed all current nodes across the 5 graphs, sync episodic threads, and seed synapses."""
+        if persist and (
+            (self.repo_root / "_aiHumanInteract" / "episodes" / "turns.jsonl").is_file()
+            or (self.repo_root / "_aiHumanInteract" / ".cache" / "memory.sqlite").is_file()
+        ):
+            ep_store = self.make_episodic_store()
+            ep_sum = ep_store.sync_portable_episodes(federated)
+            if isinstance(federated, dict):
+                attach_episodic_threads_to_federated(federated, ep_sum)
         unified = _unified_nodes_from_federated(federated)
         self.nodes = {item["id"]: item for item in unified}
         valid_ids = set(self.nodes)
@@ -483,7 +709,7 @@ class HebbianAssociativeEngine:
             declared_pairs.add((e["from"], e["to"]))
             declared_pairs.add((e["to"], e["from"]))
 
-        seed_thresh = 0.44 if self.embedder.active_backend == "mlx" else 0.26
+        seed_thresh = 0.44 if self.embedder.active_backend in DENSE_BACKENDS else 0.26
 
         # Pairwise semantic seeding (keeps top-4 strongest semantic neighbors per node)
         for i, u in enumerate(ordered_ids):
@@ -529,6 +755,10 @@ class HebbianAssociativeEngine:
                 }
                 self.synapses[u][v] = dict(rec)
                 self.synapses[v][u] = dict(rec)
+
+        if persist and isinstance(federated, dict) and "episodic_memory" in federated:
+            ep_sum_after = self.make_episodic_store().export_summary()
+            attach_episodic_threads_to_federated(federated, ep_sum_after)
 
         return self.save() if persist else self.export_payload()
 
@@ -649,7 +879,7 @@ class HebbianAssociativeEngine:
         for nid, node in self.nodes.items():
             vec = self.vectors.get(nid)
             raw_sim = _dot(q_vec, vec) if vec else 0.0
-            norm_sim = max(0.0, (raw_sim + 1.0) / 2.0) if self.embedder.active_backend == "mlx" else max(0.0, raw_sim)
+            norm_sim = max(0.0, (raw_sim + 1.0) / 2.0) if self.embedder.active_backend in DENSE_BACKENDS else max(0.0, raw_sim)
             sem_scores[nid] = round(raw_sim, 4)
 
             node_kws = set(node.get("keywords", []))
@@ -864,7 +1094,7 @@ class HebbianAssociativeEngine:
             raw_sims[nid] = sim
             norm_sim = (
                 max(0.0, (sim + 1.0) / 2.0)
-                if self.embedder.active_backend == "mlx"
+                if self.embedder.active_backend in DENSE_BACKENDS
                 else max(0.0, sim)
             )
             nkws = set(node.get("keywords", []))
@@ -961,6 +1191,73 @@ class HebbianAssociativeEngine:
                 top_ids = [anchor_nid, *top_ids]
             reinforced = self.reinforce_cluster(top_ids, reason=f"related:{anchor_nid or 'draft'}")
 
+        # Surface matching `EVAL-###` substantive evaluations linked to anchor or top hits
+        top_hit_ids = {anchor_nid} if anchor_nid else set()
+        top_hit_ids.update(x["id"] for x in scored_items[:8])
+        related_evals: list[dict[str, Any]] = []
+        for ev in federated.get("evaluations", {}).get("nodes", []):
+            ev_targets = set(
+                [
+                    *ev.get("evaluates_intents", []),
+                    *ev.get("evaluates_specs", []),
+                    *ev.get("evaluates_plans", []),
+                    *(f"SCR:{s}" for s in ev.get("evaluates_scripts", [])),
+                ]
+            )
+            ev_kws = _extract_keywords(
+                f"{ev['title']} {ev['perspective']} {ev['summary']} "
+                + " ".join(ev.get("preserved_qualities", []))
+                + " "
+                + " ".join(ev.get("at_risk_qualities", []))
+            )
+            kw_hit = len(anchor_kws & ev_kws) / max(1, len(anchor_kws)) if anchor_kws else 0.0
+            direct_hit = bool(anchor_nid and anchor_nid in ev_targets)
+            neighbor_overlap = sorted(ev_targets & top_hit_ids)
+            if direct_hit or neighbor_overlap or kw_hit > 0.08:
+                score = (1.0 if direct_hit else 0.0) + 0.25 * len(neighbor_overlap) + kw_hit
+                related_evals.append(
+                    {
+                        "id": ev["id"],
+                        "title": ev["title"],
+                        "kind": ev["kind"],
+                        "verdict": ev["verdict"],
+                        "perspective": ev["perspective"],
+                        "summary": ev["summary"],
+                        "matched_targets": neighbor_overlap,
+                        "relevance_score": round(score, 4),
+                    }
+                )
+        related_evals.sort(key=lambda e: (-e["relevance_score"], e["id"]))
+
+        # Surface matching `THR-###` disentangled episodic threads
+        related_threads: list[dict[str, Any]] = []
+        for th in federated.get("episodic_memory", {}).get("threads", []):
+            th_nodes = {lnk["node_id"] for lnk in th.get("linked_nodes", [])}
+            th_kws = _extract_keywords(
+                th["title"]
+                + " "
+                + (th.get("capsule_summary") or "")
+                + " "
+                + " ".join(s.get("user_slice", "") for s in th.get("spans", []))
+            )
+            kw_hit = len(anchor_kws & th_kws) / max(1, len(anchor_kws)) if anchor_kws else 0.0
+            direct_hit = bool(anchor_nid and anchor_nid in th_nodes)
+            overlap_nodes = sorted(th_nodes & top_hit_ids)
+            if direct_hit or overlap_nodes or kw_hit > 0.08:
+                t_score = (1.0 if direct_hit else 0.0) + 0.25 * len(overlap_nodes) + kw_hit
+                related_threads.append(
+                    {
+                        "id": th["id"],
+                        "title": th["title"],
+                        "status": th["status"],
+                        "span_count": th["span_count"],
+                        "capsule_summary": th.get("capsule_summary"),
+                        "matched_nodes": overlap_nodes,
+                        "relevance_score": round(t_score, 4),
+                    }
+                )
+        related_threads.sort(key=lambda t: (-t["relevance_score"], t["id"]))
+
         return {
             "anchor": anchor_info,
             "embedding_backend": self.embedder.active_backend,
@@ -968,6 +1265,8 @@ class HebbianAssociativeEngine:
             "pairs_reinforced": reinforced,
             "declared_links": declared_summary,
             "novel_discoveries": novel_top,
+            "related_evaluations": related_evals[:5],
+            "related_threads": related_threads[:5],
             "by_graph": by_graph,
         }
 

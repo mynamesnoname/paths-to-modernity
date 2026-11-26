@@ -51,6 +51,8 @@ implementation.
 | [Spec Graph](references/spec-graph.md) | Crystallizing standing invariants (*Do / Do NOT*), canonical domain glossary terms, development standards, or verifiable contracts under `_aiHumanInteract/specs/`, or checking spec blast radius (`ptm.py spec impact`) |
 | [Plan Graph](references/plan-graph.md) | Working with `_aiHumanInteract/plan/structure/graph.json` (`paths-to-modernity-plan-graph-v4`) or installing/upgrading pragmatic plan infrastructure |
 | [Scripts Graph](references/scripts-graph.md) | Extracting AST/import/call codebase dependencies and plan coverage under `_aiHumanInteract/scripts/` |
+| [Verification & evaluation](references/verification-and-evaluation.md) | Running deterministic test receipts with SHA-256 staleness tracking (`ptm.py verify`) or invoking an isolated perspective subagent to record substantive evaluations (`evaluations/EVAL-###.md`) |
+| [Episodic dialogue & SQLite memory](references/episodic-memory.md) | Logging or importing multi-topic conversation turns, disentangling `Turn -> Span -> Thread (THR-###)` in `_aiHumanInteract/.cache/memory.sqlite`, searching raw dialogue (`ptm.py memory search`), or folding settled threads into 1-line capsules |
 | [Associative memory & portraits](references/hebbian-memory.md) | Running on-device embeddings + Hebbian spreading retrieval (`_aiHumanInteract/hebbian/`) or refreshing the subagent recovery portrait in `AGENTS.md` |
 | [Worked example](assets/plan-graph/example/README.md) | Learning how source records and generated views fit together |
 
@@ -58,9 +60,14 @@ implementation.
 
 Use the depth needed for the next commitment; omit ceremony on small tasks.
 
-1. **Extract intents and preserve raw wording.** Split multi-intent turns into
-   coherent intents (`INT-###`) while keeping the verbatim request (`raw_utterance`)
-   so later summaries cannot silently drift.
+1. **Extract intents, disentangle parallel dialogue threads, and preserve raw wording.**
+   Keep epistemic conversation in one natural stream for the human while letting
+   `scripts/ptm.py memory log` (or `import-jsonl`) disentangle multi-topic turns
+   into atomic sub-turn `Spans` and single-topic virtual `Threads` (`THR-###`) in
+   `_aiHumanInteract/.cache/memory.sqlite`. Split multi-intent turns into coherent
+   intents (`INT-###`) while keeping `raw_utterance` (and `THR-###` provenance) so
+   later summaries never silently drift; fold settled threads (`ptm.py memory fold`)
+   into compact capsules rather than waiting for lossy global compaction.
 2. **Decompose concepts and run epistemic inquiry.** Identify key concepts inside
    each intent. Inspect code and facts yourself first. When a concept admits
    multiple goal-changing readings, contrast them; remember that interpretations
@@ -90,11 +97,23 @@ Use the depth needed for the next commitment; omit ceremony on small tasks.
    (`LT/MT/ST/WP`), execute code changes, and let `scripts/ptm.py build` validate
    links, scan the Scripts Graph, update Hebbian co-activation weights, and render
    the 3-stratum 5-graph Studio (`_aiHumanInteract/studio/index.html`).
-6. **Revisit bookmarks and reorganize when understanding matures.** When practice
+6. **Run dual-track verification and context-separated evaluation.**
+   - *Formal validation:* Execute `scripts/ptm.py verify <repo>` to run the test
+     suite and record deterministic pass/fail receipts plus SHA-256 content
+     hashes in `_aiHumanInteract/scripts/verification-status.json`. Any later
+     edit to governed code or tests automatically downgrades affected `SPEC`,
+     `Plan`, and `Script` nodes from `verified` to `stale` until re-verified.
+   - *Content evaluation:* Never self-certify subjective `Intent.qualities` in
+     the coding trace. Spawn an isolated perspective subagent (`research` or
+     `browser`) with `raw_utterance` + `qualities` + `SPEC` guardrails +
+     runnable artifacts/screenshots, and persist its findings (including any
+     `concerns` or `at_risk_qualities`) in `_aiHumanInteract/plan/evaluations/EVAL-###.md`
+     (`ptm.py eval scaffold`).
+7. **Revisit bookmarks and reorganize when understanding matures.** When practice
    clarifies an open `KD-###` bookmark, resolve it as `affirmed` (closing the
-   gap) or `rejected` (computing impact across linked Plan and Intent nodes to
-   supersede and reorganize affected branches).
-7. **Refresh recovery state and subagent portrait.** On key milestones, update
+   gap) or `rejected` (computing impact across linked Plan, Spec, and Intent
+   nodes to supersede and reorganize affected branches).
+8. **Refresh recovery state and subagent portrait.** On key milestones, update
    `_aiHumanInteract/state/active.md` and invoke the subagent portrait summarizer
    (`ptm portrait`) to keep `AGENTS.md` ready for instant recovery after context
    compaction or session switches.

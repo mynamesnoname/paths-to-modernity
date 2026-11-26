@@ -21,17 +21,25 @@ governed by three rules:
    as `Declared` or `Observed` edges. Every synapse carries
    `"layer": "associative"` with its current weight $w_{ij} \in (0, 1]$ and
    co-activation count.
-2. **Tiered on-device embeddings with deterministic fallback:**
-   - **Primary (Apple Silicon laptop SOTA):** `mlx-embeddings` running
-     `mlx-community/Qwen3-Embedding-0.6B-4bit-DWQ` locally on Metal GPU (~333 MB
-     unified memory, 32K context, multilingual CJK/English + code).
-   - **Secondary (Cross-platform local):** `fastembed` or `sentence-transformers`
-     when installed.
-   - **Fallback (Zero-dependency stdlib):** Deterministic L2-normalized
-     character/word n-gram subword hashing so offline environments and CI tests
-     always succeed without network or GPU packages.
-   - Vectors are content-addressed by `model_id + sha256(text)` in
-     `_aiHumanInteract/.cache/embeddings.json`.
+2. **Dual-interface embeddings (Local Apple Silicon MLX + OpenAI-compatible API) with deterministic fallback:**
+   - **Local On-Device (`--embedding-backend mlx` / `local`):** `mlx-embeddings` running
+     `mlx-community/Qwen3-Embedding-0.6B-4bit-DWQ` (or `PTM_EMBEDDING_LOCAL_MODEL`) on
+     Apple Silicon Metal GPU via `.venv` (`PTM_EMBEDDING_LOCAL_PYTHON` override supported).
+   - **OpenAI-Compatible API (`--embedding-backend openai` / `api`):** Remote or local
+     `/embeddings` endpoints (DashScope `text-embedding-v4` / `qwen3.7-text-embedding`,
+     OpenAI, Ollama, vLLM) configured via `PTM_EMBEDDING_BASE_URL`,
+     `PTM_EMBEDDING_MODEL`, `PTM_EMBEDDING_API_KEY`, and optional
+     `PTM_EMBEDDING_DIMENSIONS`. Explicit opt-in only (`auto` never triggers billed API calls)
+     with loud HTTP/dimension validation.
+   - **Fallback (`--embedding-backend hash`):** Deterministic L2-normalized
+     character/word n-gram subword hashing (`ptm-stdlib-ngram-384`) so offline environments
+     and CI tests always succeed without network or GPU packages.
+   - **Strict model-namespace isolation in SQLite:** Vectors are content-addressed by
+     `<effective_model_id>:<sha256(text)>` (`mlx:<model>`, `openai:<model>:<dim>`, or
+     `ptm-stdlib-ngram-384`) and stored as compact IEEE-754 little-endian `float32` binary
+     BLOBs inside `_aiHumanInteract/.cache/memory.sqlite` (`WAL` mode, shared with the
+     [Episodic `Turn → Span → Thread` store](episodic-memory.md)). Switching between `mlx`
+     and `openai` preserves both caches without ever computing cross-model dot products.
 3. **Hebbian plasticity and Dual-Path spreading retrieval:**
    - **Initial semantic seeding:** Node pairs whose cosine similarity exceeds
      $\theta_{\text{seed}}$ receive a weak prior synapse $w_0 = \gamma_{\text{seed}} \cdot \text{sim}(i, j)$ so newly encoded projects are not blind linear chains.

@@ -89,5 +89,28 @@ Plan Graph v4 利用其原生支持的开放 `links` 类别（`links.intent`、`
 **决策：**
 
 - `AGENTS.md` 采用**双独立标记块**以兼顾所有权安全与动态恢复：
-  1. `<!-- paths-to-modernity:protocol:start/end -->`（升级至 `paths-to-modernity-protocol-v3`）：保持静态、带收据校验，仅存放核心不变量与四图 + Knowledge Debt + State 恢复入口路由；
-  2. `<!-- paths-to-modernity:portrait:start/end -->`：由子智能体（交互会话中的 `subagent` 或 CLI 下调用 `.env` 配置的轻量模型如 `deepseek-flash`，无网络时回退确定性结构摘要）生成的精炼**意图画像（Intent Portrait）+ 规划画像（Plan Portrait）+ 开放知识债提示**（控制在约 20 行内），使会话 Compact 或切换后无需全量扫描目录即可秒级恢复全局脉络。
+  1. `<!-- paths-to-modernity:protocol:start/end -->`（升级至 `paths-to-modernity-protocol-v4`）：保持静态、带收据校验，仅存放核心不变量与五图 + Knowledge Debt + State 恢复入口路由；
+  2. `<!-- paths-to-modernity:portrait:start/end -->`：由子智能体（交互会话中的 `subagent` 或 CLI 下调用 `.env` 配置的轻量模型如 `deepseek-flash`，无网络时回退确定性结构摘要）生成的精炼**意图画像（Intent Portrait）+ 常驻规范与术语（Spec & Glossary Portrait）+ 规划与验证画像（Plan, Scripts & Verification Portrait）+ 认知书签与关联枢纽**（控制在约 20 行内），使会话 Compact 或切换后无需全量扫描目录即可秒级恢复全局脉络。
+
+## 决策八 — 形式验证回执与视角分离内容评鉴的双轨治理（零图谱膨胀）
+
+**决策：** 拒绝为测试和评审再造孤立的第 6、第 7 张顶层图谱，而是在现有三层五图骨架之上引入**确定性形式验证（Formal Validation）**与**上下文隔离内容评鉴（Substantive Content Evaluation）**双轨闭环：
+
+1. **形式验证轨（`ptm.py verify` + SHA-256 源码指纹保鲜）**：
+   - 严禁以大模型口头断言代替测试证据。`ptm.py verify <repo>` 实际执行测试套件并向 `_aiHumanInteract/scripts/verification-status.json` 写入退出码、用例统计以及全部受辖源码与测试脚本的 **SHA-256 内容摘要**。
+   - 读取联邦图谱时自动比对当前源码哈希与回执快照：一旦受辖源码或测试发生任何字节改动，关联 `SPEC-###`、`WP-###` 与 `SCR:...` 节点的验证态自动由 `verified`（`✓ 实测`）降级为 `stale`（`⟳ 待测`），强制要求重跑验证后方能闭合。
+2. **内容评鉴轨（结构化 `evaluations/EVAL-###.md` + 独立视角子代理协议）**：
+   - 复用并升级 Plan Graph v4 原生预留的 `_aiHumanInteract/plan/evaluations/EVAL-###.md`（完全向后兼容 `validate.py` 的 `links.evaluation` 存在性检查），记录显式审阅视角（`perspective`）、审查模式（`isolated_subagent | browser_subagent | human_owner | joint`）、裁决（`pass | selected_winner | concerns | fail`）及 `preserved_qualities` / `at_risk_qualities`。
+   - **强制上下文分离（Context Separation）**：编码主 Agent 不得在同一推理上下文中自评主观体验品质（`Intent.qualities`）；必须拉起只读/浏览器独立视角子代理对照用户原话 `raw_utterance`、常驻 `SPEC` 红线与可运行产物/截图做外部评鉴，并将 `concerns` 风险诚实暴露于工作台徽章、聚焦滤镜与项目画像之中。
+
+## 决策九 — 嵌入式 SQLite 二进制向量库与“单流交互、三层解缠结”（`Turn → Span → Thread`）情景记忆
+
+**决策：** 针对大型项目中普遍存在的“单轮并行探讨多个独立话题且跨多轮交织”场景，拒绝强迫人类切换多个前台 UI 会话分支，也拒绝粗粒度整轮入库或启动重型外部向量数据库，采用**“上层 Git Markdown 五图真源 + 下层标准库 SQLite（`_aiHumanInteract/.cache/memory.sqlite`，WAL 并发模式 + FTS5 全文检索 + IEEE-754 `float32` 二进制向量 BLOB）”**：
+
+1. **三层解缠结模型（Dialogue Disentanglement）**：
+   - **`turns`（物理保真层）**：按原样追加保存完整对话轮次（可由轻量 `_aiHumanInteract/episodes/turns.jsonl` 重建），提供不可篡改的历史审计现场；
+   - **`spans`（轮内原子切片层）**：按序号、标题与话语转折信号将单轮多话题问答拆解为单一语义的原子问答切片（记录字符起止偏移），作为稠密向量嵌入与 `FTS5` 检索的最小纯净单元；
+   - **`threads`（虚拟话题线索层 `THR-###`）**：通过话语回指（如“关于第 2 点”）、向量质心相似度与结构化锚点，在后台无感将跨轮次的同主题 `Span` 编织为纯净的单话题时间线（支持多对多跨线索合流引用），并与 `INT-###` / `SPEC-###` / `WP-###` / `KD-###` 建立双向溯源。
+2. **按完结线索增量折叠（Per-Thread Folding）与认知/实践分流分工**：
+   - 已拍板或已固化入五图的话题线索（`THR-###`）支持按线索独立折叠为一行“线索胶囊摘要 + 图节点指针”，活跃探讨中的线索保持 100% 原文展开，避免传统全局 Compaction 一刀切损伤在途讨论；
+   - **认知探讨期合流**（前台单一自然对话流 + 后台虚拟 `THR-###` 分流），**实践执行与独立评鉴期分流**（派生上下文隔离的 `Subagent` 执行编码或 `EVAL` 审阅）。

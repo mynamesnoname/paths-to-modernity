@@ -1,0 +1,121 @@
+{
+  "schema_version": "paths-to-modernity-evaluation-v1",
+  "node_count": 3,
+  "source_of_truth": [
+    "_aiHumanInteract/plan/evaluations/EVAL-*.md"
+  ],
+  "nodes": [
+    {
+      "id": "EVAL-001",
+      "title": "显式三态分拣闸门 vs. 启发式静默跳过对比评鉴",
+      "kind": "alternative_comparison",
+      "verdict": "selected_winner",
+      "perspective": "认知心理学与高频光谱实验员视角",
+      "reviewer_mode": "joint",
+      "updated": "2026-11-24",
+      "summary": "对照两份认知原型后确认：侧栏三态分拣（WP-002）既保持画布视线连续，又为未知技术保留可推翻的 KD 书签；静默黑盒跳过（WP-003）剥夺知情权且导致后期无法定向反悔。",
+      "evaluates_intents": [
+        "INT-001",
+        "INT-002"
+      ],
+      "evaluates_specs": [
+        "SPEC-001",
+        "SPEC-004"
+      ],
+      "evaluates_plans": [
+        "WP-002",
+        "WP-003"
+      ],
+      "evaluates_scripts": [
+        "src/triage_gate.py"
+      ],
+      "preserved_qualities": [
+        "操作科学对象应像拨动实体仪器一样直接连贯，不退化为管理弹窗",
+        "诚实记录未知，绝不把沉默或顺从伪装成技术背书"
+      ],
+      "at_risk_qualities": [],
+      "evidence_refs": [
+        "_aiHumanInteract/intent/prototypes/direct-canvas.svg",
+        "_aiHumanInteract/intent/prototypes/modal-queue.svg"
+      ],
+      "recommended_action": "选定 WP-002 作为正式技术分拣路径，将 WP-003 标记为 superseded。",
+      "source": "_aiHumanInteract/plan/evaluations/EVAL-001.md",
+      "body": "# EVAL-001 · 三态分拣闸门与黑盒静默跳过方案比选\n\n基于共享目标基线对比 `WP-002` 与 `WP-003`，结合 `direct-canvas.svg` / `modal-queue.svg` 物理旋转实验完成裁决。"
+    },
+    {
+      "id": "EVAL-002",
+      "title": "主画布零模态阻塞与建筑极简解耦标准独立审阅",
+      "kind": "quality_review",
+      "verdict": "pass",
+      "perspective": "前端直接操作体验与架构解耦审阅子代理",
+      "reviewer_mode": "browser_subagent",
+      "updated": "2026-11-25",
+      "summary": "独立子代理核验确认：SpectralCanvas.ts 谱峰点选单步直达无弹窗遮挡，workbench_api.py 单向编排存储层与分拣层且零循环依赖。",
+      "evaluates_intents": [
+        "INT-001",
+        "INT-005"
+      ],
+      "evaluates_specs": [
+        "SPEC-001",
+        "SPEC-003"
+      ],
+      "evaluates_plans": [
+        "WP-001",
+        "WP-006"
+      ],
+      "evaluates_scripts": [
+        "web/SpectralCanvas.ts",
+        "src/workbench_api.py"
+      ],
+      "preserved_qualities": [
+        "谱峰选中、对比与标注在主画布单步直达，零模态审批队列",
+        "存储模块 spectral_store.py 与分拣模块 triage_gate.py 严格保持单向零循环依赖"
+      ],
+      "at_risk_qualities": [],
+      "evidence_refs": [
+        "_aiHumanInteract/intent/prototypes/direct-canvas.svg",
+        "web/SpectralCanvas.ts"
+      ],
+      "recommended_action": null,
+      "source": "_aiHumanInteract/plan/evaluations/EVAL-002.md",
+      "body": "# EVAL-002 · 直接画布与视觉/架构解耦标准独立审阅\n\n编码完成后由隔离上下文子代理对照 `INT-001` 用户原话及 `SPEC-001` / `SPEC-003` 红线独立审阅通过。"
+    },
+    {
+      "id": "EVAL-003",
+      "title": "轻量谱峰键值存储与多协作者并发审计边界评鉴",
+      "kind": "spec_audit",
+      "verdict": "concerns",
+      "perspective": "科研多协作者数据可靠性与可审计视角",
+      "reviewer_mode": "isolated_subagent",
+      "updated": "2026-11-25",
+      "summary": "形式测试已通过且严格遵循 PeakHandle (PK-###) 命名，但单快照字典覆写在多人异步修改同一谱峰备注时无法回溯被覆盖的中间推理。",
+      "evaluates_intents": [
+        "INT-003"
+      ],
+      "evaluates_specs": [
+        "SPEC-002"
+      ],
+      "evaluates_plans": [
+        "WP-004",
+        "WP-005"
+      ],
+      "evaluates_scripts": [
+        "src/spectral_store.py"
+      ],
+      "preserved_qualities": [
+        "恢复上下文轻快透明，不引入笨重的运维负担",
+        "全栈严格统一采用 PeakHandle (PK-###) 标识，未混入 WaveItem 等禁用别名"
+      ],
+      "at_risk_qualities": [
+        "多人协作编辑同一 PK-### 时仅保留最后一次 upsert 快照，缺乏冲突审计轨迹（受 KD-002 书签监控）"
+      ],
+      "evidence_refs": [
+        "src/spectral_store.py",
+        "_aiHumanInteract/knowledge-debt/nodes/KD-002.md"
+      ],
+      "recommended_action": "单人研究阶段维持 WP-004 轻量快照；若后续出现双人标注冲突，立即触发 KD-002 重审以决定是否启动 WP-005。",
+      "source": "_aiHumanInteract/plan/evaluations/EVAL-003.md",
+      "body": "# EVAL-003 · 谱峰存储规范与多协作者审计边界评鉴\n\n典型演示：**形式验证通过（`✓ 实测`）并不等于内容品质无虞**——独立视角子代理识别出多人协作下的覆写盲区并显式挂接 `KD-002` 触发条件。"
+    }
+  ]
+}
