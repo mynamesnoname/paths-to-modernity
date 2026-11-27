@@ -204,41 +204,198 @@ def _layout_tree(
     return coords, total_w, max_h, stacked_ids
 
 
-def _layout_scripts(script_nodes: list[dict[str, Any]]) -> tuple[dict[str, tuple[float, float]], float, float]:
-    """Tiered layout: Tests/Callers on Top OR Entrypoints -> Modules -> Planned, ordered top-down by dependency!
-    Putting Callers (Tests & Entrypoints) above Callees (Core Modules & Planned Targets) makes EVERY import/call arrow flow naturally downward!
+def _layout_scripts(
+    script_nodes: list[dict[str, Any]],
+    script_edges: list[dict[str, Any]] | None = None,
+) -> tuple[dict[str, tuple[float, float]], float, float, list[dict[str, Any]]]:
+    """Sugiyama-style topological DAG layout for the Scripts Graph.
+
+    Places Callers strictly ABOVE Callees so every `imports`/`invokes` arrow flows
+    naturally downward without upward detours or knots:
+      - Row 0 (top)      : Test suites (`role == "test"`)
+      - Rows 1..K        : Connected modules ranked top-down by longest dependency path
+                           with 2-pass barycenter crossing minimization
+      - Bottom row       : Planned / missing target modules (if any)
+      - Dedicated right column: Standalone scripts/configs with 0 internal edges
     """
     if not script_nodes:
-        return {}, 0.0, 0.0
-    # Tier 0: Test suites (top callers)
-    # Tier 1: Entrypoints / Controllers (`workbench_api.py`, UI components)
-    # Tier 2: Core domain modules (`spectral_store.py`, `triage_gate.py`)
-    # Tier 3: Planned / Missing targets (`event_replay_audit.py`)
-    tiers: list[list[dict[str, Any]]] = [[], [], [], []]
+        return {}, 0.0, 0.0, []
+
+    node_by_id = {n["id"]: n for n in script_nodes}
+    dep_rels = {"imports", "invokes"}
+    adj: dict[str, set[str]] = {n["id"]: set() for n in script_nodes}
+    radj: dict[str, set[str]] = {n["id"]: set() for n in script_nodes}
+    for e in script_edges or []:
+        if e.get("relationship") not in dep_rels:
+            continue
+        u, v = e.get("from"), e.get("to")
+        if u in node_by_id and v in node_by_id and u != v:
+            adj[u].add(v)
+            radj[v].add(u)
+
+    tests: list[dict[str, Any]] = []
+    planned: list[dict[str, Any]] = []
+    connected: list[dict[str, Any]] = []
+    standalone: list[dict[str, Any]] = []
+
     for s in sorted(script_nodes, key=lambda n: (-n.get("centrality", 0.0), n["path"])):
+        sid = s["id"]
         if s.get("status") == "planned_missing" or s.get("role") == "planned_target":
-            tiers[3].append(s)
+            planned.append(s)
         elif s.get("role") == "test":
-            tiers[0].append(s)
-        elif s.get("role") == "entrypoint" or s.get("is_entrypoint"):
-            tiers[1].append(s)
+            tests.append(s)
+        elif adj[sid] or radj[sid]:
+            connected.append(s)
         else:
-            tiers[2].append(s)
-    tiers = [t for t in tiers if t]
+            standalone.append(s)
+
+    # Compute topological rank on `connected` modules so every edge u -> v satisfies rank[v] > rank[u].
+    conn_ids = {s["id"] for s in connected}
+    rank: dict[str, int] = {sid: 0 for sid in conn_ids}
+    # Cap iterations at len(conn_ids) so cyclic codebases converge deterministically.
+    for _ in range(len(conn_ids)):
+        changed = False
+        for u in conn_ids:
+            for v in adj[u]:
+                if v in conn_ids and rank[v] < rank[u] + 1:
+                    rank[v] = rank[u] + 1
+                    changed = True
+        if not changed:
+            break
+
+    # Tighten root callers downward to sit 1 layer directly above their highest callee
+    # so edges stay short (e.g. a controller calling a deep leaf sits near it).
+    for u in conn_ids:
+        if not any(p in conn_ids for p in radj[u]):
+            callees = [v for v in adj[u] if v in conn_ids]
+            if callees:
+                rank[u] = max(0, min(rank[v] for v in callees) - 1)
+
+    max_rank = max(rank.values(), default=-1)
+    dag_layers: list[tuple[str, str, list[dict[str, Any]]]] = []
+    if tests:
+        dag_layers.append(("TESTS · 测试守门", "test", tests))
+
+    if max_rank >= 0:
+        buckets: list[list[dict[str, Any]]] = [[] for _ in range(max_rank + 1)]
+        for s in connected:
+            buckets[rank[s["id"]]].append(s)
+        non_empty = [b for b in buckets if b]
+        n_layers = len(non_empty)
+        for idx, bucket in enumerate(non_empty):
+            if n_layers == 1:
+                label = "MODULES · 核心模块"
+            elif idx == 0:
+                label = "ENTRY · 入口与顶层"
+            elif idx == n_layers - 1:
+                label = "CORE LIBS · 底层核心库"
+            elif idx == 1 and n_layers >= 4:
+                label = "ORCHESTRATION · 应用编排"
+            else:
+                label = f"LAYER {idx + 1} · 组件与模块"
+            dag_layers.append((label, "dag", bucket))
+
+    if planned:
+        dag_layers.append(("PLANNED · 规划目标", "planned", planned))
+
+    # 2-pass Barycenter ordering across layers to minimize edge crossings and align caller/callee columns.
+    order_pos: dict[str, float] = {}
+    for _, _, nodes in dag_layers:
+        nodes.sort(key=lambda n: (-n.get("centrality", 0.0), n["path"]))
+        for i, n in enumerate(nodes):
+            order_pos[n["id"]] = float(i)
+
+    def _barycenter_sort(layer_nodes: list[dict[str, Any]], use_parents: bool) -> None:
+        scored: list[tuple[float, float, str, dict[str, Any]]] = []
+        for idx, n in enumerate(layer_nodes):
+            nid = n["id"]
+            nbrs = [p for p in (radj[nid] if use_parents else adj[nid]) if p in order_pos]
+            if nbrs:
+                avg = sum(order_pos[p] for p in nbrs) / len(nbrs)
+            else:
+                avg = float(idx) + 0.01
+            scored.append((avg, -n.get("centrality", 0.0), n["path"], n))
+        scored.sort(key=lambda item: (item[0], item[1], item[2]))
+        layer_nodes[:] = [item[3] for item in scored]
+        for i, n in enumerate(layer_nodes):
+            order_pos[n["id"]] = float(i)
+
+    for _ in range(2):
+        for li in range(1, len(dag_layers)):
+            _barycenter_sort(dag_layers[li][2], use_parents=True)
+        for li in range(len(dag_layers) - 2, -1, -1):
+            _barycenter_sort(dag_layers[li][2], use_parents=False)
+
+    scr_gap_x = 64.0
+    scr_gap_y = 74.0
+    max_per_row = 4
+    band_pad_x = 24.0
+    band_pad_top = 30.0
+    band_pad_bot = 18.0
+
+    max_cols = max((min(max_per_row, len(nodes)) for _, _, nodes in dag_layers), default=1)
+    dag_w = max_cols * CARD_W + max(0, max_cols - 1) * scr_gap_x if dag_layers else 0.0
+
     coords: dict[str, tuple[float, float]] = {}
-    max_cols = max((min(3, len(t)) for t in tiers), default=1)
-    total_w = max_cols * CARD_W + max(0, max_cols - 1) * GAP_X
+    bands: list[dict[str, Any]] = []
     cur_y = 0.0
-    for tier in tiers:
-        cols = min(3, len(tier))
-        row_w = cols * CARD_W + max(0, cols - 1) * GAP_X
-        x_pad = (total_w - row_w) / 2
-        rows = math.ceil(len(tier) / cols)
-        for idx, s in enumerate(tier):
-            c, r = idx % cols, idx // cols
-            coords[s["id"]] = (x_pad + c * (CARD_W + GAP_X), cur_y + r * (CARD_H + 26))
-        cur_y += rows * (CARD_H + 26) + 46
-    return coords, total_w, max(CARD_H, cur_y - 46)
+
+    for label, kind, nodes in dag_layers:
+        cols = min(max_per_row, len(nodes))
+        rows = math.ceil(len(nodes) / cols)
+        band_y = cur_y
+        inner_y = cur_y + band_pad_top
+        for r in range(rows):
+            row_nodes = nodes[r * cols : (r + 1) * cols]
+            row_w = len(row_nodes) * CARD_W + max(0, len(row_nodes) - 1) * scr_gap_x
+            x_pad = (dag_w - row_w) / 2.0
+            for c, s in enumerate(row_nodes):
+                coords[s["id"]] = (
+                    round(x_pad + c * (CARD_W + scr_gap_x), 1),
+                    round(inner_y + r * (CARD_H + 28.0), 1),
+                )
+        inner_h = rows * CARD_H + max(0, rows - 1) * 28.0
+        band_h = band_pad_top + inner_h + band_pad_bot
+        bands.append({
+            "label": label,
+            "kind": kind,
+            "x": round(-band_pad_x, 1),
+            "y": round(band_y, 1),
+            "w": round(dag_w + band_pad_x * 2, 1),
+            "h": round(band_h, 1),
+        })
+        cur_y += band_h + (scr_gap_y - band_pad_top - band_pad_bot + 26.0)
+
+    dag_h = max(CARD_H, cur_y - (scr_gap_y - band_pad_top - band_pad_bot + 26.0)) if dag_layers else 0.0
+
+    total_w = dag_w
+    total_h = dag_h
+
+    if standalone:
+        st_x = (dag_w + band_pad_x * 2 + 56.0) if dag_layers else 0.0
+        st_cols = 1 if len(standalone) <= 5 else 2
+        st_rows = math.ceil(len(standalone) / st_cols)
+        st_inner_w = st_cols * CARD_W + max(0, st_cols - 1) * 32.0
+        st_inner_h = st_rows * CARD_H + max(0, st_rows - 1) * 26.0
+        for idx, s in enumerate(standalone):
+            c, r = idx % st_cols, idx // st_cols
+            coords[s["id"]] = (
+                round(st_x + c * (CARD_W + 32.0), 1),
+                round(band_pad_top + r * (CARD_H + 26.0), 1),
+            )
+        st_band_h = band_pad_top + st_inner_h + band_pad_bot
+        bands.append({
+            "label": "STANDALONE · 独立脚本与配置",
+            "kind": "standalone",
+            "x": round(st_x - band_pad_x, 1),
+            "y": 0.0,
+            "w": round(st_inner_w + band_pad_x * 2, 1),
+            "h": round(st_band_h, 1),
+        })
+        total_w = st_x + st_inner_w + band_pad_x
+        total_h = max(total_h, st_band_h)
+
+    return coords, max(CARD_W, total_w), max(CARD_H, total_h), bands
 
 
 def _compute_all_layouts(federated: Mapping[str, Any]) -> tuple[dict[str, Any], set[str]]:
@@ -288,7 +445,8 @@ def _compute_all_layouts(federated: Mapping[str, Any]) -> tuple[dict[str, Any], 
         z = LEVEL_Z.get(n["level"], 0)
         plan_pos[n["id"]] = (bx, by - z * 0.55)
 
-    scr_pos, scr_w, scr_h = _layout_scripts(script_nodes)
+    script_edges = federated.get("scripts", {}).get("edges", [])
+    scr_pos, scr_w, scr_h, scr_bands = _layout_scripts(script_nodes, script_edges)
 
     margin = 86.0
     band_gap_x = 124.0
@@ -330,9 +488,14 @@ def _compute_all_layouts(federated: Mapping[str, Any]) -> tuple[dict[str, Any], 
     for nid, (x, y) in scr_pos.items():
         overview_pos[nid] = (round(scr_offset_x + x, 1), round(pragmatic_top + 20.0 + y, 1))
 
-    def _shift(pos_map: dict[str, tuple[float, float]], w: float, h: float) -> dict[str, Any]:
+    def _shift(
+        pos_map: dict[str, tuple[float, float]],
+        w: float,
+        h: float,
+        bands: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         pad = 84.0
-        return {
+        out: dict[str, Any] = {
             "positions": {
                 k: [round(v[0] + pad, 1), round(v[1] + pad + 26.0, 1)]
                 for k, v in pos_map.items()
@@ -340,6 +503,16 @@ def _compute_all_layouts(federated: Mapping[str, Any]) -> tuple[dict[str, Any], 
             "width": round(max(w, 480.0) + pad * 2, 1),
             "height": round(max(h, 300.0) + pad * 2 + 40.0, 1),
         }
+        if bands:
+            out["bands"] = [
+                {
+                    **b,
+                    "x": round(b["x"] + pad, 1),
+                    "y": round(b["y"] + pad + 26.0, 1),
+                }
+                for b in bands
+            ]
+        return out
 
     strata_dict: dict[str, Any] = {
         "epistemic": {
@@ -374,7 +547,7 @@ def _compute_all_layouts(federated: Mapping[str, Any]) -> tuple[dict[str, Any], 
         "specs": _shift(spec_pos, spec_w, spec_h),
         "plan": _shift(plan_pos, plan_w, plan_h + 44),
         "knowledge_debt": _shift(kd_pos, kd_w, kd_h),
-        "scripts": _shift(scr_pos, scr_w, scr_h),
+        "scripts": _shift(scr_pos, scr_w, scr_h, scr_bands),
     }
     return layouts, (int_stacked | spec_stacked | plan_stacked)
 
@@ -949,7 +1122,16 @@ STUDIO_HTML = r"""<!DOCTYPE html>
   .stratum-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; fill: #6E7A86; }
   .stratum-sub { font-size: 10.5px; fill: #9AA5B1; }
 
+  .script-band { fill: rgba(255, 255, 255, 0.56); stroke: #DFE4EA; stroke-width: 1; rx: 12; }
+  .script-band.test { fill: rgba(238, 246, 252, 0.55); stroke: #CBE0F0; }
+  .script-band.standalone { fill: rgba(247, 246, 242, 0.72); stroke: #DCD8CE; stroke-dasharray: 5 4; }
+  .script-band-label { font-size: 9.8px; font-weight: 700; letter-spacing: 0.07em; fill: #738291; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
   .struct-edge { fill: none; stroke: #B0BAC4; stroke-width: 1.35; stroke-linecap: round; stroke-linejoin: round; }
+  .struct-edge.script-import { stroke: #4A6480; stroke-width: 1.65; opacity: 0.90; }
+  .struct-edge.script-test { stroke: #7B9EC0; stroke-width: 1.25; stroke-dasharray: 4 3; opacity: 0.72; }
+  .struct-edge.script-invoke { stroke: #1E7E74; stroke-width: 1.45; stroke-dasharray: 5 3; opacity: 0.85; }
+  .struct-edge.script-back { stroke: #C93B3B; stroke-width: 1.65; stroke-dasharray: 5 3; opacity: 0.88; }
   .cross-edge { fill: none; stroke: #7C69C8; stroke-width: 1.2; stroke-dasharray: 5 4; opacity: 0.28; transition: opacity .15s ease; }
   .hebb-edge { fill: none; stroke: #C88A2E; stroke-dasharray: 2 4; opacity: 0.0; pointer-events: none; transition: opacity .15s ease; }
   .hebb-edge.backbone { opacity: 0.20; }
@@ -1170,13 +1352,12 @@ function routeStructuralEdge(e, p1, p2) {
     return `M ${sx} ${sy} V ${my} H ${tx} V ${ty}`;
   }
 
-  // Case 3: Upward edge (`y2 < y1 - 24`) -> exit top, route around outer side channel, enter bottom
+  // Case 3: Upward edge (`y2 < y1 - 24`) -> clean smooth outer-side cubic arc (never self-crosses or knots)
   if (y2 < y1 - 24) {
-    const sx = x1 + CARD_W / 2, sy = y1;
-    const tx = x2 + CARD_W / 2, ty = y2 + CARD_H;
-    const sideX = Math.max(x1, x2) + CARD_W + 28;
-    const topY = Math.min(y1 - 18, ty + 18);
-    return `M ${sx} ${sy} V ${topY} H ${sideX} V ${ty + 18} H ${tx} V ${ty}`;
+    const rx1 = x1 + CARD_W, rx2 = x2 + CARD_W;
+    const sy = y1 + CARD_H / 2, ty = y2 + CARD_H / 2;
+    const bow = Math.max(rx1, rx2) + 36 + Math.min(34, Math.abs(ty - sy) * 0.12);
+    return `M ${rx1} ${sy} C ${bow} ${sy}, ${bow} ${ty}, ${rx2} ${ty}`;
   }
 
   // Case 4: Same-row horizontal sibling edge (`alternative_of`, `supersedes`, `branches_from`, `constrains`)
@@ -1192,6 +1373,97 @@ function routeStructuralEdge(e, p1, p2) {
   const sy = y1 + CARD_H / 2, ty = y2 + CARD_H / 2;
   const mx = (sx + tx) / 2;
   return `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`;
+}
+
+function buildScriptEdgeRouter(pos, edges) {
+  const outBy = new Map();
+  const inBy = new Map();
+  const visible = edges.filter(e => pos[e.from] && pos[e.to]);
+  for (const e of visible) {
+    if (!outBy.has(e.from)) outBy.set(e.from, []);
+    if (!inBy.has(e.to)) inBy.set(e.to, []);
+    outBy.get(e.from).push(e);
+    inBy.get(e.to).push(e);
+  }
+  const outFrac = new Map();
+  const inFrac = new Map();
+  for (const [, list] of outBy) {
+    list.sort((a, b) => (pos[a.to][0] - pos[b.to][0]) || (pos[a.to][1] - pos[b.to][1]));
+    const n = list.length;
+    list.forEach((e, i) => {
+      outFrac.set(e, n === 1 ? 0.5 : 0.24 + (0.52 * i) / (n - 1));
+    });
+  }
+  for (const [, list] of inBy) {
+    list.sort((a, b) => (pos[a.from][0] - pos[b.from][0]) || (pos[a.from][1] - pos[b.from][1]));
+    const n = list.length;
+    list.forEach((e, i) => {
+      inFrac.set(e, n === 1 ? 0.5 : 0.24 + (0.52 * i) / (n - 1));
+    });
+  }
+
+  const allBoxes = Object.entries(pos).map(([id, [x, y]]) => ({ id, x, y, x2: x + CARD_W, y2: y + CARD_H }));
+  const dagMinX = Math.min(...allBoxes.map(b => b.x));
+  const dagMaxX = Math.max(...allBoxes.map(b => b.x2));
+  let leftLaneCount = 0;
+  let rightLaneCount = 0;
+
+  return function routeScriptEdge(e) {
+    const [x1, y1] = pos[e.from];
+    const [x2, y2] = pos[e.to];
+    // Upward cyclic back-edge -> smooth outer side arc
+    if (y2 < y1 - 24) {
+      const rx1 = x1 + CARD_W, rx2 = x2 + CARD_W;
+      const sy = y1 + CARD_H / 2, ty = y2 + CARD_H / 2;
+      const bow = Math.max(rx1, rx2) + 42 + Math.min(36, Math.abs(ty - sy) * 0.12);
+      return { d: `M ${rx1} ${sy} C ${bow} ${sy}, ${bow} ${ty}, ${rx2} ${ty}`, isBack: true };
+    }
+    // Same-row horizontal dependency
+    if (Math.abs(y2 - y1) <= 24) {
+      const goRight = x2 > x1;
+      const sx = goRight ? x1 + CARD_W : x1;
+      const tx = goRight ? x2 : x2 + CARD_W;
+      const sy = y1 + CARD_H / 2, ty = y2 + CARD_H / 2;
+      const mx = (sx + tx) / 2;
+      return { d: `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`, isBack: false };
+    }
+    const sx = x1 + CARD_W * (outFrac.get(e) ?? 0.5);
+    const sy = y1 + CARD_H;
+    const tx = x2 + CARD_W * (inFrac.get(e) ?? 0.5);
+    const ty = y2;
+    const dy = ty - sy;
+
+    // Detect if a direct vertical S-curve would pass through any intermediate card.
+    const blockers = allBoxes.filter(b => {
+      if (b.id === e.from || b.id === e.to) return false;
+      if (b.y2 <= sy + 6 || b.y >= ty - 6) return false;
+      const t = (b.y + CARD_H / 2 - sy) / Math.max(1, dy);
+      const midX = sx + (tx - sx) * t;
+      return midX >= b.x - 18 && midX <= b.x2 + 18;
+    });
+
+    if (blockers.length === 0) {
+      const c1 = sy + Math.max(24, dy * 0.45);
+      const c2 = ty - Math.max(24, dy * 0.45);
+      return { d: `M ${sx} ${sy} C ${sx} ${c1}, ${tx} ${c2}, ${tx} ${ty}`, isBack: false };
+    }
+
+    // Multi-layer skip edge: route smoothly out to a dedicated clear side lane,
+    // travel vertically outside all intermediate cards, then curve cleanly into target port.
+    const avgX = (sx + tx) / 2;
+    const goLeft = (avgX - dagMinX) <= (dagMaxX - avgX);
+    const laneOffset = goLeft ? (leftLaneCount++) * 14 : (rightLaneCount++) * 14;
+    const laneX = goLeft
+      ? Math.min(...blockers.map(b => b.x)) - 26 - laneOffset
+      : Math.max(...blockers.map(b => b.x2)) + 26 + laneOffset;
+    const yStart = sy + 20;
+    const yEnd = ty - 20;
+    const yMid = (yStart + yEnd) / 2;
+    return {
+      d: `M ${sx} ${sy} C ${sx} ${yStart}, ${laneX} ${yStart}, ${laneX} ${yMid} C ${laneX} ${yEnd}, ${tx} ${yEnd}, ${tx} ${ty}`,
+      isBack: false,
+    };
+  };
 }
 
 function renderScene() {
@@ -1233,6 +1505,18 @@ function renderScene() {
     );
   }
 
+  if (currentLens === 'scripts' && Array.isArray(layout.bands)) {
+    for (const b of layout.bands) {
+      stratumLayer.append(
+        svgEl('rect', {
+          x: b.x, y: b.y, width: b.w, height: b.h, rx: 12,
+          class: `script-band ${b.kind || ''}`,
+        }),
+        svgEl('text', { x: b.x + 14, y: b.y + 19, class: 'script-band-label' }, b.label)
+      );
+    }
+  }
+
   for (const n of DATA.nodes) {
     const p = pos[n.id];
     if (!p) continue;
@@ -1251,15 +1535,26 @@ function renderScene() {
     }
   }
 
+  const routeScriptEdge = currentLens === 'scripts' ? buildScriptEdgeRouter(pos, DATA.structural_edges) : null;
   for (const e of DATA.structural_edges) {
     const p1 = pos[e.from], p2 = pos[e.to];
     if (!p1 || !p2) continue;
-    const d = routeStructuralEdge(e, p1, p2);
+    let d;
+    const cls = ['struct-edge'];
+    if (routeScriptEdge && ['imports', 'invokes'].includes(e.relationship)) {
+      const routed = routeScriptEdge(e);
+      d = routed.d;
+      const srcMeta = nodesById.get(e.from);
+      const isTestCaller = srcMeta && srcMeta.raw && srcMeta.raw.role === 'test';
+      cls.push(routed.isBack ? 'script-back' : (e.relationship === 'invokes' ? 'script-invoke' : (isTestCaller ? 'script-test' : 'script-import')));
+    } else {
+      d = routeStructuralEdge(e, p1, p2);
+    }
     const path = svgEl('path', {
-      d, class: 'struct-edge', 'data-from': e.from, 'data-to': e.to,
+      d, class: cls.join(' '), 'data-from': e.from, 'data-to': e.to,
       'data-rel': e.relationship, 'marker-end': 'url(#arr-struct)'
     });
-    if (!['decomposes_to', 'decomposes_intent', 'decomposes_spec', 'imports'].includes(e.relationship)) {
+    if (!['decomposes_to', 'decomposes_intent', 'decomposes_spec', 'imports', 'invokes'].includes(e.relationship)) {
       path.setAttribute('stroke-dasharray', '4 3');
     }
     structLayer.append(path);
@@ -1307,7 +1602,7 @@ function renderScene() {
       const w = Math.max(1.1, s.weight * 3.6);
       const cls = ['hebb-edge'];
       if (hebbianMode === 'all') cls.push('mesh-all');
-      else if (idx < 10 && s.weight >= 0.32) cls.push('backbone');
+      else if (currentLens !== 'scripts' && idx < 10 && s.weight >= 0.32) cls.push('backbone');
       hebbLayer.append(svgEl('path', {
         d: `M ${cx1} ${cy1} Q ${mx} ${my} ${cx2} ${cy2}`,
         class: cls.join(' '), 'stroke-width': w.toFixed(2),

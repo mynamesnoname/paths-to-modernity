@@ -2249,11 +2249,24 @@ def run_formal_verification(
         m_node_total = re.search(r"(?:ℹ|#)\s*tests\s+(\d+)", combined_out)
         m_node_fail = re.search(r"(?:ℹ|#)\s*fail\s+(\d+)", combined_out)
         m_node_dur = re.search(r"(?:ℹ|#)\s*duration_ms\s+([\d.]+)", combined_out)
+        m_vitest_line = re.search(r"^\s*Tests\s+(.+)$", combined_out, re.MULTILINE)
+        m_vitest_dur = re.search(r"Duration\s+([\d.]+)\s*(ms|s)", combined_out)
         if m_node_total:
             total_tests = int(m_node_total.group(1))
             failed_tests = int(m_node_fail.group(1)) if m_node_fail else (1 if proc.returncode != 0 else 0)
             if m_node_dur:
                 duration_sec = float(m_node_dur.group(1)) / 1000.0
+        elif m_vitest_line:
+            vp = re.search(r"(\d+)\s+passed", m_vitest_line.group(1))
+            vf = re.search(r"(\d+)\s+failed", m_vitest_line.group(1))
+            vt = re.search(r"\((\d+)\)", m_vitest_line.group(1))
+            passed_v = int(vp.group(1)) if vp else 0
+            failed_v = int(vf.group(1)) if vf else 0
+            total_tests = int(vt.group(1)) if vt else (passed_v + failed_v)
+            failed_tests = failed_v if vf else (1 if proc.returncode != 0 else 0)
+            if m_vitest_dur:
+                val = float(m_vitest_dur.group(1))
+                duration_sec = val / 1000.0 if m_vitest_dur.group(2) == "ms" else val
         else:
             if mp:
                 total_tests += int(mp.group(1))
